@@ -1,8 +1,5 @@
+import LandingPage from "@/components/landingPage/LandingPage";
 
-export default function Home() {
-  return (
-   <div className="bg-red-500 text-white">
-    hello
-   </div>
-  ); 
+export default function HomePage() {
+  return <LandingPage />;
 }
