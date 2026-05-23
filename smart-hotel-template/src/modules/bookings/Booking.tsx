@@ -1,9 +1,9 @@
 import React from 'react'
 
-export default function ProfilePage() {
+export default function Booking() {
   return (
     <div>
-      Profile Page
+      Booking
     </div>
   )
 }

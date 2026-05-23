@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
-import { getSession, signIn } from "next-auth/react";
+import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import * as Yup from "yup";
 import Image from "next/image";
@@ -34,59 +34,6 @@ export const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
-  //   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
-  //     e.preventDefault();
-
-  //     setLoading(true);
-
-  //     try {
-  //       await loginSchema.validate(
-  //         {
-  //           email,
-  //           password,
-  //         },
-  //         {
-  //           abortEarly: false,
-  //         },
-  //       );
-
-  //       const response = await signIn("credentials", {
-  //         email,
-  //         password,
-  //         redirect: false,
-  //       });
-
-  //       if (response?.error) {
-  //         toast.error(response.error);
-  //         return;
-  //       }
-
-  //       toast.success("Login successful");
-
-  //       const session = await getSession();
-
-  //       const role = session?.user?.role;
-
-  //       if (role === "ADMIN") {
-  //         router.push("/admin/dashboard");
-  //       } else if (role === "STAFF") {
-  //         router.push("/staff/dashboard");
-  //       } else if (role === "CUSTOMER") {
-  //         router.push("/customer/dashboard");
-  //       } else {
-  //         router.push("/unauthorized");
-  //       }
-  //     } catch (error) {
-  //       if (error instanceof Yup.ValidationError) {
-  //         toast.error(error.errors.join(", "));
-  //       } else {
-  //         toast.error("Something went wrong");
-  //         console.error(error);
-  //       }
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

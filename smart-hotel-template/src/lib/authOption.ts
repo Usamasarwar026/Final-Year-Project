@@ -25,7 +25,6 @@ export const authOptions: NextAuthOptions = {
           throw new Error("User not found");
         }
 
-    
         const isValid = await bcrypt.compare(
           credentials.password,
           user.password,
@@ -35,12 +34,8 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Invalid password");
         }
 
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-        };
+        console.log("user:", user);
+        return user;
       },
     }),
   ],
@@ -60,6 +55,7 @@ export const authOptions: NextAuthOptions = {
         token.email = user.email;
         token.name = user.name;
         token.role = user.role;
+        token.permissions = user.permissions ?? [];
       }
       return token;
     },
@@ -70,6 +66,7 @@ export const authOptions: NextAuthOptions = {
         session.user.email = token.email as string;
         session.user.name = token.name as string;
         session.user.role = token.role;
+        session.user.permissions = token.permissions ?? [];
       }
       return session;
     },

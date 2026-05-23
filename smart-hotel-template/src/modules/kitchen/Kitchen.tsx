@@ -1,9 +1,9 @@
 import React from 'react'
 
-export default function ProfilePage() {
+export default function Kitchen() {
   return (
     <div>
-      Profile Page
+      Kitchen
     </div>
   )
 }

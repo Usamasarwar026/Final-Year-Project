@@ -34,7 +34,7 @@ model User {
   employeeId    String?  @unique
   designation   String?
   salary        Float?
-
+  permissions   String[]  @default([]) 
   // Account Status
   isVerified    Boolean  @default(false)
   isActive      Boolean  @default(true)

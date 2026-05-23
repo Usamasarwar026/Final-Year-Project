@@ -8,11 +8,8 @@ import * as Yup from "yup";
 import { toast } from "sonner";
 import { ArrowRight } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
-
 import heroImg from "../../../../public/assets/hero-hotel.jpg";
-
 import { forgetPassword } from "@/services/authService";
-
 import { Button } from "@/components/button/Button";
 import { Input } from "@/components/input/Input";
 import { Label } from "@/components/label/Label";
@@ -20,9 +17,7 @@ import { Card } from "@/components/card/Card";
 import { WebsiteName } from "@/constant/constant";
 
 const forgetSchema = Yup.object({
-  email: Yup.string()
-    .email("Invalid email")
-    .required("Email is required"),
+  email: Yup.string().email("Invalid email").required("Email is required"),
 });
 
 export const ForgetForm = () => {
@@ -32,32 +27,23 @@ export const ForgetForm = () => {
     mutationFn: forgetPassword,
 
     onSuccess: (data) => {
-      toast.success(
-        data.message ||
-          "Reset link sent successfully"
-      );
+      toast.success(data.message || "Reset link sent successfully");
 
       setEmail("");
     },
 
     onError: (error: any) => {
       toast.error(
-        error?.response?.data?.message ||
-          "Failed to send reset link"
+        error?.response?.data?.message || "Failed to send reset link",
       );
     },
   });
 
-  const handleForgetPassword = async (
-    e: React.FormEvent<HTMLFormElement>
-  ) => {
+  const handleForgetPassword = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     try {
-      await forgetSchema.validate(
-        { email },
-        { abortEarly: false }
-      );
+      await forgetSchema.validate({ email }, { abortEarly: false });
 
       mutation.mutate(email);
     } catch (error) {
@@ -89,21 +75,15 @@ export const ForgetForm = () => {
         <div className="absolute inset-0 bg-primary/60" />
 
         <div className="relative z-10 h-full flex flex-col justify-between p-12 text-primary-foreground">
-          <Link
-            href="/"
-            className="font-serif text-2xl text-gold"
-          >
+          <Link href="/" className="font-serif text-2xl text-gold">
             {WebsiteName}
           </Link>
 
           <div>
-            <h2 className="font-serif text-4xl">
-              Forgot your password?
-            </h2>
+            <h2 className="font-serif text-4xl">Forgot your password?</h2>
 
             <p className="mt-2 text-primary-foreground/80 max-w-sm">
-              Enter your email address and we
-              will send you a secure reset link.
+              Enter your email address and we will send you a secure reset link.
             </p>
           </div>
         </div>
@@ -117,32 +97,22 @@ export const ForgetForm = () => {
         className="flex items-center justify-center p-6 md:p-12 bg-background"
       >
         <Card className="w-full max-w-md p-8 border-0 shadow-elegant">
-          <h1 className="font-serif text-3xl text-primary">
-            Forget Password
-          </h1>
+          <h1 className="font-serif text-3xl text-primary">Forget Password</h1>
 
           <p className="text-sm text-muted-foreground mt-1">
-            Enter your email to receive a
-            password reset link
+            Enter your email to receive a password reset link
           </p>
 
-          <form
-            onSubmit={handleForgetPassword}
-            className="mt-6 space-y-4"
-          >
+          <form onSubmit={handleForgetPassword} className="mt-6 space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="email">
-                Email Address
-              </Label>
+              <Label htmlFor="email">Email Address</Label>
 
               <Input
                 id="email"
                 type="email"
                 placeholder="you@example.com"
                 value={email}
-                onChange={(e) =>
-                  setEmail(e.target.value)
-                }
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
 
@@ -151,22 +121,15 @@ export const ForgetForm = () => {
               disabled={loading}
               className="w-full bg-primary hover:bg-primary/90"
             >
-              {loading
-                ? "Sending..."
-                : "Send Reset Link"}
+              {loading ? "Sending..." : "Send Reset Link"}
 
-              {!loading && (
-                <ArrowRight className="w-4 h-4 ml-2" />
-              )}
+              {!loading && <ArrowRight className="w-4 h-4 ml-2" />}
             </Button>
           </form>
 
           <p className="mt-6 text-sm text-center text-muted-foreground">
             Remember your password?{" "}
-            <Link
-              href="/login"
-              className="text-accent hover:underline"
-            >
+            <Link href="/login" className="text-accent hover:underline">
               Sign in
             </Link>
           </p>

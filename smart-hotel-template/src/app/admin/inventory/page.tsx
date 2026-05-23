@@ -1,9 +1,9 @@
 import React from 'react'
 
-export default function ProfilePage() {
+export default function InventoryPage() {
   return (
     <div>
-      Profile Page
+      Inventory Page
     </div>
   )
 }

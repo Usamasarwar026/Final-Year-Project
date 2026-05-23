@@ -1,9 +1,9 @@
 import React from 'react'
 
-export default function ProfilePage() {
+export default function StaffPage() {
   return (
     <div>
-      Profile Page
+      staff
     </div>
   )
 }

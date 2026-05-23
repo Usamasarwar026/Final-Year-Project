@@ -1,5 +1,4 @@
-import {ForgetForm} from "@/components/auth/FogetForm/ForgetForm";
-import React from "react";
+import { ForgetForm } from "@/modules/auth/FogetForm/ForgetForm";
 
 export default function ForgetPasswordPage() {
   return <ForgetForm />;
