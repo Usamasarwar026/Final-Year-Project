@@ -19,6 +19,8 @@
     "clsx": "^2.1.1",
     "dotenv": "^17.4.2",
     "framer-motion": "^12.38.0",
+    "fs-extra": "^11.3.5",
+    "jszip": "^3.10.1",
     "lucide-react": "^1.14.0",
     "next": "16.2.6",
     "next-auth": "^4.24.14",
@@ -36,6 +38,7 @@
     "yup": "^1.7.1"
   },
   "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
     "@types/node": "^20",
     "@types/nodemailer": "^8.0.0",
     "@types/pg": "^8.20.0",

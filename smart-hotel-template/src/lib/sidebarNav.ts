@@ -99,6 +99,6 @@ export const staffNav: NavItem[] = [
 
 export const customerNav: NavItem[] = [
   { label: "Dashboard", href: "/customer/dashboard", icon: LayoutDashboard },
-  { label: "My Bookings", href: "/customer/bookings", icon: CalendarCheck },
+  { label: "My Bookings", href: "/customer/booking", icon: CalendarCheck },
   { label: "Billing", href: "/customer/billing", icon: CreditCard },
 ];

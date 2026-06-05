@@ -6,19 +6,23 @@ import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
+import { useProfile } from "@/hooks/useProfile";
 
 export default function Topbar() {
   const { data: session } = useSession();
-  const user = session?.user;
   const router = useRouter();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { data: profile } = useProfile();
+  const email = profile?.email;
+  const name = profile?.name;
+  const image = profile?.profileImage;
 
   const role = (session?.user as any)?.role as string | undefined;
 
-  const initial = user?.name
-    ? user.name[0].toUpperCase()
-    : (user?.email?.[0]?.toUpperCase() ?? "U");
+  const initial = name
+    ? name[0].toUpperCase()
+    : (email?.[0]?.toUpperCase() ?? "U");
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -90,10 +94,10 @@ export default function Topbar() {
                        transition-all duration-150 shrink-0
                        bg-primary flex items-center justify-center"
           >
-            {user?.image ? (
+            {image ? (
               <Image
-                src={user.image}
-                alt={user.name ?? "User"}
+                src={image}
+                alt={name ?? "User"}
                 width={32}
                 height={32}
                 className="w-full h-full object-cover"
@@ -124,10 +128,10 @@ export default function Topbar() {
                                 bg-primary flex items-center justify-center
                                 ring-2 ring-gold"
                   >
-                    {user?.image ? (
+                    {image ? (
                       <Image
-                        src={user.image}
-                        alt={user.name ?? "User"}
+                        src={image}
+                        alt={name ?? "User"}
                         width={36}
                         height={36}
                         className="w-full h-full object-cover"
@@ -139,13 +143,13 @@ export default function Topbar() {
                     )}
                   </div>
                   <div className="min-w-0">
-                    {user?.name && (
+                    {name && (
                       <p className="text-[13px] font-semibold text-foreground leading-tight truncate">
-                        {user.name}
+                        {name}
                       </p>
                     )}
                     <p className="text-[11px] text-muted-foreground leading-tight truncate mt-0.5">
-                      {user?.email}
+                      {email}
                     </p>
                   </div>
                 </div>

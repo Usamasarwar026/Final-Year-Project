@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { prisma } from "@/database/db";
+import { prisma } from "@/lib/prisma";
 import { v4 as uuidv4 } from "uuid";
 import { sendEmail } from "@/lib/sendEmail";
 import { NextResponse } from "next/server";

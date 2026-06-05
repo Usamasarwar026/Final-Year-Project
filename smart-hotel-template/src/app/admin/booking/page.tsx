@@ -1,9 +1,10 @@
-import React from 'react'
+import AdminBookings from '@/modules/bookings/AdminBookings'
+
 
 export default function BookingPage() {
   return (
     <div>
-      BookingPage
+      <AdminBookings/>
     </div>
   )
 }

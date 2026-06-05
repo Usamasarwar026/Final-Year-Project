@@ -8,6 +8,10 @@ export default async function DashboardPage() {
   if (!session) {
     redirect("/login");
   }
+  // Suspended user
+  if (!session.user.isActive) {
+    redirect("/login");
+  }
 
   const role = session.user.role;
 

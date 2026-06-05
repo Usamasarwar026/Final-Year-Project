@@ -28,7 +28,6 @@ export default function SidebarInner({
         onToggle={onToggle}
         onNavigate={onNavigate}
       />
-
       <nav
         className={clsx(
           "flex-1 overflow-y-auto overflow-x-hidden py-3 space-y-0.5",

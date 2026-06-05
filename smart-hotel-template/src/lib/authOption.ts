@@ -25,6 +25,11 @@ export const authOptions: NextAuthOptions = {
           throw new Error("User not found");
         }
 
+        
+        if (!user.isActive) {
+          throw new Error("Your account has been suspended");
+        }
+
         const isValid = await bcrypt.compare(
           credentials.password,
           user.password,
@@ -56,6 +61,7 @@ export const authOptions: NextAuthOptions = {
         token.name = user.name;
         token.role = user.role;
         token.permissions = user.permissions ?? [];
+        token.isActive = user.isActive;
       }
       return token;
     },
@@ -67,6 +73,7 @@ export const authOptions: NextAuthOptions = {
         session.user.name = token.name as string;
         session.user.role = token.role;
         session.user.permissions = token.permissions ?? [];
+        session.user.isActive = token.isActive;
       }
       return session;
     },

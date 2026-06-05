@@ -1,71 +1,64 @@
-// hooks/useProfile.ts
+// src/hooks/useProfile.ts
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
+import { profileService } from "@/services/profileService";
+import { UserProfile, UpdateProfilePayload } from "@/types/profile.type";
+import { toast } from "sonner";
 
-export type UserProfile = {
-  id: string;
-  name: string;
-  email: string;
-  phoneNumber: string | null;
-  profileImage: string | null;
-  address: string | null;
-  city: string | null;
-  country: string | null;
-  role: "ADMIN" | "STAFF" | "CUSTOMER";
-  designation: string | null;
-  employeeId: string | null;
-  isVerified: boolean;
-  createdAt: string;
-};
+export const PROFILE_KEY = ["profile"] as const;
 
-export type UpdateProfilePayload = Partial<
-  Pick<UserProfile, "name" | "phoneNumber" | "address" | "city" | "country" | "profileImage">
->;
-
-// ── Fetch profile ──
+// ── Fetch ──
 export function useProfile() {
   return useQuery<UserProfile>({
-    queryKey: ["profile"],
-    queryFn: async () => {
-      const { data } = await axios.get("/api/profile");
-      return data;
-    },
-    staleTime: 1000 * 60 * 2, // 2 min
+    queryKey: PROFILE_KEY,
+    queryFn: profileService.getProfile,
+    staleTime: 1000 * 60 * 3, // 3 min cache
   });
 }
 
-// ── Update profile ──
+// ── Update fields ──
 export function useUpdateProfile() {
   const qc = useQueryClient();
   return useMutation<UserProfile, Error, UpdateProfilePayload>({
-    mutationFn: async (payload) => {
-      const { data } = await axios.patch("/api/profile", payload);
-      return data;
+    mutationFn: profileService.updateProfile,
+    // Optimistic update — UI turant update ho jata hai response ka wait kiye bina
+    onMutate: async (payload) => {
+      await qc.cancelQueries({ queryKey: PROFILE_KEY });
+      const prev = qc.getQueryData<UserProfile>(PROFILE_KEY);
+      qc.setQueryData<UserProfile>(PROFILE_KEY, (old) =>
+        old ? { ...old, ...payload } : old,
+      );
+      return { prev };
     },
-    onSuccess: (updated) => {
-      // Optimistic cache update
-      qc.setQueryData<UserProfile>(["profile"], updated);
+
+    onSuccess: () => {
+      toast.success("Profile updated successfully");
+    },
+
+    onError: (_err, _vars, ctx: any) => {
+      // Rollback on error
+      if (ctx?.prev) qc.setQueryData(PROFILE_KEY, ctx.prev);
+      toast.error("Failed to update profile");
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: PROFILE_KEY });
     },
   });
 }
 
-// ── Upload profile image ──
+// ── Upload image ──
 export function useUploadProfileImage() {
   const qc = useQueryClient();
   return useMutation<{ url: string }, Error, File>({
-    mutationFn: async (file) => {
-      const formData = new FormData();
-      formData.append("file", file);
-      const { data } = await axios.post("/api/profile/upload-image", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      return data;
-    },
+    mutationFn: profileService.uploadImage,
     onSuccess: ({ url }) => {
-      // Update profile cache with new image URL
-      qc.setQueryData<UserProfile>(["profile"], (old) =>
-        old ? { ...old, profileImage: url } : old
+      // Sirf image field update karo
+      qc.setQueryData<UserProfile>(PROFILE_KEY, (old) =>
+        old ? { ...old, profileImage: url } : old,
       );
+      toast.success("Profile image updated successfully");
+    },
+    onError: () => {
+      toast.error("Failed to upload image");
     },
   });
 }

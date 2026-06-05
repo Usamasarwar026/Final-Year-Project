@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Menu } from "lucide-react";
 import { adminNav, customerNav, NavItem, staffNav } from "./nav.config";
 import SidebarInner from "./SidebarInner";
+import { useProfile } from "@/hooks/useProfile";
 
 // ─────────────────────────────────────────
 // Main Export
@@ -18,8 +19,9 @@ export default function Sidebar() {
 
   const role = (session?.user as any)?.role as string | undefined;
   const permissions: string[] = (session?.user as any)?.permissions ?? [];
-  const email = session?.user?.email;
-  const name = session?.user?.name;
+  const { data: profile } = useProfile();
+  const email = profile?.email;
+  const name = profile?.name;
 
   console.log(session);
 

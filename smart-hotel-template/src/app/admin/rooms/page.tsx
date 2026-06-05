@@ -1,9 +1,9 @@
-import React from 'react'
+import Rooms from '@/modules/rooms/Rooms'
 
 export default function RoomsPage() {
   return (
     <div>
-      Rooms Page
+      <Rooms/>
     </div>
   )
 }

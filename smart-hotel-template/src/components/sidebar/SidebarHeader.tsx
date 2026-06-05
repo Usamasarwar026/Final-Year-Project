@@ -23,7 +23,7 @@ export default function SidebarHeader({
   return (
     <div
       className={clsx(
-        "shrink-0 border-b border-white/8",
+        "shrink-0 border-b border-white/10",
         collapsed
           ? "flex flex-col items-center gap-2 px-2 pt-5 pb-4"
           : "px-4 pt-5 pb-4",

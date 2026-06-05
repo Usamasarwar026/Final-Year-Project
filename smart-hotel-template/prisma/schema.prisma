@@ -14,39 +14,138 @@ datasource db {
 
 model User {
   id            String   @id @default(cuid())
-
   // Basic Info
   name          String
   email         String   @unique
   phoneNumber   String?
   password      String
-
   // Profile
   profileImage  String?
   address       String?
   city          String?
   country       String?
-
   // Role
   role          Role     @default(CUSTOMER)
-
   // Staff Specific
   employeeId    String?  @unique
   designation   String?
   salary        Float?
   permissions   String[]  @default([]) 
+
+  // Customer Info
+  cnic          String?
+  dateOfBirth   DateTime?
+
+  // Admin Created?
+  createdByAdmin Boolean @default(false)
   // Account Status
   isVerified    Boolean  @default(false)
   isActive      Boolean  @default(true)
-
   // Security
   lastLogin     DateTime?
   resetToken    String?
   resetTokenExp DateTime?
-
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  bookings  Booking[]
+  staffProfile Staff?          // ← NEW
+  attendance  AttendanceLog[]
+   foodOrders FoodOrder[]
 }
+
+
+// ─────────────────────────────────────────────────────────────
+// DYNAMIC DEPARTMENT CONFIG  (admin manages these)
+// ─────────────────────────────────────────────────────────────
+model DepartmentConfig {
+  id         Int      @id @default(autoincrement())
+  name       String   @unique
+  icon       String   @default("👤")
+  color      String   @default("text-gray-700")
+  bg         String   @default("bg-gray-100")
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  staff Staff[]
+
+  @@map("department_configs")
+}
+
+// ─────────────────────────────────────────────────────────────
+// DYNAMIC SHIFT CONFIG  (admin manages these)
+// ─────────────────────────────────────────────────────────────
+model ShiftConfig {
+  id         Int      @id @default(autoincrement())
+  name       String   @unique
+  start_time String   // e.g. "06:00"
+  end_time   String   // e.g. "14:00"
+  color      String   @default("text-gray-700")
+  bg         String   @default("bg-gray-50 border-gray-200")
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  staff Staff[]
+
+  @@map("shift_configs")
+}
+
+// ─────────────────────────────────────────────────────────────
+// STAFF PROFILE
+// ─────────────────────────────────────────────────────────────
+model Staff {
+  staff_id          Int               @id @default(autoincrement())
+  user_id           String            @unique
+  cnic              String?           @unique
+  department_id     Int?
+  shift_id          Int?
+  designation       String
+  joining_date      DateTime?         @db.Date
+  basic_salary      Decimal?          @db.Decimal(10, 2)
+  attendance_status AttendanceStatus?
+  performance_notes String?           @db.Text
+  is_on_duty        Boolean           @default(false)
+  is_active         Boolean           @default(true)
+  created_at        DateTime          @default(now())
+  updated_at        DateTime          @updatedAt
+  assignedTasks HousekeepingTask[]
+  user       User              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  department DepartmentConfig? @relation(fields: [department_id], references: [id])
+  shift      ShiftConfig?      @relation(fields: [shift_id], references: [id])
+  attendance AttendanceLog[]
+
+  @@index([department_id])
+  @@index([is_active])
+  @@index([is_on_duty])
+  @@map("staff")
+}
+
+// ─────────────────────────────────────────────────────────────
+// ATTENDANCE LOG
+// ─────────────────────────────────────────────────────────────
+model AttendanceLog {
+  id         Int              @id @default(autoincrement())
+  staff_id   Int
+  user_id    String
+  date       DateTime         @db.Date
+  status     AttendanceStatus
+  check_in   DateTime?
+  check_out  DateTime?
+  hours      Float?
+  notes      String?
+  created_at DateTime         @default(now())
+  updated_at DateTime         @updatedAt
+
+  staff Staff @relation(fields: [staff_id], references: [staff_id], onDelete: Cascade)
+  user  User  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([staff_id, date])
+  @@index([date])
+  @@index([staff_id])
+  @@map("attendance_logs")
+}
+
 
 enum Role {
   ADMIN
@@ -54,3 +153,350 @@ enum Role {
   CUSTOMER
 }
 
+
+// ─── NEW enums for Staff ─────────────────────────────────────
+enum Department {
+  Reception
+  Housekeeping
+  Kitchen
+  Management
+  Security
+  Other
+}
+
+enum ShiftType {
+  Morning
+  Evening
+  Night
+  Flexible
+}
+
+enum AttendanceStatus {
+  Present
+  Absent
+  HalfDay
+  Leave
+}
+
+
+enum RoomType {
+  Single
+  Double
+  Suite
+  Deluxe
+  Presidential
+}
+
+enum RoomStatus {
+  Available
+  Reserved
+  Occupied
+  Maintenance
+}
+
+enum BedType {
+  Single
+  Double
+  Queen
+  King
+  Twin
+}
+
+model Room {
+  room_id         Int          @id @default(autoincrement())
+  room_number     String       @unique @db.VarChar(10)
+  floor           Int
+  room_type       RoomType     @default(Single)
+  status          RoomStatus   @default(Available)
+  price_per_night Decimal      @db.Decimal(10, 2)
+  capacity        Int          @default(2)
+  bed_type        BedType      @default(Double)
+  size_sqft       Int?
+  amenities       Json?
+  photos          Json?
+  description     String?      @db.Text
+  is_active       Boolean      @default(true)
+  bookings  Booking[]
+  created_at      DateTime     @default(now())
+  updated_at      DateTime     @updatedAt
+  cleaning_status CleaningStatus @default(Clean)
+   housekeepingTasks HousekeepingTask[]
+  serviceRequests  ServiceRequest[]
+  laundryRecords   LaundryRecord[]
+  @@index([status])
+  @@index([room_type])
+  @@index([is_active])
+  @@map("rooms")
+}
+
+
+enum CleaningStatus {
+  Clean
+  Dirty
+  InProgress
+}
+
+model Booking {
+  booking_id        Int           @id @default(autoincrement())
+
+  // Relations
+  user_id           String
+  user              User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  room_id           Int
+  room              Room          @relation(fields: [room_id], references: [room_id], onDelete: Restrict)
+  source BookingSource @default(CUSTOMER)
+   // Dates
+  check_in_date     DateTime      @db.Date
+  check_out_date    DateTime      @db.Date
+  actual_check_in   DateTime?
+  actual_check_out  DateTime?
+
+  // Booking info
+  status            BookingStatus @default(Pending)
+  total_nights      Int
+  total_amount      Decimal       @db.Decimal(10, 2)
+  special_requests  String?       @db.Text
+  confirmation_sent Boolean       @default(false)
+   housekeepingTasks HousekeepingTask[]
+  serviceRequests   ServiceRequest[]
+  laundryRecords    LaundryRecord[]
+
+  created_at        DateTime      @default(now())
+  updated_at        DateTime      @updatedAt
+   foodOrders FoodOrder[]
+  @@index([user_id])
+  @@index([room_id])
+  @@index([status])
+  @@index([check_in_date])
+  @@map("booking_reservation")
+}
+
+enum BookingSource {
+  CUSTOMER
+  ADMIN
+} 
+enum BookingStatus {
+  Pending
+  Confirmed
+  CheckedIn   @map("Checked-In")
+  CheckedOut  @map("Checked-Out")
+  Cancelled
+}
+
+
+model HousekeepingTask {
+  task_id      Int @id @default(autoincrement())
+
+  room_id      Int?
+  room         Room? @relation(fields:[room_id], references:[room_id])
+
+  assigned_to  Int?
+  assignedStaff Staff? @relation(fields:[assigned_to], references:[staff_id])
+
+  booking_id   Int?
+  booking      Booking? @relation(fields:[booking_id], references:[booking_id])
+
+  task_type    TaskType
+  priority     TaskPriority
+
+  status       TaskStatus @default(Pending)
+
+  request_description String?
+
+  is_billable  Boolean @default(false)
+
+  charge_amount Decimal? @db.Decimal(10,2)
+
+  started_at   DateTime?
+  completed_at DateTime?
+
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+}
+
+enum TaskType {
+  Cleaning
+  LaundryPickup
+  ServiceRequest
+  Maintenance
+}
+
+
+enum TaskPriority {
+  Normal
+  High
+  VIP
+}
+
+enum TaskStatus {
+  Pending
+  InProgress
+  Done
+  Cancelled
+}
+
+
+model ServiceRequest {
+  request_id Int @id @default(autoincrement())
+
+  booking_id Int
+  booking Booking @relation(fields:[booking_id], references:[booking_id])
+
+  room_id Int
+  room Room @relation(fields:[room_id], references:[room_id])
+
+  request_type RequestType
+
+  description String?
+
+  status RequestStatus @default(Pending)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+enum RequestType {
+  Towels
+  Laundry
+  RoomService
+  Water
+  Other
+}
+
+enum RequestStatus {
+  Pending
+  Assigned
+  Completed
+  Cancelled
+}
+
+model LaundryRecord {
+  laundry_id Int @id @default(autoincrement())
+
+  room_id Int
+  room Room @relation(fields:[room_id], references:[room_id])
+
+  booking_id Int?
+  booking Booking? @relation(fields:[booking_id], references:[booking_id])
+
+  item_name String
+
+  quantity Int
+
+  sent_at DateTime @default(now())
+
+  returned_at DateTime?
+
+  charge_amount Decimal? @db.Decimal(10,2)
+
+  status LaundryStatus @default(Pending)
+}
+
+enum LaundryStatus {
+  Pending
+  Sent
+  Returned
+}
+
+
+// ─────────────────────────────────────────────────────────────
+// KITCHEN / FOOD ORDERING MODULE
+// ─────────────────────────────────────────────────────────────
+
+model MenuItem {
+  menu_item_id     Int          @id @default(autoincrement())
+  name             String       @db.VarChar(150)
+  description      String?      @db.Text
+  category         FoodCategory
+  price            Decimal      @db.Decimal(10, 2)
+  prep_time_minutes Int         @default(15)
+  is_available     Boolean      @default(true)
+  is_vegetarian    Boolean      @default(false)
+  is_vip_special   Boolean      @default(false)
+  is_halal         Boolean      @default(true)
+  image_url        String?
+  calories         Int?
+  created_at       DateTime     @default(now())
+  updated_at       DateTime     @updatedAt
+
+  orderItems OrderItem[]
+
+  @@index([category])
+  @@index([is_available])
+  @@map("menu_items")
+}
+
+model FoodOrder {
+  order_id             Int         @id @default(autoincrement())
+  booking_id           Int?
+  booking              Booking?    @relation(fields: [booking_id], references: [booking_id])
+  user_id              String
+  user                 User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  order_type           OrderType
+  table_number         String?     @db.VarChar(10)
+  status               OrderStatus @default(Placed)
+  priority             OrderPriority @default(Normal)
+  total_amount         Decimal     @db.Decimal(10, 2)
+  is_billed            Boolean     @default(false)
+  special_instructions String?     @db.Text
+  placed_at            DateTime    @default(now())
+  accepted_at          DateTime?
+  preparing_at         DateTime?
+  ready_at             DateTime?
+  delivered_at         DateTime?
+  created_at           DateTime    @default(now())
+  updated_at           DateTime    @updatedAt
+
+  items OrderItem[]
+
+  @@index([status])
+  @@index([order_type])
+  @@index([booking_id])
+  @@index([placed_at])
+  @@map("food_orders")
+}
+
+model OrderItem {
+  id           Int      @id @default(autoincrement())
+  order_id     Int
+  order        FoodOrder  @relation(fields: [order_id], references: [order_id], onDelete: Cascade)
+  menu_item_id Int
+  menuItem     MenuItem   @relation(fields: [menu_item_id], references: [menu_item_id])
+  quantity     Int
+  unit_price   Decimal  @db.Decimal(10, 2)
+  subtotal     Decimal  @db.Decimal(10, 2)
+  special_note String?  @db.Text
+
+  @@index([order_id])
+  @@map("order_items")
+}
+
+enum FoodCategory {
+  Breakfast
+  Lunch
+  Dinner
+  Snacks
+  Beverages
+  Special
+}
+
+enum OrderType {
+  RoomService
+  Restaurant
+}
+
+enum OrderStatus {
+  Placed
+  Accepted
+  Preparing
+  Ready
+  OutForDelivery
+  Delivered
+  Cancelled
+}
+
+enum OrderPriority {
+  Normal
+  High
+  VIP
+}
