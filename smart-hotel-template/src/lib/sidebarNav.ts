@@ -16,19 +16,16 @@ export type NavItem = {
   label: string;
   href: string;
   icon: React.ElementType;
-  permission?: string; // staff ke liye permission key
-  children?: NavItem[]; // nested routes
+  permission?: string;
+  children?: NavItem[];
 };
 
 export const adminNav: NavItem[] = [
-  // Overview
   {
     label: "Dashboard",
     href: "/admin/dashboard",
     icon: LayoutDashboard,
   },
-
-  // Booking & Rooms
   {
     label: "Booking",
     href: "/admin/booking",
@@ -39,8 +36,6 @@ export const adminNav: NavItem[] = [
     href: "/admin/rooms",
     icon: BedDouble,
   },
-
-  // Customer & Staff
   {
     label: "Customer",
     href: "/admin/customer",
@@ -51,8 +46,6 @@ export const adminNav: NavItem[] = [
     href: "/admin/staff",
     icon: Users,
   },
-
-  // Operations
   {
     label: "Kitchen",
     href: "/admin/kitchen",
@@ -68,8 +61,6 @@ export const adminNav: NavItem[] = [
     href: "/admin/housekeeping",
     icon: BrushCleaning,
   },
-
-  // Finance
   {
     label: "Billing",
     href: "/admin/billing",
@@ -81,6 +72,7 @@ export const adminNav: NavItem[] = [
     icon: BarChart3,
   },
 ];
+
 export const staffNav: NavItem[] = [
   { label: "Dashboard", href: "/staff/dashboard", icon: LayoutDashboard },
   {
@@ -94,6 +86,24 @@ export const staffNav: NavItem[] = [
     href: "/staff/billing",
     icon: CreditCard,
     permission: "billing",
+  },
+  {
+    label: "Kitchen",
+    href: "/staff/kitchen",
+    icon: ChefHat,
+    permission: "kitchen",
+  },
+  {
+    label: "Inventory",
+    href: "/staff/inventory",
+    icon: Package,
+    permission: "inventory",
+  },
+  {
+    label: "House Keeping",
+    href: "/staff/housekeeping",
+    icon: BrushCleaning,
+    permission: "housekeeping",
   },
 ];
 
