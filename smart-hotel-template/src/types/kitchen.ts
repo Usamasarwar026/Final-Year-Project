@@ -8,10 +8,17 @@ export type FoodOrderStatus =
   | "Assigned"
   | "OutForDelivery"
   | "Delivered"
-  | "Cancelled"
-  | "Rejected";
-export type KitchenTaskStatus = "Assigned" | "Accepted" | "InProgress" | "Completed";
+  | "Cancelled";
+
+export type KitchenTaskStatus =
+  | "Assigned"
+  | "Accepted"
+  | "InProgress"
+  | "Completed";
+
 export type OrderType = "RoomService" | "Restaurant";
+
+export type OrderPriority = "Normal" | "High" | "VIP";
 export const ORDER_TYPES: OrderType[] = ["RoomService", "Restaurant"];
 export const ORDER_STATUSES: FoodOrderStatus[] = [
   "Pending",
@@ -22,7 +29,6 @@ export const ORDER_STATUSES: FoodOrderStatus[] = [
   "OutForDelivery",
   "Delivered",
   "Cancelled",
-  "Rejected",
 ];
 export const KITCHEN_TASK_STATUSES: KitchenTaskStatus[] = [
   "Assigned",
@@ -33,7 +39,14 @@ export const KITCHEN_TASK_STATUSES: KitchenTaskStatus[] = [
 // ─── Configs ──────────────────────────────────────────────────────────────────
 export const ORDER_STATUS_CONFIG: Record<
   FoodOrderStatus,
-  { label: string; color: string; bg: string; border: string; dot: string; step: number }
+  {
+    label: string;
+    color: string;
+    bg: string;
+    border: string;
+    dot: string;
+    step: number;
+  }
 > = {
   Pending: {
     label: "Pending",
@@ -99,148 +112,204 @@ export const ORDER_STATUS_CONFIG: Record<
     dot: "bg-red-500",
     step: -1,
   },
-  Rejected: {
-    label: "Rejected",
-    color: "text-rose-700",
-    bg: "bg-rose-50/50",
-    border: "border-rose-200",
-    dot: "bg-rose-500",
-    step: -1,
-  },
 };
-export const ORDER_TYPE_CONFIG: Record<OrderType, { label: string; icon: string; color: string; bg: string }> = {
-  RoomService: { label: "Room Service", icon: "🛎️", color: "text-blue-700", bg: "bg-blue-100" },
-  Restaurant: { label: "Restaurant", icon: "🍽️", color: "text-purple-700", bg: "bg-purple-100" },
+export const ORDER_TYPE_CONFIG: Record<
+  OrderType,
+  { label: string; icon: string; color: string; bg: string }
+> = {
+  RoomService: {
+    label: "Room Service",
+    icon: "🛎️",
+    color: "text-blue-700",
+    bg: "bg-blue-100",
+  },
+  Restaurant: {
+    label: "Restaurant",
+    icon: "🍽️",
+    color: "text-purple-700",
+    bg: "bg-purple-100",
+  },
 };
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 export interface FoodCategory {
-  id:          number;
-  name:        string;
-  description: string | null;
-  created_at:  string;
-  updated_at:  string;
-  foodItems?:  FoodItem[];
+  id: number;
+  name: string;
+  description?: string | null;
+  image?: string | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 export interface FoodItem {
-  id:                       number;
-  name:                     string;
-  category_id:              number;
-  description:              string | null;
-  image:                    string | null;
-  price:                    number;
+  id: number;
+  category_id: number;
+
+  name: string;
+  description?: string | null;
+
+  image?: string | null;
+
+  price: number;
+
   preparation_time_minutes: number;
-  ingredients_text:         string | null;
-  availability_status:      boolean;
-  featured:                 boolean;
-  active:                   boolean;
-  created_at:               string;
-  updated_at:               string;
-  category?:                FoodCategory;
+
+  ingredients_text?: string | null;
+
+  availability_status: boolean;
+
+  featured: boolean;
+
+  active: boolean;
+
+  category?: FoodCategory;
+
+  created_at: string;
+  updated_at: string;
 }
 export interface FoodOrderItem {
-  id:           number;
-  order_id:     number;
+  id: number;
+
+  order_id: number;
+
   food_item_id: number;
-  quantity:     number;
-  price:        number;
-  subtotal:     number;
-  special_note: string | null;
-  foodItem?:    FoodItem;
+
+  quantity: number;
+
+  price: number;
+
+  subtotal: number;
+
+  special_note?: string | null;
+
+  foodItem?: FoodItem;
 }
 export interface FoodOrderTimeline {
-  id:         number;
-  order_id:   number;
-  status:     FoodOrderStatus;
-  notes:      string | null;
+  id: number;
+
+  order_id: number;
+
+  status: FoodOrderStatus;
+
+  notes?: string | null;
+
   created_at: string;
 }
 export interface KitchenTask {
-  id:             number;
-  order_id:       number;
-  assigned_to:    number | null;
-  status:         KitchenTaskStatus;
-  created_at:     string;
-  updated_at:     string;
-  order?:         FoodOrder;
-  assignedStaff?: {
-    staff_id:    number;
-    designation: string;
-    user: {
-      name:  string;
-      email: string;
-    };
-  } | null;
+  id: number;
+
+  order_id: number;
+
+  assigned_to: number;
+
+  status: KitchenTaskStatus;
+
+  assignedStaff?: any;
+
+  created_at: string;
+  updated_at: string;
 }
 export interface FoodOrder {
-  id:                   number;
-  booking_id:           number | null;
-  user_id:              string | null;
-  customer_name:        string | null;
-  order_type:           OrderType;
-  table_number:         string | null;
-  room_number:          string | null;
-  status:               FoodOrderStatus;
-  total_amount:         number;
+  id: number;
+  booking_id: number | null;
+  user_id: string | null;
+  customer_name: string | null;
+  order_type: OrderType;
+  table_number: string | null;
+  room_number: string | null;
+  status: FoodOrderStatus;
+  total_amount: number;
   special_instructions: string | null;
-  placed_at:            string;
-  accepted_at:          string | null;
-  preparing_at:         string | null;
-  ready_at:             string | null;
-  delivered_at:         string | null;
-  created_at:           string;
-  updated_at:           string;
-  items:                FoodOrderItem[];
-  timelines?:           FoodOrderTimeline[];
-  tasks?:               KitchenTask[];
-  user?:                { id: string; name: string; email: string } | null;
+  placed_at: string;
+  accepted_at: string | null;
+  preparing_at: string | null;
+  ready_at: string | null;
+  delivered_at: string | null;
+  created_at: string;
+  updated_at: string;
+  items: FoodOrderItem[];
+  timelines?: FoodOrderTimeline[];
+  tasks?: KitchenTask[];
+  user?: { id: string; name: string; email: string } | null;
   booking?: {
     booking_id: number;
     room: {
       room_number: string;
-      floor:       number;
-      room_type:   string;
+      floor: number;
+      room_type: string;
     };
   } | null;
 }
 // ─── Kitchen Stats ────────────────────────────────────────────────────────────
 export interface KitchenStats {
-  totalOrders:      number;
-  pendingOrders:    number;
-  preparingOrders:  number;
-  readyOrders:      number;
-  deliveredOrders:  number;
-  revenue:          number;
-  ordersByDay:      { date: string; count: number }[];
-  mostOrderedFoods: { name: string; count: number }[];
-  categoryPerformance: { name: string; count: number; revenue: number }[];
+  totalOrders: number;
+
+  pendingOrders: number;
+
+  preparingOrders: number;
+
+  readyOrders: number;
+
+  deliveredOrders: number;
+
+  revenue: number;
+
+  ordersByDay: {
+    date: string;
+    count: number;
+  }[];
+
+  mostOrderedFoods: {
+    name: string;
+    count: number;
+  }[];
+
+  categoryPerformance: {
+    name: string;
+    count: number;
+    revenue: number;
+  }[];
 }
 // ─── Payloads ─────────────────────────────────────────────────────────────────
 export interface CreateCategoryPayload {
-  name:        string;
+  name: string;
   description?: string;
 }
+
 export interface CreateFoodItemPayload {
-  name:                     string;
-  category_id:              number;
-  description?:             string;
-  image?:                   string;
-  price:                    number;
+  category_id: number;
+
+  name: string;
+
+  description?: string;
+
+  image?: string;
+
+  price: number;
+
   preparation_time_minutes?: number;
-  ingredients_text?:        string;
-  availability_status?:     boolean;
-  featured?:                boolean;
-  active?:                  boolean;
+
+  ingredients_text?: string;
+
+  availability_status?: boolean;
+
+  featured?: boolean;
+
+  active?: boolean;
 }
 export interface PlaceOrderPayload {
-  booking_id?:          number;
-  customer_name?:       string;
-  order_type:           OrderType;
-  table_number?:        string;
-  room_number?:         string;
+  order_type: OrderType;
+
+  table_number?: string;
+
+  room_number?: string;
+
+  customer_name?: string;
+
   special_instructions?: string;
+
   items: {
     food_item_id: number;
-    quantity:     number;
+    quantity: number;
     special_note?: string;
   }[];
 }

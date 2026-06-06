@@ -52,6 +52,8 @@ export const kitchenService = {
     const { data } = await api.delete<{ success: boolean }>(`/kitchen/menu/${id}`);
     return data;
   },
+
+
   // Orders
   getOrders: async (filters?: { status?: string; order_type?: string; q?: string }) => {
     const params = new URLSearchParams();
@@ -87,4 +89,45 @@ export const kitchenService = {
     const { data } = await api.get<{ stats: KitchenStats }>("/kitchen/stats");
     return data.stats;
   },
+
+
+  // Add to src/services/kitchenService.ts
+
+// Add these functions to the existing kitchenService object
+
+// Staff Management
+getKitchenStaff: async (filters?: { role?: string; active?: boolean }) => {
+  const params = new URLSearchParams();
+  if (filters?.role) params.set("role", filters.role);
+  if (filters?.active !== undefined) params.set("active", String(filters.active));
+  const { data } = await api.get<{ staff: KitchenStaff[] }>(`/kitchen/staff?${params.toString()}`);
+  return data.staff;
+},
+
+getDeliveryStaff: async () => {
+  const { data } = await api.get<{ staff: DeliveryStaff[] }>("/staff/delivery");
+  return data.staff;
+},
+
+createKitchenStaff: async (payload: { userId: string; designation: string; department: string }) => {
+  const { data } = await api.post("/staff", payload);
+  return data.staff;
+},
+
+updateKitchenStaff: async (id: number, payload: { designation?: string; is_active?: boolean; is_on_duty?: boolean }) => {
+  const { data } = await api.patch(`/staff/${id}`, payload);
+  return data.staff;
+},
+
+// Delivery Stats
+getDeliveryStats: async () => {
+  const { data } = await api.get<{ stats: any }>("/kitchen/delivery-stats");
+  return data.stats;
+},
+
+
+
 };
+
+
+

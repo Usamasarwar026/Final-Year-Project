@@ -5,12 +5,12 @@ import { prisma }                   from "@/database/db";
 import { FoodOrderStatus }          from "@/types/kitchen";
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const orderId = parseInt(params.id);
+    const orderId = parseInt((await params).id);
     if (isNaN(orderId)) return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
     const body = await req.json();
     const { status, assigned_to, notes } = body;
@@ -36,7 +36,7 @@ export async function PATCH(
       }
     }
     let updatedStatus = (status || order.status) as FoodOrderStatus;
-    let updateData: any = {};
+    const updateData: any = {};
     if (status) {
       updateData.status = status;
       if (status === "Accepted") {

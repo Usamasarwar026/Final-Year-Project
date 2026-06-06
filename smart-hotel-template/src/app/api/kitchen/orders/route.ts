@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
     const status      = searchParams.get("status");
     const orderType   = searchParams.get("order_type");
     const search      = searchParams.get("q");
-    let whereClause: any = {};
+    const whereClause: any = {};
     // 1. Role-based filtering
     if (session.user.role === "CUSTOMER") {
       whereClause.user_id = session.user.id;
@@ -25,6 +25,7 @@ export async function GET(req: NextRequest) {
       if (hasDelivery && !hasKitchen) {
         whereClause.status = { in: ["Ready", "Assigned", "OutForDelivery", "Delivered"] };
       }
+      
     }
     // 2. Query filters
     if (status) {
@@ -245,3 +246,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: err.message || "Failed to place order" }, { status: 500 });
   }
 }
+
+

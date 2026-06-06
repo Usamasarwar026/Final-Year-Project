@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/authOption";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
+  console.log("Session in dashboard page:", session);
 
   if (!session) {
     redirect("/login");
