@@ -39,29 +39,29 @@ model User {
 }
 
 model DepartmentConfig {
-  id         Int      @id @default(autoincrement())
-  name       String   @unique
-  icon       String   @default("👤")
-  color      String   @default("text-gray-700")
-  bg         String   @default("bg-gray-100")
-  is_active  Boolean  @default(true)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  id         Int              @id @default(autoincrement())
+  name       String           @unique
+  icon       String           @default("👤")
+  color      String           @default("text-gray-700")
+  bg         String           @default("bg-gray-100")
+  is_active  Boolean          @default(true)
+  created_at DateTime         @default(now())
+  updated_at DateTime         @updatedAt
   staff      Staff[]
 
   @@map("department_configs")
 }
 
 model ShiftConfig {
-  id         Int      @id @default(autoincrement())
-  name       String   @unique
+  id         Int              @id @default(autoincrement())
+  name       String           @unique
   start_time String
   end_time   String
-  color      String   @default("text-gray-700")
-  bg         String   @default("bg-gray-50 border-gray-200")
-  is_active  Boolean  @default(true)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  color      String           @default("text-gray-700")
+  bg         String           @default("bg-gray-50 border-gray-200")
+  is_active  Boolean          @default(true)
+  created_at DateTime         @default(now())
+  updated_at DateTime         @updatedAt
   staff      Staff[]
 
   @@map("shift_configs")
@@ -207,7 +207,7 @@ model ServiceRequest {
 }
 
 model LaundryRecord {
-  laundry_id    Int           @id @default(autoincrement())
+  text_id       Int           @id @default(autoincrement())
   room_id       Int
   booking_id    Int?
   item_name     String
@@ -249,23 +249,21 @@ model FoodOrder {
   @@map("food_orders")
 }
 
-
-
 model MenuItems {
-  menu_item_id      Int           @id @default(autoincrement())
-  name              String        @db.VarChar(150)
+  menu_item_id      Int          @id @default(autoincrement())
+  name              String       @db.VarChar(150)
   description       String?
   category          FoodCategory
-  price             Decimal       @db.Decimal(10, 2)
-  prep_time_minutes Int           @default(15)
-  is_available      Boolean       @default(true)
-  is_vegetarian     Boolean       @default(false)
-  is_vip_special    Boolean       @default(false)
-  is_halal          Boolean       @default(true)
+  price             Decimal      @db.Decimal(10, 2)
+  prep_time_minutes Int          @default(15)
+  is_available      Boolean      @default(true)
+  is_vegetarian     Boolean      @default(false)
+  is_vip_special    Boolean      @default(false)
+  is_halal          Boolean      @default(true)
   image_url         String?
   calories          Int?
-  created_at        DateTime      @default(now())
-  updated_at        DateTime
+  created_at        DateTime     @default(now())
+  updated_at        DateTime     @updatedAt
   order_items       OrderItems[]
 
   @@index([category])
@@ -274,20 +272,19 @@ model MenuItems {
 }
 
 model OrderItems {
-  id           Int        @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
   order_id     Int
   menu_item_id Int
   quantity     Int
-  unit_price   Decimal    @db.Decimal(10, 2)
-  subtotal     Decimal    @db.Decimal(10, 2)
+  unit_price   Decimal   @db.Decimal(10, 2)
+  subtotal     Decimal   @db.Decimal(10, 2)
   special_note String?
   menu_items   MenuItems @relation(fields: [menu_item_id], references: [menu_item_id])
-  food_orders  FoodOrder  @relation(fields: [order_id], references: [order_id], onDelete: Cascade)
+  food_orders  FoodOrder @relation(fields: [order_id], references: [order_id], onDelete: Cascade)
 
   @@index([order_id])
   @@map("order_items")
 }
-
 
 enum Role {
   ADMIN
@@ -465,6 +462,17 @@ enum WastageReason {
 // INVENTORY & STOCK MANAGEMENT MODULE
 // ─────────────────────────────────────────────────────────────
 
+model InventoryUnit {
+  id         Int             @id @default(autoincrement())
+  name       String          @unique
+  is_active  Boolean         @default(true)
+  created_at DateTime        @default(now())
+  updated_at DateTime        @updatedAt
+  items      InventoryItem[]
+
+  @@map("inventory_units")
+}
+
 model InventoryCategory {
   id          Int      @id @default(autoincrement())
   name        String   @unique
@@ -497,45 +505,47 @@ model InventoryVendor {
 }
 
 model InventoryItem {
-  id                Int       @id @default(autoincrement())
-  name              String
-  sku               String?   @unique
-  category_id       Int
-  unit              String    // kg, litre, piece, box, etc.
-  quantity          Float     @default(0)
-  low_stock_threshold Float   @default(10)
-  unit_cost         Float     @default(0)
-  expiry_date       DateTime?
-  location          String?   // shelf/storage location
-  is_active         Boolean   @default(true)
-  notes             String?   @db.Text
-  created_at        DateTime  @default(now())
-  updated_at        DateTime  @updatedAt
-
-  category    InventoryCategory     @relation(fields: [category_id], references: [id])
-  itemVendors InventoryItemVendor[]
-  usageLogs   InventoryUsageLog[]
-  wastageRecords WastageRecord[]
-  poItems     PurchaseOrderItem[]
-  alerts      LowStockAlert[]
+  id                  Int                   @id @default(autoincrement())
+  name                String
+  sku                 String?               @unique
+  category_id         Int
+  unit_id             Int?
+  unit                String // kg, litre, piece, box, etc.
+  quantity            Float                 @default(0)
+  low_stock_threshold Float                 @default(10)
+  unit_cost           Float                 @default(0)
+  expiry_date         DateTime?
+  location            String? // shelf/storage location
+  is_active           Boolean               @default(true)
+  notes               String?               @db.Text
+  created_at          DateTime              @default(now())
+  updated_at          DateTime              @updatedAt
+  category            InventoryCategory     @relation(fields: [category_id], references: [id])
+  unitConfig          InventoryUnit?        @relation(fields: [unit_id], references: [id])
+  itemVendors         InventoryItemVendor[]
+  usageLogs           InventoryUsageLog[]
+  wastageRecords      WastageRecord[]
+  poItems             PurchaseOrderItem[]
+  alerts              LowStockAlert[]
 
   @@index([category_id])
+  @@index([unit_id])
   @@index([is_active])
   @@index([expiry_date])
   @@map("inventory_items")
 }
 
 model InventoryItemVendor {
-  id             Int     @id @default(autoincrement())
+  id             Int      @id @default(autoincrement())
   item_id        Int
   vendor_id      Int
   unit_price     Float
-  lead_time_days Int     @default(1)
-  is_preferred   Boolean @default(false)
+  lead_time_days Int      @default(1)
+  is_preferred   Boolean  @default(false)
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
 
-  item   InventoryItem   @relation(fields: [item_id], references: [id], onDelete: Cascade)
+  item   InventoryItem  @relation(fields: [item_id], references: [id], onDelete: Cascade)
   vendor InventoryVendor @relation(fields: [vendor_id], references: [id], onDelete: Cascade)
 
   @@unique([item_id, vendor_id])
@@ -543,18 +553,18 @@ model InventoryItemVendor {
 }
 
 model PurchaseOrder {
-  id           Int      @id @default(autoincrement())
-  po_number    String   @unique
-  vendor_id    Int
-  status       POStatus @default(Pending)
-  ordered_by   String   // user id (admin)
-  notes        String?  @db.Text
-  total_cost   Float    @default(0)
-  ordered_at   DateTime @default(now())
-  sent_at      DateTime?
-  received_at  DateTime?
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
+  id          Int      @id @default(autoincrement())
+  po_number   String   @unique
+  vendor_id   Int
+  status      POStatus @default(Pending)
+  ordered_by  String // user id (admin)
+  notes       String?  @db.Text
+  total_cost  Float    @default(0)
+  ordered_at  DateTime @default(now())
+  sent_at     DateTime?
+  received_at DateTime?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
 
   vendor InventoryVendor     @relation(fields: [vendor_id], references: [id])
   items  PurchaseOrderItem[]
@@ -565,11 +575,11 @@ model PurchaseOrder {
 }
 
 model PurchaseOrderItem {
-  id                Int     @id @default(autoincrement())
+  id                Int           @id @default(autoincrement())
   po_id             Int
   item_id           Int
   ordered_quantity  Float
-  received_quantity Float   @default(0)
+  received_quantity Float         @default(0)
   unit_price        Float
   subtotal          Float
 
@@ -581,15 +591,15 @@ model PurchaseOrderItem {
 }
 
 model InventoryUsageLog {
-  id            Int                  @id @default(autoincrement())
+  id            Int                 @id @default(autoincrement())
   item_id       Int
   quantity_used Float
   department    InventoryDepartment
-  used_by       String               // user id
-  reference_id  String?              // order_id / task_id for traceability
-  notes         String?              @db.Text
-  used_at       DateTime             @default(now())
-  created_at    DateTime             @default(now())
+  used_by       String // user id
+  reference_id  String? // order_id / task_id for traceability
+  notes         String?             @db.Text
+  used_at       DateTime            @default(now())
+  created_at    DateTime            @default(now())
 
   item InventoryItem @relation(fields: [item_id], references: [id])
 
@@ -600,17 +610,17 @@ model InventoryUsageLog {
 }
 
 model WastageRecord {
-  id           Int           @id @default(autoincrement())
-  item_id      Int
-  quantity     Float
-  reason       WastageReason
-  unit_cost    Float
-  total_cost   Float
-  reported_by  String        // user id
-  notes        String?       @db.Text
-  wasted_at    DateTime      @default(now())
-  created_at   DateTime      @default(now())
-  updated_at   DateTime      @updatedAt
+  id          Int           @id @default(autoincrement())
+  item_id     Int
+  quantity    Float
+  reason      WastageReason
+  unit_cost   Float
+  total_cost  Float
+  reported_by String // user id
+  notes       String?       @db.Text
+  wasted_at   DateTime      @default(now())
+  created_at  DateTime      @default(now())
+  updated_at  DateTime      @updatedAt
 
   item InventoryItem @relation(fields: [item_id], references: [id])
 
@@ -636,4 +646,3 @@ model LowStockAlert {
   @@index([item_id])
   @@map("low_stock_alerts")
 }
-

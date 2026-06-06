@@ -1,14 +1,64 @@
 "use client";
 
-import { useWastage } from "@/hooks/useInventory";
-import { WastageRecord } from "@/types/inventory";
+import { useState } from "react";
+import { useSession } from "next-auth/react";
+import { useWastage, useInventoryItems } from "@/hooks/useInventory";
+import { WastageRecord, WastageReason } from "@/types/inventory";
+import { Plus, X } from "lucide-react";
+
+const WASTAGE_REASONS: WastageReason[] = ["Expired", "Damaged", "Lost", "Other"];
 
 export default function WastagePage() {
-  const { records, loading } = useWastage();
+  const { data: session } = useSession();
+  const { records, loading, addWastage } = useWastage();
+  const { items } = useInventoryItems();
+
+  const [showModal, setShowModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const [form, setForm] = useState({
+    item_id: "",
+    quantity: "",
+    reason: "",
+    notes: "",
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleSubmit = async () => {
+    if (!form.item_id || !form.quantity || !form.reason) {
+      setError("Item, Quantity aur Reason required hain!");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    const result = await addWastage({
+      item_id: parseInt(form.item_id),
+      quantity: parseFloat(form.quantity),
+      reason: form.reason as WastageReason,
+      reported_by: session?.user?.name ?? session?.user?.email ?? "Unknown",
+      notes: form.notes || undefined,
+    });
+    setSaving(false);
+    if (result.ok) {
+      setShowModal(false);
+      setForm({ item_id: "", quantity: "", reason: "", notes: "" });
+    } else {
+      setError(result.error ?? "Failed to record wastage");
+    }
+  };
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-bold text-gray-900">Wastage Records</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-900">Wastage Records</h1>
+        <button onClick={() => setShowModal(true)} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700">
+          <Plus className="w-4 h-4" /> Record Wastage
+        </button>
+      </div>
 
       {loading ? (
         <p className="text-gray-500">Loading...</p>
@@ -41,13 +91,60 @@ export default function WastagePage() {
                   </td>
                   <td className="px-4 py-3">Rs. {record.total_cost}</td>
                   <td className="px-4 py-3 text-gray-500">{record.reported_by}</td>
-                  <td className="px-4 py-3 text-gray-500">
-                    {new Date(record.wasted_at).toLocaleDateString()}
-                  </td>
+                  <td className="px-4 py-3 text-gray-500">{new Date(record.wasted_at).toLocaleDateString()}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {showModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-900">Record Wastage</h2>
+              <button onClick={() => setShowModal(false)}><X className="w-5 h-5 text-gray-500" /></button>
+            </div>
+
+            {error && <p className="text-red-500 text-sm">{error}</p>}
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-500">Item *</label>
+                <select name="item_id" value={form.item_id} onChange={handleChange}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-1">
+                  <option value="">Select Item</option>
+                  {items.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Quantity *</label>
+                <input name="quantity" type="number" value={form.quantity} onChange={handleChange}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-1" placeholder="e.g. 5" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Reason *</label>
+                <select name="reason" value={form.reason} onChange={handleChange}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-1">
+                  <option value="">Select Reason</option>
+                  {WASTAGE_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Notes</label>
+                <textarea name="notes" value={form.notes} onChange={handleChange}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-1" rows={2} placeholder="Optional notes" />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={handleSubmit} disabled={saving} className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50">
+                {saving ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react"; // 👈 Hook imported for authentication details
 import {
   AlertTriangle,
   ClipboardList,
@@ -58,6 +59,7 @@ function stockState(item: InventoryItem) {
 }
 
 export default function StaffInventory() {
+  const { data: session } = useSession(); // 👈 Destructured session object
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<"all" | "low_stock" | "expiring">("all");
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
@@ -111,6 +113,7 @@ export default function StaffInventory() {
       item_id: selectedItemId,
       quantity_used: amount,
       department,
+      used_by: session?.user?.name ?? session?.user?.email ?? "Unknown Staff", // 👈 Added used_by configuration to fix required parameter issue
       notes: notes.trim() || undefined,
     };
 

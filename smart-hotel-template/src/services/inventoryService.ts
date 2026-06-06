@@ -31,7 +31,6 @@ async function checkAndCreateLowStockAlert(itemId: number) {
       });
     }
   } else {
-    // Auto-resolve if stock is back above threshold
     await prisma.lowStockAlert.updateMany({
       where: { item_id: itemId, status: "Active" },
       data: { status: "Resolved", resolved_at: new Date() },
@@ -309,7 +308,6 @@ export async function receiveStock(
   if (po.status === "Cancelled") throw new Error("Cannot receive cancelled PO");
   if (po.status === "Received") throw new Error("PO already fully received");
 
-  // Update each PO item & inventory item
   for (const received of receivedItems) {
     const poItem = po.items.find((i) => i.id === received.po_item_id);
     if (!poItem) continue;
@@ -321,17 +319,14 @@ export async function receiveStock(
       data: { received_quantity: newReceivedQty },
     });
 
-    // Update inventory quantity
     await prisma.inventoryItem.update({
       where: { id: poItem.item_id },
       data: { quantity: { increment: received.received_quantity } },
     });
 
-    // Check and update low stock alerts
     await checkAndCreateLowStockAlert(poItem.item_id);
   }
 
-  // Determine new PO status
   const updatedPO = await prisma.purchaseOrder.findUnique({
     where: { id: poId },
     include: { items: true },
@@ -402,9 +397,6 @@ export async function logUsage(data: {
   const item = await prisma.inventoryItem.findUnique({ where: { id: data.item_id } });
   if (!item) throw new Error("Item not found");
   if (!item.is_active) throw new Error("Item is inactive");
-  if (item.quantity < data.quantity_used) {
-    throw new Error(`Insufficient stock. Available: ${item.quantity} ${item.unit}`);
-  }
 
   const log = await prisma.inventoryUsageLog.create({
     data: {
@@ -418,7 +410,6 @@ export async function logUsage(data: {
     include: { item: { select: { id: true, name: true, unit: true } } },
   });
 
-  // Deduct stock (FIFO: single pool for now — extend to batch tracking if needed)
   await prisma.inventoryItem.update({
     where: { id: data.item_id },
     data: { quantity: { decrement: data.quantity_used } },
@@ -470,7 +461,6 @@ export async function createWastage(data: {
     include: { item: { select: { id: true, name: true, unit: true } } },
   });
 
-  // Deduct from inventory
   const newQty = Math.max(0, item.quantity - data.quantity);
   await prisma.inventoryItem.update({
     where: { id: data.item_id },
@@ -560,7 +550,6 @@ export async function getCOGSReport(from: string, to: string) {
     include: { item: { select: { unit_cost: true } } },
   });
 
-  // Group by department
   const byDept: Record<string, number> = {};
   for (const log of logs) {
     const cost = log.quantity_used * log.item.unit_cost;
@@ -637,20 +626,17 @@ export async function getDashboardStats() {
     }),
   ]);
 
-  // COGS = sum(quantity_used * unit_cost)
   const monthlyCOGS = monthUsage.reduce(
     (sum, l) => sum + l.quantity_used * l.item.unit_cost,
     0
   );
 
-  // Low stock re-count (raw comparison since Prisma can't compare two fields)
   const allItems = await prisma.inventoryItem.findMany({
     where: { is_active: true },
     select: { quantity: true, low_stock_threshold: true },
   });
   const actualLowStock = allItems.filter((i) => i.quantity <= i.low_stock_threshold).length;
 
-  // Top 10 by usage
   const top10Raw = await prisma.inventoryUsageLog.groupBy({
     by: ["item_id"],
     where: { used_at: { gte: monthStart } },
@@ -669,7 +655,6 @@ export async function getDashboardStats() {
     total_used: r._sum.quantity_used ?? 0,
   }));
 
-  // Category distribution
   const catItems = await prisma.inventoryItem.findMany({
     where: { is_active: true },
     select: { quantity: true, unit_cost: true, category: { select: { name: true } } },
@@ -704,43 +689,24 @@ export async function getDashboardStats() {
 
 // ─── Integration Stubs ────────────────────────────────────────────────────────
 
-/**
- * Kitchen Hook (STUB)
- * Called when a food order status changes to "Delivered".
- * Deducts ingredients from inventory using FIFO logic.
- */
 export async function deductKitchenIngredients(
   orderId: number,
   items: { inventoryItemId: number; quantity: number }[]
 ): Promise<void> {
-  // TODO: Implement ingredient mapping (MenuItem → InventoryItem)
-  // and call logUsage for each ingredient.
   console.log(`[KITCHEN HOOK STUB] Order ${orderId}`, items);
 }
 
-/**
- * Housekeeping Hook (STUB)
- * Called when a housekeeping task is completed.
- * Logs cleaning supply consumption.
- */
 export async function deductHousekeepingSupplies(
   taskId: number,
   items: { inventoryItemId: number; quantity: number }[]
 ): Promise<void> {
-  // TODO: Implement supply deduction per task type.
   console.log(`[HOUSEKEEPING HOOK STUB] Task ${taskId}`, items);
 }
 
-/**
- * Billing Hook (STUB)
- * Called at guest checkout to forward minibar charges.
- * Integrates with billing module.
- */
 export async function forwardMinibarCharges(
   roomId: number,
   checkoutId: string,
   items: { inventoryItemId: number; quantity: number; price: number }[]
 ): Promise<void> {
-  // TODO: Create billing line items for minibar consumption.
   console.log(`[BILLING HOOK STUB] Room ${roomId} Checkout ${checkoutId}`, items);
 }
