@@ -36,6 +36,7 @@ model User {
   bookings       Booking[]
   foodOrders     FoodOrder[]
   staffProfile   Staff?
+  invoices       BillingInvoice[]
 }
 
 model DepartmentConfig {
@@ -165,6 +166,7 @@ model Booking {
   room              Room               @relation(fields: [room_id], references: [room_id])
   user              User               @relation(fields: [user_id], references: [id], onDelete: Cascade)
   foodOrders        FoodOrder[]
+  invoice           BillingInvoice?
 
   @@index([user_id])
   @@index([room_id])
@@ -645,4 +647,52 @@ model LowStockAlert {
   @@index([status])
   @@index([item_id])
   @@map("low_stock_alerts")
+}
+
+// ─────────────────────────────────────────────────────────────
+// BILLING & INVOICE MODULE
+// ─────────────────────────────────────────────────────────────
+
+model BillingInvoice {
+  invoice_id       Int              @id @default(autoincrement())
+  invoice_number   String           @unique @db.VarChar(50)
+  booking_id       Int              @unique
+  guest_id         String
+  room_charges     Decimal          @db.Decimal(10, 2)
+  service_charges  Decimal          @db.Decimal(10, 2)
+  food_charges     Decimal          @db.Decimal(10, 2)
+  subtotal         Decimal          @db.Decimal(10, 2)
+  tax_percent      Decimal          @db.Decimal(5, 2) @default(10.00)
+  tax_amount       Decimal          @db.Decimal(10, 2)
+  discount_percent Decimal          @db.Decimal(5, 2) @default(0.00)
+  discount_amount  Decimal          @db.Decimal(10, 2)
+  total_amount     Decimal          @db.Decimal(10, 2)
+  amount_paid      Decimal          @db.Decimal(10, 2) @default(0.00)
+  balance_due      Decimal          @db.Decimal(10, 2)
+  payment_status   String           @default("Unpaid") // Unpaid, Partial, Paid
+  generated_at     DateTime         @default(now())
+
+  // Relations
+  booking          Booking          @relation(fields: [booking_id], references: [booking_id], onDelete: Cascade)
+  guest            User             @relation(fields: [guest_id], references: [id], onDelete: Cascade)
+  payments         InvoicePayment[]
+
+  @@index([guest_id])
+  @@index([booking_id])
+  @@index([payment_status])
+  @@map("billing_invoice")
+}
+
+model InvoicePayment {
+  payment_id     Int            @id @default(autoincrement())
+  invoice_id     Int
+  amount_paid    Decimal        @db.Decimal(10, 2)
+  payment_method String         @db.VarChar(50) // Cash, Card, BankTransfer
+  recorded_at    DateTime       @default(now())
+  notes          String?        @db.Text
+
+  invoice        BillingInvoice @relation(fields: [invoice_id], references: [invoice_id], onDelete: Cascade)
+
+  @@index([invoice_id])
+  @@map("invoice_payments")
 }

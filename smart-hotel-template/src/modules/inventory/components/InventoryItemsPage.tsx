@@ -3,32 +3,37 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useInventoryItems, useCategories, useUnits, useUsageLogs } from "@/hooks/useInventory";
-import { Plus, X, ClipboardList } from "lucide-react";
-import type { InventoryDepartment } from "@/types/inventory"; // 👈 Imported for type casting
+import { Plus, X, ClipboardList, Pencil, ToggleLeft, ToggleRight } from "lucide-react";
+import type { InventoryDepartment, InventoryItem } from "@/types/inventory";
 
 const DEPARTMENTS = ["Kitchen", "Housekeeping", "Bar", "Maintenance", "Reception", "General"];
 
+const EMPTY_FORM = {
+  name: "", sku: "", category_id: "", unit_id: "",
+  quantity: "", low_stock_threshold: "", unit_cost: "", location: "", notes: "",
+};
+
 export default function InventoryItemsPage() {
   const { data: session } = useSession();
-  const { items, loading, createItem } = useInventoryItems();
+  const { items, loading, createItem, updateItem } = useInventoryItems();
   const { categories } = useCategories();
   const { units, createUnit } = useUnits();
   const { logUsage } = useUsageLogs();
 
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [showLogModal, setShowLogModal] = useState(false);
+  const [editTarget, setEditTarget] = useState<InventoryItem | null>(null);
   const [newUnitName, setNewUnitName] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const [form, setForm] = useState({
-    name: "", sku: "", category_id: "", unit_id: "",
-    quantity: "", low_stock_threshold: "", unit_cost: "", location: "", notes: "",
-  });
+  const [form, setForm] = useState(EMPTY_FORM);
 
   const [logForm, setLogForm] = useState({
     item_id: "", quantity_used: "", department: "", notes: "",
   });
+
+  const activeItems = items.filter((i) => i.is_active !== false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -47,12 +52,44 @@ export default function InventoryItemsPage() {
     }
   };
 
+  const openAdd = () => {
+    setEditTarget(null);
+    setForm(EMPTY_FORM);
+    setError("");
+    setShowModal(true);
+  };
+
+  const openEdit = (item: InventoryItem) => {
+    setEditTarget(item);
+    setForm({
+      name: item.name,
+      sku: item.sku ?? "",
+      category_id: item.category_id ? String(item.category_id) : "",
+      unit_id: item.unit_id ? String(item.unit_id) : "",
+      quantity: String(item.quantity ?? 0),
+      low_stock_threshold: String(item.low_stock_threshold ?? 10),
+      unit_cost: String(item.unit_cost ?? 0),
+      location: item.location ?? "",
+      notes: item.notes ?? "",
+    });
+    setError("");
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setEditTarget(null);
+    setForm(EMPTY_FORM);
+    setError("");
+  };
+
   const handleSubmit = async () => {
     if (!form.name || !form.category_id || !form.unit_id) {
       setError("Name, Category aur Unit required hain!"); return;
     }
     setSaving(true); setError("");
-    const result = await createItem({
+
+    const payload = {
       name: form.name,
       sku: form.sku || undefined,
       category_id: parseInt(form.category_id),
@@ -63,14 +100,22 @@ export default function InventoryItemsPage() {
       unit_cost: parseFloat(form.unit_cost) || 0,
       location: form.location || undefined,
       notes: form.notes || undefined,
-    });
+    };
+
+    const result = editTarget
+      ? await updateItem(editTarget.id, payload)
+      : await createItem(payload);
+
     setSaving(false);
     if (result.ok) {
-      setShowAddModal(false);
-      setForm({ name: "", sku: "", category_id: "", unit_id: "", quantity: "", low_stock_threshold: "", unit_cost: "", location: "", notes: "" });
+      closeModal();
     } else {
-      setError(result.error ?? "Failed to add item");
+      setError(result.error ?? "Failed to save item");
     }
+  };
+
+  const toggleStatus = async (item: InventoryItem) => {
+    await updateItem(item.id, { is_active: !(item.is_active !== false) });
   };
 
   const handleLogSubmit = async () => {
@@ -81,7 +126,7 @@ export default function InventoryItemsPage() {
     const result = await logUsage({
       item_id: parseInt(logForm.item_id),
       quantity_used: parseFloat(logForm.quantity_used),
-      department: logForm.department as InventoryDepartment, // 👈 Type casted to fix compilation error
+      department: logForm.department as InventoryDepartment,
       used_by: session?.user?.name ?? session?.user?.email ?? "Unknown",
       notes: logForm.notes || undefined,
     });
@@ -103,7 +148,7 @@ export default function InventoryItemsPage() {
             className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700">
             <ClipboardList className="w-4 h-4" /> Log Usage
           </button>
-          <button onClick={() => { setError(""); setShowAddModal(true); }}
+          <button onClick={openAdd}
             className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
             <Plus className="w-4 h-4" /> Add Item
           </button>
@@ -121,12 +166,14 @@ export default function InventoryItemsPage() {
                 <th className="px-4 py-3">Category</th>
                 <th className="px-4 py-3">Stock</th>
                 <th className="px-4 py-3">Unit</th>
-                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Stock Status</th>
+                <th className="px-4 py-3">Active</th>
+                <th className="px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody>
               {items.map((item) => (
-                <tr key={item.id} className="border-t border-gray-100">
+                <tr key={item.id} className={`border-t border-gray-100 ${item.is_active === false ? "opacity-60" : ""}`}>
                   <td className="px-4 py-3 font-medium">{item.name}</td>
                   <td className="px-4 py-3 text-gray-500">{item.category?.name ?? "—"}</td>
                   <td className="px-4 py-3">{item.quantity}</td>
@@ -138,6 +185,23 @@ export default function InventoryItemsPage() {
                       <span className="text-green-600">OK</span>
                     )}
                   </td>
+                  <td className="px-4 py-3">
+                    {item.is_active !== false
+                      ? <span className="text-green-600 font-semibold">Active</span>
+                      : <span className="text-red-500">Inactive</span>}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => openEdit(item)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit">
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => toggleStatus(item)} className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition" title={item.is_active !== false ? "Deactivate" : "Activate"}>
+                        {item.is_active !== false
+                          ? <ToggleRight className="w-4 h-4 text-green-600" />
+                          : <ToggleLeft className="w-4 h-4 text-gray-400" />}
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -145,13 +209,13 @@ export default function InventoryItemsPage() {
         </div>
       )}
 
-      {/* Add Item Modal */}
-      {showAddModal && (
+      {/* Add / Edit Item Modal */}
+      {showModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-900">Add Stock Item</h2>
-              <button onClick={() => setShowAddModal(false)}><X className="w-5 h-5 text-gray-500" /></button>
+              <h2 className="text-lg font-bold text-gray-900">{editTarget ? "Edit Stock Item" : "Add Stock Item"}</h2>
+              <button onClick={closeModal}><X className="w-5 h-5 text-gray-500" /></button>
             </div>
             {error && <p className="text-red-500 text-sm">{error}</p>}
             <div className="grid grid-cols-2 gap-3">
@@ -203,9 +267,9 @@ export default function InventoryItemsPage() {
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <button onClick={() => setShowAddModal(false)} className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={closeModal} className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
               <button onClick={handleSubmit} disabled={saving} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                {saving ? "Saving..." : "Save Item"}
+                {saving ? "Saving..." : editTarget ? "Update" : "Save Item"}
               </button>
             </div>
           </div>
@@ -226,7 +290,9 @@ export default function InventoryItemsPage() {
                 <label className="text-xs text-gray-500">Item *</label>
                 <select name="item_id" value={logForm.item_id} onChange={handleLogChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-1">
                   <option value="">Select Item</option>
-                  {items.map((item) => <option key={item.id} value={item.id}>{item.name} ({item.quantity} {item.unit})</option>)}
+                  {activeItems.map((item) => (
+                    <option key={item.id} value={item.id}>{item.name} ({item.quantity} {item.unit})</option>
+                  ))}
                 </select>
               </div>
               <div>
