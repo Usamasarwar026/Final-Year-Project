@@ -62,6 +62,9 @@ export const MODULE_PERMISSIONS: ModulePermission[] = [
   { key: "rooms",        label: "Rooms",        description: "View room availability and status",  href: "/staff/rooms",        icon: "🛏️" },
   { key: "customer",     label: "Customer",     description: "View and manage guest profiles",     href: "/staff/customer",     icon: "👤" },
   { key: "kitchen",      label: "Kitchen",      description: "View and manage food orders",        href: "/staff/kitchen",      icon: "👨‍🍳" },
+  { key: "KITCHEN_ACCESS", label: "Kitchen Access", description: "View kitchen dashboard and active orders", href: "/staff/kitchen", icon: "🍳" },
+  { key: "KITCHEN_ORDER_PROCESS", label: "Kitchen Process", description: "Accept and prepare kitchen items", href: "/staff/kitchen/process", icon: "🥘" },
+  { key: "DELIVERY_ACCESS", label: "Delivery Access", description: "View and update assigned food deliveries", href: "/staff/kitchen/delivery", icon: "🛵" },
   { key: "inventory",    label: "Inventory",    description: "View and manage stock items",        href: "/staff/inventory",    icon: "📦" },
   { key: "housekeeping", label: "House Keeping",description: "View and manage cleaning tasks",     href: "/staff/housekeeping", icon: "🧹" },
   { key: "billing",      label: "Billing",      description: "View and process invoices",          href: "/staff/billing",      icon: "💳" },
@@ -72,8 +75,10 @@ export const MODULE_PERMISSIONS: ModulePermission[] = [
 export const DEPT_DEFAULT_PERMISSIONS: Record<string, string[]> = {
   Reception:    ["booking", "rooms", "customer", "billing"],
   Housekeeping: ["rooms", "housekeeping"],
-  Kitchen:      ["kitchen", "inventory"],
-  Management:   ["booking", "rooms", "customer", "kitchen", "inventory", "housekeeping", "billing", "reports"],
+  // Kitchen:      ["kitchen", "inventory"],
+  // Management:   ["booking", "rooms", "customer", "kitchen", "inventory", "housekeeping", "billing", "reports"],
+  Kitchen:      ["kitchen", "inventory", "KITCHEN_ACCESS", "KITCHEN_ORDER_PROCESS", "DELIVERY_ACCESS"],
+  Management:   ["booking", "rooms", "customer", "kitchen", "inventory", "housekeeping", "billing", "reports", "KITCHEN_ACCESS", "KITCHEN_ORDER_PROCESS", "DELIVERY_ACCESS"],
   Security:     ["booking", "rooms", "customer"],
   Other:        [],
 };

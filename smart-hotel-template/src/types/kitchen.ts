@@ -1,105 +1,186 @@
 // src/types/kitchen.ts
-
-// ─── Enums ────────────────────────────────────────────────────────────────────
-export type FoodCategory  = "Breakfast" | "Lunch" | "Dinner" | "Snacks" | "Beverages" | "Special";
-export type OrderType     = "RoomService" | "Restaurant";
-export type OrderStatus   = "Placed" | "Accepted" | "Preparing" | "Ready" | "OutForDelivery" | "Delivered" | "Cancelled";
-export type OrderPriority = "Normal" | "High" | "VIP";
-
-export const FOOD_CATEGORIES: FoodCategory[] = ["Breakfast", "Lunch", "Dinner", "Snacks", "Beverages", "Special"];
-export const ORDER_TYPES:     OrderType[]     = ["RoomService", "Restaurant"];
-export const ORDER_STATUSES:  OrderStatus[]   = ["Placed","Accepted","Preparing","Ready","OutForDelivery","Delivered","Cancelled"];
-export const ORDER_PRIORITIES: OrderPriority[] = ["Normal", "High", "VIP"];
-
+// ─── Enums & Literals ────────────────────────────────────────────────────────
+export type FoodOrderStatus =
+  | "Pending"
+  | "Accepted"
+  | "Preparing"
+  | "Ready"
+  | "Assigned"
+  | "OutForDelivery"
+  | "Delivered"
+  | "Cancelled"
+  | "Rejected";
+export type KitchenTaskStatus = "Assigned" | "Accepted" | "InProgress" | "Completed";
+export type OrderType = "RoomService" | "Restaurant";
+export const ORDER_TYPES: OrderType[] = ["RoomService", "Restaurant"];
+export const ORDER_STATUSES: FoodOrderStatus[] = [
+  "Pending",
+  "Accepted",
+  "Preparing",
+  "Ready",
+  "Assigned",
+  "OutForDelivery",
+  "Delivered",
+  "Cancelled",
+  "Rejected",
+];
+export const KITCHEN_TASK_STATUSES: KitchenTaskStatus[] = [
+  "Assigned",
+  "Accepted",
+  "InProgress",
+  "Completed",
+];
 // ─── Configs ──────────────────────────────────────────────────────────────────
-export const CATEGORY_CONFIG: Record<FoodCategory, { label: string; icon: string; color: string; bg: string }> = {
-  Breakfast:  { label: "Breakfast",  icon: "🍳", color: "text-amber-700",  bg: "bg-amber-100"  },
-  Lunch:      { label: "Lunch",      icon: "🍱", color: "text-green-700",  bg: "bg-green-100"  },
-  Dinner:     { label: "Dinner",     icon: "🍽️", color: "text-purple-700", bg: "bg-purple-100" },
-  Snacks:     { label: "Snacks",     icon: "🍟", color: "text-orange-700", bg: "bg-orange-100" },
-  Beverages:  { label: "Beverages",  icon: "☕", color: "text-blue-700",   bg: "bg-blue-100"   },
-  Special:    { label: "Chef Special",icon: "⭐", color: "text-rose-700",  bg: "bg-rose-100"   },
+export const ORDER_STATUS_CONFIG: Record<
+  FoodOrderStatus,
+  { label: string; color: string; bg: string; border: string; dot: string; step: number }
+> = {
+  Pending: {
+    label: "Pending",
+    color: "text-blue-700",
+    bg: "bg-blue-50/50",
+    border: "border-blue-200",
+    dot: "bg-blue-500",
+    step: 0,
+  },
+  Accepted: {
+    label: "Accepted",
+    color: "text-indigo-700",
+    bg: "bg-indigo-50/50",
+    border: "border-indigo-200",
+    dot: "bg-indigo-500",
+    step: 1,
+  },
+  Preparing: {
+    label: "Preparing",
+    color: "text-amber-700",
+    bg: "bg-amber-50/50",
+    border: "border-amber-200",
+    dot: "bg-amber-500",
+    step: 2,
+  },
+  Ready: {
+    label: "Ready",
+    color: "text-teal-700",
+    bg: "bg-teal-50/50",
+    border: "border-teal-200",
+    dot: "bg-teal-500",
+    step: 3,
+  },
+  Assigned: {
+    label: "Staff Assigned",
+    color: "text-purple-700",
+    bg: "bg-purple-50/50",
+    border: "border-purple-200",
+    dot: "bg-purple-500",
+    step: 4,
+  },
+  OutForDelivery: {
+    label: "Out for Delivery",
+    color: "text-orange-700",
+    bg: "bg-orange-50/50",
+    border: "border-orange-200",
+    dot: "bg-orange-500",
+    step: 5,
+  },
+  Delivered: {
+    label: "Delivered",
+    color: "text-green-700",
+    bg: "bg-green-50/50",
+    border: "border-green-200",
+    dot: "bg-green-500",
+    step: 6,
+  },
+  Cancelled: {
+    label: "Cancelled",
+    color: "text-red-700",
+    bg: "bg-red-50/50",
+    border: "border-red-200",
+    dot: "bg-red-500",
+    step: -1,
+  },
+  Rejected: {
+    label: "Rejected",
+    color: "text-rose-700",
+    bg: "bg-rose-50/50",
+    border: "border-rose-200",
+    dot: "bg-rose-500",
+    step: -1,
+  },
 };
-
-export const ORDER_STATUS_CONFIG: Record<OrderStatus, {
-  label: string; color: string; bg: string; border: string; dot: string; step: number;
-}> = {
-  Placed:         { label: "Order Placed",    color: "text-blue-700",   bg: "bg-blue-50",    border: "border-blue-200",   dot: "bg-blue-500",   step: 0 },
-  Accepted:       { label: "Accepted",        color: "text-indigo-700", bg: "bg-indigo-50",  border: "border-indigo-200", dot: "bg-indigo-500", step: 1 },
-  Preparing:      { label: "Preparing",       color: "text-amber-700",  bg: "bg-amber-50",   border: "border-amber-200",  dot: "bg-amber-500",  step: 2 },
-  Ready:          { label: "Ready",           color: "text-teal-700",   bg: "bg-teal-50",    border: "border-teal-200",   dot: "bg-teal-500",   step: 3 },
-  OutForDelivery: { label: "Out for Delivery",color: "text-orange-700", bg: "bg-orange-50",  border: "border-orange-200", dot: "bg-orange-500", step: 4 },
-  Delivered:      { label: "Delivered",       color: "text-green-700",  bg: "bg-green-50",   border: "border-green-200",  dot: "bg-green-500",  step: 5 },
-  Cancelled:      { label: "Cancelled",       color: "text-red-700",    bg: "bg-red-50",     border: "border-red-200",    dot: "bg-red-500",    step: -1},
-};
-
-export const PRIORITY_CONFIG: Record<OrderPriority, { label: string; color: string; bg: string; dot: string }> = {
-  Normal: { label: "Normal", color: "text-gray-700",  bg: "bg-gray-100",  dot: "bg-gray-400"  },
-  High:   { label: "High",   color: "text-orange-700",bg: "bg-orange-100",dot: "bg-orange-500"},
-  VIP:    { label: "VIP",    color: "text-rose-700",  bg: "bg-rose-100",  dot: "bg-rose-500"  },
-};
-
 export const ORDER_TYPE_CONFIG: Record<OrderType, { label: string; icon: string; color: string; bg: string }> = {
-  RoomService: { label: "Room Service", icon: "🛎️", color: "text-blue-700",   bg: "bg-blue-100"   },
-  Restaurant:  { label: "Restaurant",  icon: "🍽️", color: "text-purple-700", bg: "bg-purple-100" },
+  RoomService: { label: "Room Service", icon: "🛎️", color: "text-blue-700", bg: "bg-blue-100" },
+  Restaurant: { label: "Restaurant", icon: "🍽️", color: "text-purple-700", bg: "bg-purple-100" },
 };
-
-// Status flow for KDS actions
-export const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
-  Placed:         "Accepted",
-  Accepted:       "Preparing",
-  Preparing:      "Ready",
-  Ready:          "OutForDelivery",
-  OutForDelivery: "Delivered",
-};
-
-export const STATUS_ACTION_LABEL: Partial<Record<OrderStatus, string>> = {
-  Placed:         "Accept Order",
-  Accepted:       "Start Preparing",
-  Preparing:      "Mark Ready",
-  Ready:          "Out for Delivery",
-  OutForDelivery: "Mark Delivered",
-};
-
 // ─── Interfaces ───────────────────────────────────────────────────────────────
-export interface MenuItem {
-  menu_item_id:     number;
-  name:             string;
-  description:      string | null;
-  category:         FoodCategory;
-  price:            number;
-  prep_time_minutes: number;
-  is_available:     boolean;
-  is_vegetarian:    boolean;
-  is_vip_special:   boolean;
-  is_halal:         boolean;
-  image_url:        string | null;
-  calories:         number | null;
-  created_at:       string;
-  updated_at:       string;
+export interface FoodCategory {
+  id:          number;
+  name:        string;
+  description: string | null;
+  created_at:  string;
+  updated_at:  string;
+  foodItems?:  FoodItem[];
 }
-
-export interface OrderItem {
+export interface FoodItem {
+  id:                       number;
+  name:                     string;
+  category_id:              number;
+  description:              string | null;
+  image:                    string | null;
+  price:                    number;
+  preparation_time_minutes: number;
+  ingredients_text:         string | null;
+  availability_status:      boolean;
+  featured:                 boolean;
+  active:                   boolean;
+  created_at:               string;
+  updated_at:               string;
+  category?:                FoodCategory;
+}
+export interface FoodOrderItem {
   id:           number;
   order_id:     number;
-  menu_item_id: number;
+  food_item_id: number;
   quantity:     number;
-  unit_price:   number;
+  price:        number;
   subtotal:     number;
   special_note: string | null;
-  menuItem:     MenuItem;
+  foodItem?:    FoodItem;
 }
-
+export interface FoodOrderTimeline {
+  id:         number;
+  order_id:   number;
+  status:     FoodOrderStatus;
+  notes:      string | null;
+  created_at: string;
+}
+export interface KitchenTask {
+  id:             number;
+  order_id:       number;
+  assigned_to:    number | null;
+  status:         KitchenTaskStatus;
+  created_at:     string;
+  updated_at:     string;
+  order?:         FoodOrder;
+  assignedStaff?: {
+    staff_id:    number;
+    designation: string;
+    user: {
+      name:  string;
+      email: string;
+    };
+  } | null;
+}
 export interface FoodOrder {
-  order_id:             number;
+  id:                   number;
   booking_id:           number | null;
-  user_id:              string;
+  user_id:              string | null;
+  customer_name:        string | null;
   order_type:           OrderType;
   table_number:         string | null;
-  status:               OrderStatus;
-  priority:             OrderPriority;
+  room_number:          string | null;
+  status:               FoodOrderStatus;
   total_amount:         number;
-  is_billed:            boolean;
   special_instructions: string | null;
   placed_at:            string;
   accepted_at:          string | null;
@@ -108,58 +189,57 @@ export interface FoodOrder {
   delivered_at:         string | null;
   created_at:           string;
   updated_at:           string;
-  // Relations
-  items:   OrderItem[];
-  user?:   { id: string; name: string; email: string } | null;
+  items:                FoodOrderItem[];
+  timelines?:           FoodOrderTimeline[];
+  tasks?:               KitchenTask[];
+  user?:                { id: string; name: string; email: string } | null;
   booking?: {
     booking_id: number;
-    room: { room_number: string; floor: number; room_type: string };
+    room: {
+      room_number: string;
+      floor:       number;
+      room_type:   string;
+    };
   } | null;
 }
-
 // ─── Kitchen Stats ────────────────────────────────────────────────────────────
 export interface KitchenStats {
-  totalToday:     number;
-  pending:        number;    // Placed + Accepted
-  preparing:      number;
-  ready:          number;
-  deliveredToday: number;
-  cancelledToday: number;
-  revenueToday:   number;
-  avgPrepTime:    number;    // minutes
+  totalOrders:      number;
+  pendingOrders:    number;
+  preparingOrders:  number;
+  readyOrders:      number;
+  deliveredOrders:  number;
+  revenue:          number;
+  ordersByDay:      { date: string; count: number }[];
+  mostOrderedFoods: { name: string; count: number }[];
+  categoryPerformance: { name: string; count: number; revenue: number }[];
 }
-
 // ─── Payloads ─────────────────────────────────────────────────────────────────
-export interface CreateMenuItemPayload {
-  name:             string;
-  description?:     string;
-  category:         FoodCategory;
-  price:            number;
-  prep_time_minutes?: number;
-  is_vegetarian?:   boolean;
-  is_vip_special?:  boolean;
-  is_halal?:        boolean;
-  calories?:        number;
+export interface CreateCategoryPayload {
+  name:        string;
+  description?: string;
 }
-
-export interface UpdateMenuItemPayload extends Partial<CreateMenuItemPayload> {
-  is_available?: boolean;
+export interface CreateFoodItemPayload {
+  name:                     string;
+  category_id:              number;
+  description?:             string;
+  image?:                   string;
+  price:                    number;
+  preparation_time_minutes?: number;
+  ingredients_text?:        string;
+  availability_status?:     boolean;
+  featured?:                boolean;
+  active?:                  boolean;
 }
-
-export interface CartItem {
-  menu_item_id: number;
-  quantity:     number;
-  special_note?: string;
-  menuItem:     MenuItem;
-}
-
 export interface PlaceOrderPayload {
   booking_id?:          number;
+  customer_name?:       string;
   order_type:           OrderType;
   table_number?:        string;
+  room_number?:         string;
   special_instructions?: string;
   items: {
-    menu_item_id: number;
+    food_item_id: number;
     quantity:     number;
     special_note?: string;
   }[];
