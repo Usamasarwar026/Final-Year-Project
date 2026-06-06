@@ -1,13 +1,114 @@
 "use client";
 
-import { useInventoryItems } from "@/hooks/useInventory";
+import { useState } from "react";
+import { useSession } from "next-auth/react";
+import { useInventoryItems, useCategories, useUnits, useUsageLogs } from "@/hooks/useInventory";
+import { Plus, X, ClipboardList } from "lucide-react";
+import type { InventoryDepartment } from "@/types/inventory"; // 👈 Imported for type casting
+
+const DEPARTMENTS = ["Kitchen", "Housekeeping", "Bar", "Maintenance", "Reception", "General"];
 
 export default function InventoryItemsPage() {
-  const { items, loading } = useInventoryItems();
+  const { data: session } = useSession();
+  const { items, loading, createItem } = useInventoryItems();
+  const { categories } = useCategories();
+  const { units, createUnit } = useUnits();
+  const { logUsage } = useUsageLogs();
+
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showLogModal, setShowLogModal] = useState(false);
+  const [newUnitName, setNewUnitName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const [form, setForm] = useState({
+    name: "", sku: "", category_id: "", unit_id: "",
+    quantity: "", low_stock_threshold: "", unit_cost: "", location: "", notes: "",
+  });
+
+  const [logForm, setLogForm] = useState({
+    item_id: "", quantity_used: "", department: "", notes: "",
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleLogChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    setLogForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleAddUnit = async () => {
+    if (!newUnitName.trim()) return;
+    const result = await createUnit(newUnitName.trim());
+    if (result.ok && result.data) {
+      setForm((prev) => ({ ...prev, unit_id: String(result.data!.id) }));
+      setNewUnitName("");
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!form.name || !form.category_id || !form.unit_id) {
+      setError("Name, Category aur Unit required hain!"); return;
+    }
+    setSaving(true); setError("");
+    const result = await createItem({
+      name: form.name,
+      sku: form.sku || undefined,
+      category_id: parseInt(form.category_id),
+      unit_id: parseInt(form.unit_id),
+      unit: units.find((u) => u.id === parseInt(form.unit_id))?.name ?? "",
+      quantity: parseFloat(form.quantity) || 0,
+      low_stock_threshold: parseFloat(form.low_stock_threshold) || 10,
+      unit_cost: parseFloat(form.unit_cost) || 0,
+      location: form.location || undefined,
+      notes: form.notes || undefined,
+    });
+    setSaving(false);
+    if (result.ok) {
+      setShowAddModal(false);
+      setForm({ name: "", sku: "", category_id: "", unit_id: "", quantity: "", low_stock_threshold: "", unit_cost: "", location: "", notes: "" });
+    } else {
+      setError(result.error ?? "Failed to add item");
+    }
+  };
+
+  const handleLogSubmit = async () => {
+    if (!logForm.item_id || !logForm.quantity_used || !logForm.department) {
+      setError("Item, Quantity aur Department required hain!"); return;
+    }
+    setSaving(true); setError("");
+    const result = await logUsage({
+      item_id: parseInt(logForm.item_id),
+      quantity_used: parseFloat(logForm.quantity_used),
+      department: logForm.department as InventoryDepartment, // 👈 Type casted to fix compilation error
+      used_by: session?.user?.name ?? session?.user?.email ?? "Unknown",
+      notes: logForm.notes || undefined,
+    });
+    setSaving(false);
+    if (result.ok) {
+      setShowLogModal(false);
+      setLogForm({ item_id: "", quantity_used: "", department: "", notes: "" });
+    } else {
+      setError(result.error ?? "Failed to log usage");
+    }
+  };
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-bold text-gray-900">Stock Items</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-900">Stock Items</h1>
+        <div className="flex gap-2">
+          <button onClick={() => { setError(""); setShowLogModal(true); }}
+            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700">
+            <ClipboardList className="w-4 h-4" /> Log Usage
+          </button>
+          <button onClick={() => { setError(""); setShowAddModal(true); }}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
+            <Plus className="w-4 h-4" /> Add Item
+          </button>
+        </div>
+      </div>
 
       {loading ? (
         <p className="text-gray-500">Loading...</p>
@@ -41,6 +142,116 @@ export default function InventoryItemsPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Add Item Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-900">Add Stock Item</h2>
+              <button onClick={() => setShowAddModal(false)}><X className="w-5 h-5 text-gray-500" /></button>
+            </div>
+            {error && <p className="text-red-500 text-sm">{error}</p>}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className="text-xs text-gray-500">Item Name *</label>
+                <input name="name" value={form.name} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-1" placeholder="e.g. Basmati Rice" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">SKU</label>
+                <input name="sku" value={form.sku} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-1" placeholder="e.g. KIT-001" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Category *</label>
+                <select name="category_id" value={form.category_id} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-1">
+                  <option value="">Select Category</option>
+                  {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div className="col-span-2">
+                <label className="text-xs text-gray-500">Unit *</label>
+                <div className="flex gap-2 mt-1">
+                  <select name="unit_id" value={form.unit_id} onChange={handleChange} className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                    <option value="">Select Unit</option>
+                    {units.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                  </select>
+                  <input value={newUnitName} onChange={(e) => setNewUnitName(e.target.value)} placeholder="New unit" className="w-28 border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+                  <button onClick={handleAddUnit} className="bg-gray-100 px-3 py-2 rounded-lg text-sm hover:bg-gray-200">Add</button>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Quantity</label>
+                <input name="quantity" type="number" value={form.quantity} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-1" placeholder="0" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Low Stock Threshold</label>
+                <input name="low_stock_threshold" type="number" value={form.low_stock_threshold} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-1" placeholder="10" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Unit Cost (Rs.)</label>
+                <input name="unit_cost" type="number" value={form.unit_cost} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-1" placeholder="0" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Location</label>
+                <input name="location" value={form.location} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-1" placeholder="e.g. Shelf A" />
+              </div>
+              <div className="col-span-2">
+                <label className="text-xs text-gray-500">Notes</label>
+                <textarea name="notes" value={form.notes} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-1" rows={2} />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={() => setShowAddModal(false)} className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={handleSubmit} disabled={saving} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                {saving ? "Saving..." : "Save Item"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Log Usage Modal */}
+      {showLogModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-900">Log Item Usage</h2>
+              <button onClick={() => setShowLogModal(false)}><X className="w-5 h-5 text-gray-500" /></button>
+            </div>
+            {error && <p className="text-red-500 text-sm">{error}</p>}
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-500">Item *</label>
+                <select name="item_id" value={logForm.item_id} onChange={handleLogChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-1">
+                  <option value="">Select Item</option>
+                  {items.map((item) => <option key={item.id} value={item.id}>{item.name} ({item.quantity} {item.unit})</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Quantity Used *</label>
+                <input name="quantity_used" type="number" value={logForm.quantity_used} onChange={handleLogChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-1" placeholder="e.g. 2" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Department *</label>
+                <select name="department" value={logForm.department} onChange={handleLogChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-1">
+                  <option value="">Select Department</option>
+                  {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Notes</label>
+                <textarea name="notes" value={logForm.notes} onChange={handleLogChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-1" rows={2} placeholder="Optional notes" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={() => setShowLogModal(false)} className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={handleLogSubmit} disabled={saving} className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">
+                {saving ? "Saving..." : "Log Usage"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

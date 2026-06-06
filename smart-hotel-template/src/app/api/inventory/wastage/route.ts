@@ -40,7 +40,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const record = await createWastage({ ...body, reported_by: session.user.id });
+    // 👈 Name ya Email save karne ke liye fallback chain add kar di hai
+    const record = await createWastage({ 
+      ...body, 
+      reported_by: session.user.name ?? session.user.email ?? session.user.id 
+    });
+    
     return NextResponse.json({ record }, { status: 201 });
   } catch (err: any) {
     console.error("[POST /api/inventory/wastage]", err);

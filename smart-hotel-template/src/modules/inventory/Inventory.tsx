@@ -27,7 +27,10 @@ export default function Inventory() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: "Stock Items", href: "/admin/inventory/items" },
+          { label: "Categories", href: "/admin/inventory/categories" },
+          { label: "Vendors", href: "/admin/inventory/vendors" },
           { label: "Purchase Orders", href: "/admin/inventory/purchase-orders" },
+          { label: "Stock Receiving", href: "/admin/inventory/stock-receiving" },
           { label: "Wastage", href: "/admin/inventory/wastage" },
           { label: "Reports", href: "/admin/inventory/reports" },
         ].map((link) => (

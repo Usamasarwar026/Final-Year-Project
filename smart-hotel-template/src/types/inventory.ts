@@ -76,6 +76,7 @@ export interface InventoryItem {
   name: string;
   sku?: string | null;
   category_id: number;
+  unit_id?: number;          // 👈 Added unit_id relation
   unit: string;
   quantity: number;
   low_stock_threshold: number;
@@ -87,6 +88,10 @@ export interface InventoryItem {
   created_at: string;
   updated_at: string;
   category?: InventoryCategory;
+  unitConfig?: {             // 👈 Added configuration object relation
+    id: number;
+    name: string;
+  };
   itemVendors?: InventoryItemVendor[];
   // computed
   is_low_stock?: boolean;
@@ -98,6 +103,7 @@ export interface CreateItemPayload {
   name: string;
   sku?: string;
   category_id: number;
+  unit_id?: number;          // 👈 Added unit_id parameter for creating item
   unit: string;
   quantity?: number;
   low_stock_threshold?: number;
@@ -175,6 +181,7 @@ export interface LogUsagePayload {
   item_id: number;
   quantity_used: number;
   department: InventoryDepartment;
+  used_by: string;           // 👈 Added used_by field here to fix object literal compilation error
   reference_id?: string;
   notes?: string;
 }
@@ -199,6 +206,7 @@ export interface CreateWastagePayload {
   item_id: number;
   quantity: number;
   reason: WastageReason;
+  reported_by: string;       // 👈 Added reported_by field to fix compilation error
   notes?: string;
 }
 
@@ -268,7 +276,7 @@ export type InventoryPermission = (typeof INVENTORY_PERMISSIONS)[keyof typeof IN
 // ─── POStatus badge config ────────────────────────────────────────────────────
 export const PO_STATUS_CONFIG: Record<POStatus, { label: string; bg: string; text: string; border: string }> = {
   Pending:          { label: "Pending",           bg: "bg-yellow-50",  text: "text-yellow-700",  border: "border-yellow-200" },
-  Sent:             { label: "Sent",               bg: "bg-blue-50",    text: "text-blue-700",    border: "border-blue-200"   },
+  Sent:             { label: "Sent",              bg: "bg-blue-50",    text: "text-blue-700",    border: "border-blue-200"   },
   PartiallyReceived:{ label: "Partial",            bg: "bg-orange-50",  text: "text-orange-700",  border: "border-orange-200" },
   Received:         { label: "Received",           bg: "bg-green-50",   text: "text-green-700",   border: "border-green-200"  },
   Cancelled:        { label: "Cancelled",          bg: "bg-red-50",     text: "text-red-700",     border: "border-red-200"    },

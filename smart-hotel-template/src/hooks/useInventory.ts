@@ -367,7 +367,7 @@ export function useReports(dateFrom: string, dateTo: string) {
 
   const fetch = useCallback(async () => {
     if (!dateFrom || !dateTo) return;
-    setLoading(true);
+    setLoading(true); // 👈 Fixed: used setLoading instead of calling loading as function
     try {
       const q = `from=${dateFrom}&to=${dateTo}`;
       const [consumptionRes, cogsRes, wastageRes] = await Promise.all([
@@ -388,4 +388,46 @@ export function useReports(dateFrom: string, dateTo: string) {
   useEffect(() => { fetch(); }, [fetch]);
 
   return { consumption, cogs, wastage, loading, refresh: fetch };
+}
+
+// ─── Units ───────────────────────────────────────────────────────────────────
+export function useUnits() {
+  const [units, setUnits] = useState<{ id: number; name: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetch = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data } = await api.get<{ units: { id: number; name: string }[] }>("/inventory/units");
+      setUnits(data.units);
+    } catch {
+      setUnits([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetch(); }, [fetch]);
+
+  const createUnit = async (name: string): Promise<ApiResult<{ id: number; name: string }>> => {
+    try {
+      const { data } = await api.post<{ unit: { id: number; name: string } }>("/inventory/units", { name });
+      setUnits((prev) => [...prev, data.unit]);
+      return { ok: true, data: data.unit };
+    } catch (e: any) {
+      return { ok: false, error: e?.response?.data?.error ?? "Failed to create unit" };
+    }
+  };
+
+  const deleteUnit = async (id: number): Promise<ApiResult> => {
+    try {
+      await api.delete(`/inventory/units?id=${id}`);
+      setUnits((prev) => prev.filter((u) => u.id !== id));
+      return { ok: true };
+    } catch (e: any) {
+      return { ok: false, error: e?.response?.data?.error ?? "Failed to delete unit" };
+    }
+  };
+
+  return { units, loading, refresh: fetch, createUnit, deleteUnit };
 }

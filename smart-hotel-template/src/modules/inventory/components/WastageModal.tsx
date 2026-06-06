@@ -18,6 +18,7 @@ export function WastageModal({ items, onClose, onSave }: Props) {
     item_id: activeItems[0]?.id ?? 0,
     quantity: 1,
     reason: "Expired",
+    reported_by: "", // 👈 Added required field initialization
     notes: "",
   });
   const [saving, setSaving] = useState(false);
@@ -27,7 +28,7 @@ export function WastageModal({ items, onClose, onSave }: Props) {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.item_id || !form.quantity || !form.reason) {
+    if (!form.item_id || !form.quantity || !form.reason || !form.reported_by) {
       toast.error("All required fields must be filled");
       return;
     }
@@ -116,6 +117,19 @@ export function WastageModal({ items, onClose, onSave }: Props) {
                 <option key={r} value={r}>{r}</option>
               ))}
             </select>
+          </div>
+
+          {/* Reported By */}
+          <div>
+            <label className={labelCls}>Reported By *</label>
+            <input
+              type="text"
+              className={inputCls}
+              value={form.reported_by}
+              onChange={(e) => setForm((p) => ({ ...p, reported_by: e.target.value }))}
+              placeholder="e.g. Ahmed"
+              required
+            />
           </div>
 
           {/* Notes */}
