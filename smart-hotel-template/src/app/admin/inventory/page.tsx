@@ -1,9 +1,9 @@
-import React from 'react'
+import Inventory from "@/modules/inventory/Inventory";
 
 export default function InventoryPage() {
   return (
     <div>
-      Inventory Page
+      <Inventory />
     </div>
-  )
+  );
 }

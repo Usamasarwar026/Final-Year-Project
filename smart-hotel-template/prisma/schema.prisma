@@ -607,3 +607,210 @@ enum WastageReason {
   Lost
   Other
 }
+
+// ─────────────────────────────────────────────────────────────
+// INVENTORY & STOCK MANAGEMENT MODULE
+// ─────────────────────────────────────────────────────────────
+
+enum InventoryDepartment {
+  Kitchen
+  Housekeeping
+  Bar
+  Maintenance
+  Reception
+  General
+}
+
+enum POStatus {
+  Pending
+  Sent
+  PartiallyReceived
+  Received
+  Cancelled
+}
+
+enum WastageReason {
+  Expired
+  Damaged
+  Lost
+  Other
+}
+
+enum AlertStatus {
+  Active
+  Resolved
+  Dismissed
+}
+
+model InventoryCategory {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?  @db.Text
+  icon        String   @default("📦")
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  items InventoryItem[]
+
+  @@map("inventory_categories")
+}
+
+model InventoryVendor {
+  id           Int      @id @default(autoincrement())
+  name         String
+  contact_name String?
+  email        String?
+  phone        String?
+  address      String?  @db.Text
+  is_active    Boolean  @default(true)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  itemVendors    InventoryItemVendor[]
+  purchaseOrders PurchaseOrder[]
+
+  @@map("inventory_vendors")
+}
+
+model InventoryItem {
+  id                Int       @id @default(autoincrement())
+  name              String
+  sku               String?   @unique
+  category_id       Int
+  unit              String    // kg, litre, piece, box, etc.
+  quantity          Float     @default(0)
+  low_stock_threshold Float   @default(10)
+  unit_cost         Float     @default(0)
+  expiry_date       DateTime?
+  location          String?   // shelf/storage location
+  is_active         Boolean   @default(true)
+  notes             String?   @db.Text
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  category    InventoryCategory     @relation(fields: [category_id], references: [id])
+  itemVendors InventoryItemVendor[]
+  usageLogs   InventoryUsageLog[]
+  wastageRecords WastageRecord[]
+  poItems     PurchaseOrderItem[]
+  alerts      LowStockAlert[]
+
+  @@index([category_id])
+  @@index([is_active])
+  @@index([expiry_date])
+  @@map("inventory_items")
+}
+
+model InventoryItemVendor {
+  id             Int     @id @default(autoincrement())
+  item_id        Int
+  vendor_id      Int
+  unit_price     Float
+  lead_time_days Int     @default(1)
+  is_preferred   Boolean @default(false)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  item   InventoryItem   @relation(fields: [item_id], references: [id], onDelete: Cascade)
+  vendor InventoryVendor @relation(fields: [vendor_id], references: [id], onDelete: Cascade)
+
+  @@unique([item_id, vendor_id])
+  @@map("inventory_item_vendors")
+}
+
+model PurchaseOrder {
+  id           Int      @id @default(autoincrement())
+  po_number    String   @unique
+  vendor_id    Int
+  status       POStatus @default(Pending)
+  ordered_by   String   // user id (admin)
+  notes        String?  @db.Text
+  total_cost   Float    @default(0)
+  ordered_at   DateTime @default(now())
+  sent_at      DateTime?
+  received_at  DateTime?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  vendor InventoryVendor     @relation(fields: [vendor_id], references: [id])
+  items  PurchaseOrderItem[]
+
+  @@index([status])
+  @@index([vendor_id])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id                Int     @id @default(autoincrement())
+  po_id             Int
+  item_id           Int
+  ordered_quantity  Float
+  received_quantity Float   @default(0)
+  unit_price        Float
+  subtotal          Float
+
+  po   PurchaseOrder @relation(fields: [po_id], references: [id], onDelete: Cascade)
+  item InventoryItem @relation(fields: [item_id], references: [id])
+
+  @@index([po_id])
+  @@map("purchase_order_items")
+}
+
+model InventoryUsageLog {
+  id            Int                  @id @default(autoincrement())
+  item_id       Int
+  quantity_used Float
+  department    InventoryDepartment
+  used_by       String               // user id
+  reference_id  String?              // order_id / task_id for traceability
+  notes         String?              @db.Text
+  used_at       DateTime             @default(now())
+  created_at    DateTime             @default(now())
+
+  item InventoryItem @relation(fields: [item_id], references: [id])
+
+  @@index([item_id])
+  @@index([department])
+  @@index([used_at])
+  @@map("inventory_usage_logs")
+}
+
+model WastageRecord {
+  id           Int           @id @default(autoincrement())
+  item_id      Int
+  quantity     Float
+  reason       WastageReason
+  unit_cost    Float
+  total_cost   Float
+  reported_by  String        // user id
+  notes        String?       @db.Text
+  wasted_at    DateTime      @default(now())
+  created_at   DateTime      @default(now())
+  updated_at   DateTime      @updatedAt
+
+  item InventoryItem @relation(fields: [item_id], references: [id])
+
+  @@index([item_id])
+  @@index([wasted_at])
+  @@map("wastage_records")
+}
+
+model LowStockAlert {
+  id               Int         @id @default(autoincrement())
+  item_id          Int
+  current_quantity Float
+  threshold        Float
+  status           AlertStatus @default(Active)
+  resolved_by      String?
+  resolved_at      DateTime?
+  created_at       DateTime    @default(now())
+  updated_at       DateTime    @updatedAt
+
+  item InventoryItem @relation(fields: [item_id], references: [id])
+
+  @@index([status])
+  @@index([item_id])
+  @@map("low_stock_alerts")
+}
+

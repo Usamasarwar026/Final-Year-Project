@@ -1,9 +1,5 @@
-import React from 'react'
+import ReportsPage from "@/modules/inventory/components/ReportsPage";
 
-export default function ReportsPage() {
-  return (
-    <div>
-      Reports Page
-    </div>
-  )
+export default function ReportsPageRoute() {
+  return <ReportsPage />;
 }
