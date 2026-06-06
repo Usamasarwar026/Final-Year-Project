@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
       prisma.housekeepingTask.findMany({
         where: {
           assigned_to: staffProfile.staff_id,
-          ...(status ? { status } : { status: { notIn: [] } }),
+          ...(status ? { status: status as any } : {}),
         },
         include: {
           room:    { select: { room_number: true, floor: true, room_type: true, cleaning_status: true } },

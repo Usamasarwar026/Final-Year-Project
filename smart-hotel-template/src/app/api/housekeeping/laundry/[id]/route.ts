@@ -29,7 +29,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     const { id } = await params;
     const record = await prisma.laundryRecord.update({
-      where: { laundry_id: parseInt(id) },
+      where: { text_id: parseInt(id) },
       data,
       include: {
         room: { select: { room_number: true } },
@@ -63,7 +63,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     }
     const { id } = await params;
 
-    await prisma.laundryRecord.delete({ where: { laundry_id: parseInt(id) } });
+    await prisma.laundryRecord.delete({ where: { text_id: parseInt(id) } });
     return NextResponse.json({ ok: true });
   } catch (err) {
     return NextResponse.json(

@@ -55,10 +55,10 @@ export async function GET(req: NextRequest, { params }: Params) {
                   price_per_night: Number(invoice.booking.room.price_per_night),
                 }
               : null,
-            foodOrders: invoice.booking.foodOrders.map((fo) => ({
+            foodOrders: (invoice.booking.foodOrders as any).map((fo: any) => ({
               ...fo,
               total_amount: Number(fo.total_amount),
-              order_items: fo.order_items.map((oi) => ({
+              order_items: fo.order_items.map((oi: any) => ({
                 ...oi,
                 unit_price: Number(oi.unit_price),
                 subtotal: Number(oi.subtotal),

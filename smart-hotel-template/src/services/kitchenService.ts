@@ -8,6 +8,8 @@ import type {
   CreateCategoryPayload,
   CreateFoodItemPayload,
   PlaceOrderPayload,
+  KitchenStaff,
+  DeliveryStaff,
 } from "@/types/kitchen";
 export const kitchenService = {
   // Categories

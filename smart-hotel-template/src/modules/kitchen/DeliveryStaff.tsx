@@ -495,7 +495,7 @@ export default function DeliveryStaff() {
           />
           <StatsCard
             label="Completed Today"
-            value={completedTasks.filter(t => {
+            value={completedTasks.filter((t: DeliveryTask) => {
               const today = new Date().toDateString();
               return new Date(t.completed_at || t.updated_at).toDateString() === today;
             }).length}

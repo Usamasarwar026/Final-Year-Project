@@ -793,3 +793,24 @@ enum WastageReason {
   Lost
   Other
 }
+
+// ─────────────────────────────────────────────────────────────
+// REPORTS & ANALYTICS MODULE
+// ─────────────────────────────────────────────────────────────
+
+model ReportSchedule {
+  id          Int       @id @default(autoincrement())
+  report_type String    // Revenue | Occupancy | Staff | Inventory | Booking | Guest
+  frequency   String    // Daily | Weekly | Monthly
+  is_active   Boolean   @default(true)
+  created_by  String    // user_id FK (string, no cascade needed)
+  last_run_at DateTime?
+  next_run_at DateTime?
+  parameters  Json?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  @@index([is_active])
+  @@index([report_type])
+  @@map("report_schedules")
+}

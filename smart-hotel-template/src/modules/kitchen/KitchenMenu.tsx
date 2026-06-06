@@ -206,9 +206,9 @@ function MenuItemFormModal({
         ingredients_text: editingItem.ingredients_text || "",
         availability_status: editingItem.availability_status,
         featured: editingItem.featured,
-        is_vegetarian: editingItem.is_vegetarian,
-        is_vegan: editingItem.is_vegan,
-        is_halal: editingItem.is_halal,
+        is_vegetarian: editingItem.is_vegetarian || false,
+        is_vegan: editingItem.is_vegan || false,
+        is_halal: editingItem.is_halal ?? true,
         spicy_level: editingItem.spicy_level || 1,
         active: editingItem.active !== false,
       });

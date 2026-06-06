@@ -7,15 +7,16 @@ import { prisma } from "@/database/db";
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: paramId } = await params;
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const taskId = parseInt(params.id);
+    const taskId = parseInt(paramId);
     if (isNaN(taskId)) {
       return NextResponse.json({ error: "Invalid task ID" }, { status: 400 });
     }
@@ -89,7 +90,6 @@ export async function PATCH(
             order_id: task.order_id,
             status: nextOrderStatus as any,
             notes: `Delivery status updated to ${status} by ${session.user.name || "Staff"}`,
-            created_by: session.user.id,
           },
         });
       }

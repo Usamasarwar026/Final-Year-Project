@@ -200,7 +200,7 @@ export default function KitchenDashboard() {
                 <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip
-                  formatter={(v: number) => [v, "Orders"]}
+                  formatter={(v: any) => [v, "Orders"]}
                   contentStyle={{ borderRadius: 10, border: "1px solid var(--border)", fontSize: 12 }}
                 />
                 <Area type="monotone" dataKey="count" stroke="#0f172a" strokeWidth={2} fill="url(#ordersGrad)" />
@@ -227,7 +227,7 @@ export default function KitchenDashboard() {
                   tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} width={60} />
                 <Tooltip
-                  formatter={(v: number) => [`PKR ${v.toLocaleString()}`, "Revenue"]}
+                  formatter={(v: any) => [`PKR ${v.toLocaleString()}`, "Revenue"]}
                   contentStyle={{ borderRadius: 10, border: "1px solid var(--border)", fontSize: 11 }}
                 />
                 <Bar dataKey="revenue" radius={[0, 4, 4, 0]}>
