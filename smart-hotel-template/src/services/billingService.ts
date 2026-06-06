@@ -89,7 +89,7 @@ export async function generateInvoice(
       booking_id: bookingId,
     },
     select: {
-      order_id: true,
+      id: true,
       total_amount: true,
     },
   });
@@ -284,7 +284,7 @@ export async function getInvoices(params: {
 export async function getInvoiceById(id: number) {
   // NOTE: foodOrders uses select to avoid Kitchen module schema drift — `is_billed`
   // and other Kitchen-added columns no longer exist in the actual food_orders DB table.
-  return await prisma.billingInvoice.findUnique({
+  const invoice = await prisma.billingInvoice.findUnique({
     where: { invoice_id: id },
     include: {
       guest: { select: { id: true, name: true, email: true, phoneNumber: true } },
@@ -293,10 +293,23 @@ export async function getInvoiceById(id: number) {
           room: true,
           foodOrders: {
             select: {
-              order_id: true,
+              id: true,
               total_amount: true,
               order_type: true,
               placed_at: true,
+              items: {
+                select: {
+                  id: true,
+                  quantity: true,
+                  price: true,
+                  subtotal: true,
+                  foodItem: {
+                    select: {
+                      name: true,
+                    },
+                  },
+                },
+              },
             },
           },
           laundryRecords: true,
@@ -310,4 +323,25 @@ export async function getInvoiceById(id: number) {
       },
     },
   });
+
+  if (!invoice) return null;
+
+  // Map foodOrders id to order_id and foodItem to menu_items so we don't break frontend expectations
+  if (invoice.booking && invoice.booking.foodOrders) {
+    (invoice.booking as any).foodOrders = invoice.booking.foodOrders.map((fo) => {
+      const orderItems = (fo.items || []).map((item) => ({
+        ...item,
+        unit_price: item.price,
+        menu_items: item.foodItem,
+      }));
+
+      return {
+        ...fo,
+        order_id: fo.id,
+        order_items: orderItems,
+      };
+    });
+  }
+
+  return invoice;
 }

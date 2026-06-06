@@ -148,10 +148,15 @@ function RecordPaymentModal({ invoice, onClose, onSuccess }: PaymentModalProps) 
               onChange={(e) => setMethod(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-sm outline-none focus:border-accent/50 transition-colors"
             >
-              <option value="Cash">Cash</option>
-              <option value="Card">Credit/Debit Card</option>
-              <option value="BankTransfer">Bank Transfer</option>
+              <option value="Cash">💵 Cash (Offline Counter)</option>
+              <option value="Card">💳 Credit/Debit Card (Manual Log)</option>
+              <option value="BankTransfer">🏦 Bank Transfer (Manual Log)</option>
+              <option value="JazzCash">📱 JazzCash (Manual Record)</option>
+              <option value="EasyPaisa">📱 EasyPaisa (Manual Record)</option>
             </select>
+            <span className="text-[10px] text-muted-foreground mt-1.5 block leading-normal">
+              Note: This form registers offline receipts manually. No online payment gateways will be charged.
+            </span>
           </div>
 
           <div>
@@ -635,30 +640,30 @@ export default function Billing() {
                         <PaymentStatusBadge status={inv.payment_status} />
                       </td>
                       <td className="px-4 py-4">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-2">
                           <Link
                             href={`/admin/billing/${inv.invoice_id}`}
-                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                            className="p-2 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:text-zinc-400 dark:hover:text-indigo-400 dark:hover:bg-indigo-950/20 transition-all"
                             title="View Invoice Details"
                           >
-                            <Eye size={13} />
+                            <Eye size={16} />
                           </Link>
                           {inv.balance_due > 0 && (
                             <button
                               onClick={() => setActivePaymentInvoice(inv)}
-                              className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 hover:text-emerald-700 transition-colors"
+                              className="p-2 rounded-xl text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 hover:text-emerald-700 transition-all"
                               title="Record Payment"
                             >
-                              <DollarSign size={13} />
+                              <DollarSign size={16} />
                             </button>
                           )}
                           <Link
                             href={`/admin/billing/${inv.invoice_id}/print`}
                             target="_blank"
-                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                            className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-zinc-400 dark:hover:text-zinc-100 dark:hover:bg-zinc-800 transition-all"
                             title="Print Invoice"
                           >
-                            <Printer size={13} />
+                            <Printer size={16} />
                           </Link>
                         </div>
                       </td>
