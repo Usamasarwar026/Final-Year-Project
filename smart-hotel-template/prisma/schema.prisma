@@ -240,7 +240,7 @@ model FoodOrder {
   status               OrderStatus   @default(Placed)
   booking              Booking?      @relation(fields: [booking_id], references: [booking_id])
   user                 User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  order_items          order_items[]
+  order_items          OrderItems[]
 
   @@index([status])
   @@index([order_type])
@@ -249,107 +249,9 @@ model FoodOrder {
   @@map("food_orders")
 }
 
-model inventory_categories {
-  id              Int               @id @default(autoincrement())
-  name            String            @unique
-  description     String?
-  icon            String            @default("📦")
-  is_active       Boolean           @default(true)
-  created_at      DateTime          @default(now())
-  updated_at      DateTime
-  inventory_items inventory_items[]
-}
 
-model inventory_item_vendors {
-  id                Int               @id @default(autoincrement())
-  item_id           Int
-  vendor_id         Int
-  unit_price        Float
-  lead_time_days    Int               @default(1)
-  is_preferred      Boolean           @default(false)
-  created_at        DateTime          @default(now())
-  updated_at        DateTime
-  inventory_items   inventory_items   @relation(fields: [item_id], references: [id], onDelete: Cascade)
-  inventory_vendors inventory_vendors @relation(fields: [vendor_id], references: [id], onDelete: Cascade)
 
-  @@unique([item_id, vendor_id])
-}
-
-model inventory_items {
-  id                     Int                      @id @default(autoincrement())
-  name                   String
-  sku                    String?                  @unique
-  category_id            Int
-  unit                   String
-  quantity               Float                    @default(0)
-  low_stock_threshold    Float                    @default(10)
-  unit_cost              Float                    @default(0)
-  expiry_date            DateTime?
-  location               String?
-  is_active              Boolean                  @default(true)
-  notes                  String?
-  created_at             DateTime                 @default(now())
-  updated_at             DateTime
-  inventory_item_vendors inventory_item_vendors[]
-  inventory_categories   inventory_categories     @relation(fields: [category_id], references: [id])
-  inventory_usage_logs   inventory_usage_logs[]
-  low_stock_alerts       low_stock_alerts[]
-  purchase_order_items   purchase_order_items[]
-  wastage_records        wastage_records[]
-
-  @@index([category_id])
-  @@index([expiry_date])
-  @@index([is_active])
-}
-
-model inventory_usage_logs {
-  id              Int                 @id @default(autoincrement())
-  item_id         Int
-  quantity_used   Float
-  department      InventoryDepartment
-  used_by         String
-  reference_id    String?
-  notes           String?
-  used_at         DateTime            @default(now())
-  created_at      DateTime            @default(now())
-  inventory_items inventory_items     @relation(fields: [item_id], references: [id])
-
-  @@index([department])
-  @@index([item_id])
-  @@index([used_at])
-}
-
-model inventory_vendors {
-  id                     Int                      @id @default(autoincrement())
-  name                   String
-  contact_name           String?
-  email                  String?
-  phone                  String?
-  address                String?
-  is_active              Boolean                  @default(true)
-  created_at             DateTime                 @default(now())
-  updated_at             DateTime
-  inventory_item_vendors inventory_item_vendors[]
-  purchase_orders        purchase_orders[]
-}
-
-model low_stock_alerts {
-  id               Int             @id @default(autoincrement())
-  item_id          Int
-  current_quantity Float
-  threshold        Float
-  status           AlertStatus     @default(Active)
-  resolved_by      String?
-  resolved_at      DateTime?
-  created_at       DateTime        @default(now())
-  updated_at       DateTime
-  inventory_items  inventory_items @relation(fields: [item_id], references: [id])
-
-  @@index([item_id])
-  @@index([status])
-}
-
-model menu_items {
+model MenuItems {
   menu_item_id      Int           @id @default(autoincrement())
   name              String        @db.VarChar(150)
   description       String?
@@ -364,13 +266,14 @@ model menu_items {
   calories          Int?
   created_at        DateTime      @default(now())
   updated_at        DateTime
-  order_items       order_items[]
+  order_items       OrderItems[]
 
   @@index([category])
   @@index([is_available])
+  @@map("menu_items")
 }
 
-model order_items {
+model OrderItems {
   id           Int        @id @default(autoincrement())
   order_id     Int
   menu_item_id Int
@@ -378,63 +281,13 @@ model order_items {
   unit_price   Decimal    @db.Decimal(10, 2)
   subtotal     Decimal    @db.Decimal(10, 2)
   special_note String?
-  menu_items   menu_items @relation(fields: [menu_item_id], references: [menu_item_id])
+  menu_items   MenuItems @relation(fields: [menu_item_id], references: [menu_item_id])
   food_orders  FoodOrder  @relation(fields: [order_id], references: [order_id], onDelete: Cascade)
 
   @@index([order_id])
+  @@map("order_items")
 }
 
-model purchase_order_items {
-  id                Int             @id @default(autoincrement())
-  po_id             Int
-  item_id           Int
-  ordered_quantity  Float
-  received_quantity Float           @default(0)
-  unit_price        Float
-  subtotal          Float
-  inventory_items   inventory_items @relation(fields: [item_id], references: [id])
-  purchase_orders   purchase_orders @relation(fields: [po_id], references: [id], onDelete: Cascade)
-
-  @@index([po_id])
-}
-
-model purchase_orders {
-  id                   Int                    @id @default(autoincrement())
-  po_number            String                 @unique
-  vendor_id            Int
-  status               POStatus               @default(Pending)
-  ordered_by           String
-  notes                String?
-  total_cost           Float                  @default(0)
-  ordered_at           DateTime               @default(now())
-  sent_at              DateTime?
-  received_at          DateTime?
-  created_at           DateTime               @default(now())
-  updated_at           DateTime
-  purchase_order_items purchase_order_items[]
-  inventory_vendors    inventory_vendors      @relation(fields: [vendor_id], references: [id])
-
-  @@index([status])
-  @@index([vendor_id])
-}
-
-model wastage_records {
-  id              Int             @id @default(autoincrement())
-  item_id         Int
-  quantity        Float
-  reason          WastageReason
-  unit_cost       Float
-  total_cost      Float
-  reported_by     String
-  notes           String?
-  wasted_at       DateTime        @default(now())
-  created_at      DateTime        @default(now())
-  updated_at      DateTime
-  inventory_items inventory_items @relation(fields: [item_id], references: [id])
-
-  @@index([item_id])
-  @@index([wasted_at])
-}
 
 enum Role {
   ADMIN
@@ -611,36 +464,6 @@ enum WastageReason {
 // ─────────────────────────────────────────────────────────────
 // INVENTORY & STOCK MANAGEMENT MODULE
 // ─────────────────────────────────────────────────────────────
-
-enum InventoryDepartment {
-  Kitchen
-  Housekeeping
-  Bar
-  Maintenance
-  Reception
-  General
-}
-
-enum POStatus {
-  Pending
-  Sent
-  PartiallyReceived
-  Received
-  Cancelled
-}
-
-enum WastageReason {
-  Expired
-  Damaged
-  Lost
-  Other
-}
-
-enum AlertStatus {
-  Active
-  Resolved
-  Dismissed
-}
 
 model InventoryCategory {
   id          Int      @id @default(autoincrement())
