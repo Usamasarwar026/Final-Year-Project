@@ -2,15 +2,17 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
+// CHANGE 1: Added Trash2 to lucide-react imports
 import { useWastage, useInventoryItems } from "@/hooks/useInventory";
 import { WastageRecord, WastageReason } from "@/types/inventory";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Trash2 } from "lucide-react";
 
 const WASTAGE_REASONS: WastageReason[] = ["Expired", "Damaged", "Lost", "Other"];
 
 export default function WastagePage() {
   const { data: session } = useSession();
-  const { records, loading, addWastage } = useWastage();
+  // CHANGE 2: Extracted deleteWastage from useWastage hook
+  const { records, loading, addWastage, deleteWastage } = useWastage();
   const { items } = useInventoryItems();
 
   const [showModal, setShowModal] = useState(false);
@@ -76,7 +78,9 @@ export default function WastagePage() {
                 <th className="px-4 py-3">Reason</th>
                 <th className="px-4 py-3">Total Cost</th>
                 <th className="px-4 py-3">Reported By</th>
+                {/* CHANGE 3: Added Actions column header */}
                 <th className="px-4 py-3">Date</th>
+                <th className="px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -92,6 +96,12 @@ export default function WastagePage() {
                   <td className="px-4 py-3">Rs. {record.total_cost}</td>
                   <td className="px-4 py-3 text-gray-500">{record.reported_by}</td>
                   <td className="px-4 py-3 text-gray-500">{new Date(record.wasted_at).toLocaleDateString()}</td>
+                  {/* CHANGE 4: Added action cell containing the delete button */}
+                  <td className="px-4 py-3">
+                    <button onClick={() => deleteWastage(record.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -115,7 +125,7 @@ export default function WastagePage() {
                 <select name="item_id" value={form.item_id} onChange={handleChange}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-1">
                   <option value="">Select Item</option>
-                  {items.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                  {items.filter((i) => i.is_active !== false).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
                 </select>
               </div>
               <div>

@@ -11,7 +11,8 @@ export default function ReportsPage() {
   const [from, setFrom] = useState(monthStart);
   const [to, setTo] = useState(today);
 
-  const { consumption, cogs, wastage, loading } = useReports(from, to);
+  // FIX: Appended end-of-day timestamp to the end date ('to') to include the entire day's records
+  const { consumption, cogs, wastage, loading } = useReports(from, to ? `${to}T23:59:59` : to);
 
   return (
     <div className="p-6 space-y-8">

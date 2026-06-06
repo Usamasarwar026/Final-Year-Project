@@ -41,7 +41,6 @@ async function checkAndCreateLowStockAlert(itemId: number) {
 // ─── Categories ───────────────────────────────────────────────────────────────
 export async function getAllCategories() {
   return prisma.inventoryCategory.findMany({
-    where: { is_active: true },
     orderBy: { name: "asc" },
     include: { _count: { select: { items: true } } },
   });
@@ -65,7 +64,6 @@ export async function updateCategory(
 // ─── Vendors ──────────────────────────────────────────────────────────────────
 export async function getAllVendors() {
   return prisma.inventoryVendor.findMany({
-    where: { is_active: true },
     orderBy: { name: "asc" },
     include: { _count: { select: { purchaseOrders: true, itemVendors: true } } },
   });

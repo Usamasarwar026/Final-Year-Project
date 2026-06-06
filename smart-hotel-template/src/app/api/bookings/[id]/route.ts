@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOption";
 import { prisma } from "@/database/db";
+// ─── BILLING & HOUSEKEEPING IMPORTS ──────────────────────────────────────
+import { generateInvoice } from "@/services/billingService";
+import { onBookingCheckout } from "@/lib/housekeepingAutomation";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -61,6 +64,22 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         where: { room_id: booking.room_id },
         data: { status: "Available" },
       });
+
+      // ─── BILLING INTEGRATION ──────────────────────────────────────────────
+      // Automatically generate invoice on checkout
+      try {
+        await generateInvoice(bookingId);
+      } catch (err) {
+        console.error("[Billing Auto-Trigger] Failed to generate invoice:", err);
+      }
+
+      // ─── HOUSEKEEPING INTEGRATION ─────────────────────────────────────────
+      // Automatically trigger housekeeping tasks
+      try {
+        await onBookingCheckout(bookingId);
+      } catch (err) {
+        console.error("[Housekeeping Auto-Trigger] Failed to trigger:", err);
+      }
     }
     if (status === "Cancelled") {
       if (!["Occupied", "CheckedIn"].includes(booking.room.status)) {

@@ -1,9 +1,6 @@
-import React from 'react'
+// src/app/admin/billing/page.tsx
+import Billing from "@/modules/billing/Billing";
 
 export default function BillingPage() {
-  return (
-    <div>
-      BillingPage
-    </div>
-  )
+  return <Billing />;
 }

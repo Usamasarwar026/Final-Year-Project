@@ -147,7 +147,20 @@ export function useCategories() {
     }
   };
 
-  return { categories, loading, error, refresh: fetch, createCategory };
+  const updateCategory = async (
+    id: number,
+    payload: Partial<{ name: string; description: string; icon: string; is_active: boolean }>
+  ): Promise<ApiResult<InventoryCategory>> => {
+    try {
+      const { data } = await api.patch<{ category: InventoryCategory }>(`/inventory/categories/${id}`, payload);
+      setCategories((prev) => prev.map((c) => (c.id === id ? data.category : c)));
+      return { ok: true, data: data.category };
+    } catch (e: any) {
+      return { ok: false, error: e?.response?.data?.error ?? "Failed to update category" };
+    }
+  };
+
+  return { categories, loading, error, refresh: fetch, createCategory, updateCategory };
 }
 
 // ─── Vendors ──────────────────────────────────────────────────────────────────
@@ -353,9 +366,21 @@ export function useWastage(filters?: { from?: string; to?: string }) {
     }
   };
 
+  // ADDED: deleteWastage function
+  const deleteWastage = async (id: number): Promise<ApiResult<void>> => {
+    try {
+      await api.delete(`/inventory/wastage/${id}`);
+      setRecords((prev) => prev.filter((r) => r.id !== id));
+      return { ok: true };
+    } catch (e: any) {
+      return { ok: false, error: e?.response?.data?.error ?? "Failed to delete" };
+    }
+  };
+
   const totalCost = records.reduce((sum, r) => sum + r.total_cost, 0);
 
-  return { records, loading, refresh: fetch, addWastage, totalCost };
+  // UPDATED: Included deleteWastage in return object
+  return { records, loading, refresh: fetch, addWastage, deleteWastage, totalCost };
 }
 
 // ─── Reports ──────────────────────────────────────────────────────────────────
@@ -367,7 +392,7 @@ export function useReports(dateFrom: string, dateTo: string) {
 
   const fetch = useCallback(async () => {
     if (!dateFrom || !dateTo) return;
-    setLoading(true); // 👈 Fixed: used setLoading instead of calling loading as function
+    setLoading(true);
     try {
       const q = `from=${dateFrom}&to=${dateTo}`;
       const [consumptionRes, cogsRes, wastageRes] = await Promise.all([
