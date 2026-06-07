@@ -1,35 +1,43 @@
+// app/api/kitchen/menu/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession }         from "next-auth";
-import { authOptions }              from "@/lib/authOption";
-import { prisma }                   from "@/database/db";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/authOption";
+import { prisma } from "@/database/db";
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    
     const { searchParams } = new URL(req.url);
     const categoryId = searchParams.get("category_id");
     const available = searchParams.get("available");
     const active = searchParams.get("active");
     const featured = searchParams.get("featured");
-    const search    = searchParams.get("q")?.toLowerCase();
+    const search = searchParams.get("q")?.toLowerCase();
+    
     const items = await prisma.foodItem.findMany({
       where: {
-        ...(categoryId           ? { category_id: parseInt(categoryId) } : {}),
-        ...(available === "true"  ? { availability_status: true }         : {}),
-        ...(available === "false" ? { availability_status: false }        : {}),
-        ...(active === "true"     ? { active: true }                      : {}),
-        ...(active === "false"    ? { active: false }                     : {}),
-        ...(featured === "true"   ? { featured: true }                    : {}),
-        ...(search ? { OR: [
-          { name:        { contains: search, mode: "insensitive" } },
-          { description: { contains: search, mode: "insensitive" } },
-        ]} : {}),
+        ...(categoryId ? { category_id: parseInt(categoryId) } : {}),
+        ...(available === "true" ? { availability_status: true } : {}),
+        ...(available === "false" ? { availability_status: false } : {}),
+        ...(active === "true" ? { active: true } : {}),
+        ...(active === "false" ? { active: false } : {}),
+        ...(featured === "true" ? { featured: true } : {}),
+        ...(search ? {
+          OR: [
+            { name: { contains: search, mode: "insensitive" } },
+            { description: { contains: search, mode: "insensitive" } },
+            { ingredients_text: { contains: search, mode: "insensitive" } },
+          ]
+        } : {}),
       },
       include: {
         category: true,
       },
-      orderBy: [{ availability_status: "desc" }, { category_id: "asc" }, { name: "asc" }],
+      orderBy: [{ category_id: "asc" }, { name: "asc" }],
     });
+    
     return NextResponse.json({
       items: items.map((i) => ({
         ...i,
@@ -41,12 +49,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch menu" }, { status: 500 });
   }
 }
+
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    
     const body = await req.json();
     const {
       name,
@@ -60,9 +70,17 @@ export async function POST(req: NextRequest) {
       featured = false,
       active = true,
     } = body;
-    if (!name?.trim())            return NextResponse.json({ error: "Name is required" }, { status: 422 });
-    if (!category_id)             return NextResponse.json({ error: "Category ID is required" }, { status: 422 });
-    if (!price || Number(price) <= 0) return NextResponse.json({ error: "Valid price is required" }, { status: 422 });
+    
+    if (!name?.trim()) {
+      return NextResponse.json({ error: "Name is required" }, { status: 422 });
+    }
+    if (!category_id) {
+      return NextResponse.json({ error: "Category ID is required" }, { status: 422 });
+    }
+    if (!price || Number(price) <= 0) {
+      return NextResponse.json({ error: "Valid price is required" }, { status: 422 });
+    }
+    
     const item = await prisma.foodItem.create({
       data: {
         name: name.trim(),
@@ -80,9 +98,10 @@ export async function POST(req: NextRequest) {
         category: true,
       },
     });
+    
     return NextResponse.json({ item: { ...item, price: Number(item.price) } }, { status: 201 });
   } catch (err) {
     console.error("[POST /api/kitchen/menu]", err);
     return NextResponse.json({ error: "Failed to create menu item" }, { status: 500 });
   }
-} 
+}

@@ -6,12 +6,6 @@ import { prisma } from "@/database/db";
 import bcrypt from "bcryptjs";
 import { sendEmail } from "@/lib/sendEmail";
 
-// const STAFF_INCLUDE = {
-//   staffProfile: {
-//     include: { department: true, shift: true },
-//   },
-//   attendance: false,
-// } as const;
 
 // ─── GET /api/staff ────────────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
@@ -22,9 +16,6 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
-    // const search = searchParams.get("q")?.toLowerCase();
-    // const departmentId = searchParams.get("department_id");
-    // const shiftId = searchParams.get("shift_id");
     const isActive = searchParams.get("active");
 
     const today = new Date();

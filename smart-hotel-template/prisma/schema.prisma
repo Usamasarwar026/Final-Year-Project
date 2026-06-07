@@ -226,154 +226,103 @@ model LaundryRecord {
 
 model FoodOrder {
   id                    Int      @id @default(autoincrement())
-
   booking_id            Int?
   user_id               String?
-
   customer_name         String
-
   order_type            OrderType
-
   room_number           String?
   table_number          String?
-
   total_amount          Decimal  @db.Decimal(10,2)
-
   special_instructions  String?
-
   status                FoodOrderStatus @default(Pending)
-
   placed_at             DateTime @default(now())
-
   accepted_at           DateTime?
   preparing_at          DateTime?
   ready_at              DateTime?
   delivered_at          DateTime?
-
   created_at            DateTime @default(now())
   updated_at            DateTime @updatedAt
-
   booking               Booking? @relation(fields:[booking_id], references:[booking_id])
   user                  User?    @relation(fields:[user_id], references:[id])
-
   items                 FoodOrderItem[]
   timelines             FoodOrderTimeline[]
   tasks                 KitchenTask[]
-
   @@index([status])
   @@index([booking_id])
   @@index([user_id])
-
   @@map("food_orders")
 }
 
+//done
 model FoodCategory {
   id          Int      @id @default(autoincrement())
   name        String   @unique
   description String?
   active      Boolean  @default(true)
-
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
-
   foodItems   FoodItem[]
-
   @@map("food_categories")
 }
 
+//done
 model FoodItem {
   id                        Int       @id @default(autoincrement())
   name                      String
   category_id               Int
-
   description               String?
   image                     String?
-
   price                     Decimal   @db.Decimal(10,2)
-
   preparation_time_minutes  Int       @default(15)
-
   ingredients_text          String?
-
   availability_status       Boolean   @default(true)
-
   featured                  Boolean   @default(false)
-
   active                    Boolean   @default(true)
-
   created_at                DateTime  @default(now())
   updated_at                DateTime  @updatedAt
-
   category                  FoodCategory @relation(fields:[category_id], references:[id])
-
   orderItems                FoodOrderItem[]
-
   @@index([category_id])
   @@index([active])
   @@index([availability_status])
-
   @@map("food_items")
 }
-
+//done
 model FoodOrderItem {
   id              Int @id @default(autoincrement())
-
   order_id        Int
   food_item_id    Int
-
   quantity        Int
-
   price           Decimal @db.Decimal(10,2)
-
   subtotal        Decimal @db.Decimal(10,2)
-
   special_note    String?
-
   order           FoodOrder @relation(fields:[order_id], references:[id], onDelete: Cascade)
-
   foodItem        FoodItem @relation(fields:[food_item_id], references:[id])
-
   @@index([order_id])
-
   @@map("food_order_items")
 }
 
 model FoodOrderTimeline {
   id          Int @id @default(autoincrement())
-
   order_id    Int
-
   status      FoodOrderStatus
-
   notes       String?
-
   created_at  DateTime @default(now())
-
   order       FoodOrder @relation(fields:[order_id], references:[id], onDelete: Cascade)
-
   @@index([order_id])
-
   @@map("food_order_timelines")
 }
 
 model KitchenTask {
   id           Int @id @default(autoincrement())
-
   order_id      Int
-
   assigned_to   Int?
-
   status        KitchenTaskStatus @default(Assigned)
-
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
-
   order         FoodOrder @relation(fields:[order_id], references:[id], onDelete: Cascade)
-
   assignedStaff Staff? @relation(fields:[assigned_to], references:[staff_id])
-
   @@index([assigned_to])
-
   @@map("kitchen_tasks")
 }
 

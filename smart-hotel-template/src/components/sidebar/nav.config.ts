@@ -68,7 +68,7 @@ export const staffNav: NavItem[] = [
   { label: "Rooms",        href: "/staff/rooms",        icon: BedDouble,      permission: "rooms"        },
   { label: "Customer",     href: "/staff/customer",     icon: UserRound,      permission: "customer"     },
   // { label: "Kitchen",      href: "/staff/kitchen",      icon: ChefHat,        permission: "kitchen"      },
-   { label: "Kitchen KDS",  href: "/staff/kitchen",      icon: ChefHat,        permission: "KITCHEN_ACCESS" },
+   { label: "Kitchen KDS",  href: "/admin/kitchen",      icon: ChefHat,        permission: "KITCHEN_ACCESS" },
   { label: "Deliveries",   href: "/staff/delivery",     icon: Bike,           permission: "DELIVERY_ACCESS" },
   { label: "Inventory",    href: "/staff/inventory",    icon: Package,        permission: "inventory"    },
   { label: "House Keeping",href: "/staff/housekeeping", icon: Brush,          permission: "housekeeping" },

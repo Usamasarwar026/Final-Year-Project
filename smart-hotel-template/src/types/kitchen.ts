@@ -134,48 +134,29 @@ export const ORDER_TYPE_CONFIG: Record<
 export interface FoodCategory {
   id: number;
   name: string;
-  description?: string | null;
-  image?: string | null;
-  icon?: string | null;
+  description: string | null;
   active: boolean;
-  foodItems?: FoodItem[];
   created_at: string;
   updated_at: string;
+  foodItems?: FoodItem[];
 }
 export interface FoodItem {
   id: number;
-  category_id: number;
-
   name: string;
-  description?: string | null;
-
-  image?: string | null;
-
+  category_id: number;
+  description: string | null;
+  image: string | null;
   price: number;
-
   preparation_time_minutes: number;
-
-  ingredients_text?: string | null;
-
+  ingredients_text: string | null;
   availability_status: boolean;
-
   featured: boolean;
-
   active: boolean;
-
-  is_vegetarian?: boolean;
-  
-  is_vegan?: boolean;
-
-  is_halal?: boolean;
-
-  spicy_level?: number;
-
-  category?: FoodCategory;
-
   created_at: string;
   updated_at: string;
+  category?: FoodCategory;
 }
+
 export interface FoodOrderItem {
   id: number;
 
@@ -286,35 +267,17 @@ export interface CreateCategoryPayload {
   active?: boolean;
   icon?: string;
 }
-
 export interface CreateFoodItemPayload {
-  category_id: number;
-
   name: string;
-
+  category_id: number;
   description?: string;
-
   image?: string;
-
   price: number;
-
   preparation_time_minutes?: number;
-
   ingredients_text?: string;
-
   availability_status?: boolean;
-
   featured?: boolean;
-
   active?: boolean;
-
-  is_vegetarian?: boolean;
-
-  is_vegan?: boolean;
-
-  is_halal?: boolean;
-
-  spicy_level?: number;
 }
 export interface PlaceOrderPayload {
   order_type: OrderType;
