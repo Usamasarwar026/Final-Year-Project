@@ -32,6 +32,23 @@ export async function POST(req: NextRequest) {
         description: description?.trim() || null,
       },
     });
+
+    try {
+      const { createNotification } = await import("@/services/notificationService");
+      await createNotification({
+        title: "Kitchen Category Created",
+        message: `A new kitchen category "${category.name}" has been created.`,
+        type: "kitchen",
+        priority: "Low",
+        module: "kitchen",
+        reference_id: String(category.id),
+        role_target: "ADMIN",
+        sender_user_id: session.user.id,
+      });
+    } catch (notifErr) {
+      console.error("[POST /api/kitchen/categories] Notification trigger failed:", notifErr);
+    }
+
     return NextResponse.json({ category }, { status: 201 });
   } catch (err: any) {
     console.error("[POST /api/kitchen/categories]", err);

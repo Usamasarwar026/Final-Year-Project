@@ -33,9 +33,35 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       data,
       include: {
         room: { select: { room_number: true } },
-        booking: { include: { user: { select: { name: true } } } },
+        booking: { select: { user_id: true, user: { select: { name: true } } } },
       },
     });
+
+    // Trigger Notification for Guest on laundry status changes
+    if (status !== undefined && record.booking?.user_id) {
+      try {
+        const { createNotification } = await import("@/services/notificationService");
+        let title = "Laundry Status Updated";
+        let message = `Your laundry order status has been updated to "${status}".`;
+        
+        if (status === "Returned") {
+          title = "Laundry Returned";
+          message = `Your laundry items (${record.quantity}x "${record.item_name}") have been returned to Room ${record.room?.room_number || "N/A"}.`;
+        }
+
+        await createNotification({
+          title,
+          message,
+          type: "laundry",
+          priority: status === "Returned" ? "Medium" : "Low",
+          module: "laundry",
+          reference_id: String(id),
+          recipient_user_id: record.booking.user_id,
+        });
+      } catch (notifErr) {
+        console.error("[PATCH /api/housekeeping/laundry/[id]] Notification trigger failed:", notifErr);
+      }
+    }
 
     return NextResponse.json({
       record: {

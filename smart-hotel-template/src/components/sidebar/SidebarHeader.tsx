@@ -5,14 +5,18 @@ import { WebsiteName } from "@/constant/constant";
 export default function SidebarHeader({
   collapsed,
   name,
+  role,
   onToggle,
   onNavigate,
 }: {
   collapsed: boolean;
   name?: string | null;
+  role?: string;
   onToggle?: () => void;
   onNavigate?: () => void;
 }) {
+  const roleLabel =
+    role === "STAFF" ? "Staff Portal" : role === "CUSTOMER" ? "Guest Portal" : "Admin Console";
   const initials = WebsiteName
     ? WebsiteName.split(" ")
         .map((n) => n[0])
@@ -44,7 +48,7 @@ export default function SidebarHeader({
               {WebsiteName ?? name}
             </p>
             <p className="text-gold text-[10px] font-semibold uppercase tracking-[0.15em] mt-0.5">
-              Admin Console
+              {roleLabel}
             </p>
           </div>
 

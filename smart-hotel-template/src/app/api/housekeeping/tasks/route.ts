@@ -6,7 +6,7 @@ import { prisma }                   from "@/database/db";
 
 const TASK_INCLUDE = {
   room:          { select: { room_number: true, floor: true, room_type: true, cleaning_status: true } },
-  assignedStaff: { include: { user: { select: { name: true, email: true } } } },
+  assignedStaff: { include: { user: { select: { id: true, name: true, email: true } } } },
   booking:       { select: { booking_id: true, check_in_date: true, check_out_date: true } },
 } as const;
 
@@ -101,6 +101,42 @@ export async function POST(req: NextRequest) {
         where: { room_id: parseInt(room_id) },
         data:  { cleaning_status: "Dirty" },
       });
+    }
+
+    // Trigger Notification for Assigned Staff Member
+    if (task.assignedStaff?.user?.id) {
+      try {
+        const { createNotification } = await import("@/services/notificationService");
+        await createNotification({
+          title: "New Housekeeping Task Assigned",
+          message: `You have been assigned a new "${task_type}" task for Room ${task.room?.room_number || "N/A"}. Priority: ${priority}.`,
+          type: "housekeeping",
+          priority: priority === "High" ? "High" : priority === "Normal" ? "Medium" : "Low",
+          module: "housekeeping",
+          reference_id: String(task.task_id),
+          recipient_user_id: task.assignedStaff.user.id,
+          sender_user_id: session.user.id,
+        });
+      } catch (notifErr) {
+        console.error("[POST /api/housekeeping/tasks] Notification trigger failed:", notifErr);
+      }
+    }
+
+    // Always notify ADMIN role for dashboard tracking
+    try {
+      const { createNotification } = await import("@/services/notificationService");
+      await createNotification({
+        title: "Housekeeping Task Created",
+        message: `A new "${task_type}" task was created for Room ${task.room?.room_number || "N/A"}.`,
+        type: "housekeeping",
+        priority: priority === "High" ? "High" : priority === "Normal" ? "Medium" : "Low",
+        module: "housekeeping",
+        reference_id: String(task.task_id),
+        role_target: "ADMIN",
+        sender_user_id: session.user.id,
+      });
+    } catch (notifErr) {
+      console.error("[POST /api/housekeeping/tasks] Admin Notification trigger failed:", notifErr);
     }
 
     return NextResponse.json(

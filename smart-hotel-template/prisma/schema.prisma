@@ -763,3 +763,28 @@ model ReportSchedule {
   @@index([report_type])
   @@map("report_schedules")
 }
+
+// ─────────────────────────────────────────────────────────────
+// NOTIFICATION & ALERT MANAGEMENT MODULE
+// ─────────────────────────────────────────────────────────────
+
+model Notification {
+  notification_id   Int      @id @default(autoincrement())
+  title             String
+  message           String   @db.Text
+  type              String   // booking, room, customer, staff, housekeeping, laundry, kitchen, inventory, billing, reports, maintenance, system
+  priority          String   @default("Medium") // High, Medium, Low
+  module            String   // Source module name for navigation
+  reference_id      String?  // ID of the related record for deep-link navigation
+  recipient_user_id String   // Target user
+  sender_user_id    String?  // User who triggered the notification (null for system)
+  role_target       String?  // ADMIN, STAFF, CUSTOMER — for role-based filtering
+  is_read           Boolean  @default(false)
+  created_at        DateTime @default(now())
+
+  @@index([recipient_user_id])
+  @@index([is_read])
+  @@index([type])
+  @@index([created_at])
+  @@map("notifications")
+}
