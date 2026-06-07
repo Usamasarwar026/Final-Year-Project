@@ -22,6 +22,7 @@ function toBooking(row: any): Booking {
     total_amount:      Number(row.total_amount),
     special_requests:  row.special_requests ?? null,
     confirmation_sent: row.confirmation_sent,
+    source:            row.source ?? "CUSTOMER",
     created_at:        row.created_at?.toISOString?.() ?? row.created_at,
     updated_at:        row.updated_at?.toISOString?.() ?? row.updated_at,
     user: row.user ? {
@@ -39,6 +40,8 @@ function toBooking(row: any): Booking {
       price_per_night: Number(row.room.price_per_night),
       photos:          Array.isArray(row.room.photos) ? row.room.photos : [],
       capacity:        row.room.capacity,
+      status:          row.room.status,
+      is_active:       row.room.is_active,
     } : undefined,
   };
 }
@@ -48,7 +51,7 @@ const INCLUDE = {
   room: { select: {
     room_id: true, room_number: true, room_type: true,
     floor: true, bed_type: true, price_per_night: true,
-    photos: true, capacity: true,
+    photos: true, capacity: true, status: true, is_active: true,
   }},
 } as const;
 

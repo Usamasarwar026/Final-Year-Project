@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
 
     const records = await prisma.laundryRecord.findMany({
       where: {
-        ...(status ? { status }                          : {}),
+        ...(status ? { status: status as any } : {}),
         ...(roomId ? { room_id: parseInt(roomId) }       : {}),
       },
       include: LAUNDRY_INCLUDE,

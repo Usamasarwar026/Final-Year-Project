@@ -1,5 +1,5 @@
-import ReportsPage from "@/modules/inventory/components/ReportsPage";
+import AdminReports from "@/modules/reports/AdminReports";
 
 export default function ReportsPageRoute() {
-  return <ReportsPage />;
+  return <AdminReports />;
 }

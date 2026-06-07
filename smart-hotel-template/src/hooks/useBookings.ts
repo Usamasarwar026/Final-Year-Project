@@ -70,11 +70,11 @@ export function useBookings() {
     }
   };
 
-  const cancelBooking = async (id: number): Promise<ApiResult> => {
+  const cancelBooking = async (id: number): Promise<ApiResult<Booking>> => {
     return updateStatus(id, "Cancelled");
   };
 
-  const deleteBooking = async (id: number): Promise<ApiResult> => {
+  const deleteBooking = async (id: number): Promise<ApiResult<void>> => {
     try {
       await api.delete(`/bookings/${id}`);
       setBookings((prev) => prev.filter((b) => b.booking_id !== id));

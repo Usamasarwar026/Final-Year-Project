@@ -303,3 +303,13 @@ export interface CreateCustomerPayload {
   country?:     string;
   password?:    string; // if not provided, auto-generate
 }
+
+export interface UpdateBookingPayload {
+  status?:           BookingStatus;
+  actual_check_in?:  string | null;
+  actual_check_out?: string | null;
+  special_requests?: string | null;
+  room_id?:          number;
+  check_in_date?:    string;
+  check_out_date?:   string;
+}

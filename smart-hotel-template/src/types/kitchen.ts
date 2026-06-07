@@ -136,7 +136,9 @@ export interface FoodCategory {
   name: string;
   description?: string | null;
   image?: string | null;
+  icon?: string | null;
   active: boolean;
+  foodItems?: FoodItem[];
   created_at: string;
   updated_at: string;
 }
@@ -160,6 +162,14 @@ export interface FoodItem {
   featured: boolean;
 
   active: boolean;
+
+  is_vegetarian?: boolean;
+  
+  is_vegan?: boolean;
+
+  is_halal?: boolean;
+
+  spicy_level?: number;
 
   category?: FoodCategory;
 
@@ -273,6 +283,8 @@ export interface KitchenStats {
 export interface CreateCategoryPayload {
   name: string;
   description?: string;
+  active?: boolean;
+  icon?: string;
 }
 
 export interface CreateFoodItemPayload {
@@ -295,6 +307,14 @@ export interface CreateFoodItemPayload {
   featured?: boolean;
 
   active?: boolean;
+
+  is_vegetarian?: boolean;
+
+  is_vegan?: boolean;
+
+  is_halal?: boolean;
+
+  spicy_level?: number;
 }
 export interface PlaceOrderPayload {
   order_type: OrderType;
@@ -312,4 +332,52 @@ export interface PlaceOrderPayload {
     quantity: number;
     special_note?: string;
   }[];
+}
+
+export interface KitchenStaff {
+  staff_id: number;
+  user_id: string;
+  designation: string;
+  is_active: boolean;
+  is_on_duty: boolean;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    phoneNumber: string | null;
+    profileImage: string | null;
+    permissions: string[];
+  };
+  department?: {
+    id: number;
+    name: string;
+  };
+  shift?: {
+    id: number;
+    name: string;
+    start_time: string;
+    end_time: string;
+  };
+  kitchenTasks?: {
+    id: number;
+    status: string;
+    order_id: number;
+  }[];
+}
+
+export interface DeliveryStaff {
+  staff_id: number;
+  user_id: string;
+  designation: string;
+  is_on_duty: boolean;
+  is_active: boolean;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    phoneNumber: string | null;
+    profileImage: string | null;
+  };
+  completedDeliveries?: number;
+  currentDelivery?: FoodOrder | null;
 }

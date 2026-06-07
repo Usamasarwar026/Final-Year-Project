@@ -23,8 +23,8 @@ export async function GET(req: NextRequest) {
 
     const requests = await prisma.serviceRequest.findMany({
       where: {
-        ...(status      ? { status:       status      } : {}),
-        ...(requestType ? { request_type: requestType } : {}),
+        ...(status      ? { status:       status      as any } : {}),
+        ...(requestType ? { request_type: requestType as any } : {}),
       },
       include: SR_INCLUDE,
       orderBy: { created_at: "desc" },

@@ -23,6 +23,7 @@ import {
   ArrowUp,
   ArrowDown,
   CheckCircle,
+  PieChart as PieChartIcon,
 } from "lucide-react";
 import clsx from "clsx";
 import {
@@ -123,7 +124,7 @@ function TopItemCard({
   item,
   index,
 }: {
-  item: { name: string; count: number; revenue: number };
+  item: { name: string; count: number; revenue?: number };
   index: number;
 }) {
   const medals = ["🥇", "🥈", "🥉"];
@@ -140,12 +141,14 @@ function TopItemCard({
           Sold {item.count} times
         </p>
       </div>
-      <div className="text-right">
-        <p className="text-sm font-bold text-primary">
-          PKR {item.revenue?.toLocaleString() ?? "0"}
-        </p>
-        <p className="text-[9px] text-muted-foreground">Revenue</p>
-      </div>
+      {item.revenue !== undefined && (
+        <div className="text-right">
+          <p className="text-sm font-bold text-primary">
+            PKR {item.revenue.toLocaleString()}
+          </p>
+          <p className="text-[9px] text-muted-foreground">Revenue</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -182,7 +185,7 @@ function HourlyPerformanceChart({
           tickLine={false}
         />
         <Tooltip
-          formatter={(v: number) => [v, "Orders"]}
+          formatter={(v: any) => [v, "Orders"]}
           contentStyle={{
             borderRadius: 10,
             border: "1px solid var(--border)",
@@ -323,7 +326,7 @@ export default function KitchenReports() {
             </button>
           </div>
         </div>
-
+ 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
@@ -406,7 +409,7 @@ export default function KitchenReports() {
                     tickLine={false}
                   />
                   <Tooltip
-                    formatter={(v: number) => [v, "Orders"]}
+                    formatter={(v: any) => [v, "Orders"]}
                     contentStyle={{
                       borderRadius: 10,
                       border: "1px solid var(--border)",
@@ -441,7 +444,7 @@ export default function KitchenReports() {
                   Distribution across categories
                 </p>
               </div>
-              <PieChart size={16} className="text-muted-foreground" />
+              <PieChartIcon size={16} className="text-muted-foreground" />
             </div>
             {statsLoading ? (
               <div className="h-64 bg-muted/30 rounded-xl animate-pulse" />
@@ -457,7 +460,7 @@ export default function KitchenReports() {
                     paddingAngle={2}
                     dataKey="revenue"
                     label={({ name, percent }) =>
-                      `${name} ${(percent * 100).toFixed(0)}%`
+                       `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
                     }
                     labelLine={{ stroke: "#94a3b8", strokeWidth: 1 }}
                   >
@@ -469,7 +472,7 @@ export default function KitchenReports() {
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(v: number) => [
+                    formatter={(v: any) => [
                       `PKR ${v.toLocaleString()}`,
                       "Revenue",
                     ]}
