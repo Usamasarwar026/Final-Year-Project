@@ -15,6 +15,7 @@ import {
    Bike,
   Utensils,
   History,
+  Bell,
 } from "lucide-react";
 
 export type NavItem = {

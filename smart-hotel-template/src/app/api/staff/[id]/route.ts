@@ -153,6 +153,22 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       include: { staffProfile: STAFF_PROFILE_INCLUDE },
     });
 
+    // Trigger Notification for Staff Member on updates
+    try {
+      const { createNotification } = await import("@/services/notificationService");
+      await createNotification({
+        title: "Staff Profile Updated",
+        message: `Your profile details (designation, shift, or department) have been updated by Admin.`,
+        type: "staff",
+        priority: "Low",
+        module: "staff",
+        reference_id: id,
+        recipient_user_id: id,
+      });
+    } catch (notifErr) {
+      console.error("[PATCH /api/staff/[id]] Notification trigger failed:", notifErr);
+    }
+
     return NextResponse.json({
       staff: {
         ...updated,
@@ -195,6 +211,22 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
         data: { is_active: false, is_on_duty: false },
       }),
     ]);
+
+    // Trigger Notification for Staff Member
+    try {
+      const { createNotification } = await import("@/services/notificationService");
+      await createNotification({
+        title: "Account Deactivated",
+        message: "Your staff account has been deactivated by Admin.",
+        type: "staff",
+        priority: "High",
+        module: "staff",
+        reference_id: id,
+        recipient_user_id: id,
+      });
+    } catch (notifErr) {
+      console.error("[DELETE /api/staff/[id]] Notification trigger failed:", notifErr);
+    }
 
     return NextResponse.json({ ok: true, message: "Staff deactivated" });
   } catch (err) {

@@ -188,6 +188,35 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     data: updateData,
   });
 
+  // Trigger Notifications for Customer Profile Update
+  try {
+    const { createNotification } = await import("@/services/notificationService");
+    
+    await createNotification({
+      title: "Customer Profile Updated",
+      message: `Profile details for guest ${updated.name} have been updated by ${session.user.name || "Admin"}.`,
+      type: "customer",
+      priority: "Low",
+      module: "customer",
+      reference_id: id,
+      role_target: "ADMIN",
+      sender_user_id: session.user.id,
+    });
+
+    await createNotification({
+      title: "Profile Updated",
+      message: `Your guest profile details have been updated.`,
+      type: "customer",
+      priority: "Low",
+      module: "customer",
+      reference_id: id,
+      recipient_user_id: id,
+      sender_user_id: session.user.id,
+    });
+  } catch (notifErr) {
+    console.error("[PATCH /api/customers/[id]] Notification trigger failed:", notifErr);
+  }
+
   return NextResponse.json({ customer: serializeCustomer(updated) });
 }
 

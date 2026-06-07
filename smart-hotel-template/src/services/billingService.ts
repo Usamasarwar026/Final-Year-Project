@@ -158,6 +158,33 @@ export async function generateInvoice(
     },
   });
 
+  // Trigger Notification for Guest & Billing Admins
+  try {
+    const { createNotification } = await import("./notificationService");
+    // Notify guest
+    await createNotification({
+      title: "Invoice Generated",
+      message: `Invoice ${invoiceNumber} for your booking (ID: ${bookingId}) has been generated. Total Amount: $${totalAmount.toFixed(2)}.`,
+      type: "billing",
+      priority: "Medium",
+      module: "billing",
+      reference_id: String(invoice.invoice_id),
+      recipient_user_id: guest.id,
+    });
+    // Notify Admin
+    await createNotification({
+      title: "New Invoice Created",
+      message: `Invoice ${invoiceNumber} has been generated for Guest ${guest.name}. Total: $${totalAmount.toFixed(2)}.`,
+      type: "billing",
+      priority: "Low",
+      module: "billing",
+      reference_id: String(invoice.invoice_id),
+      role_target: "ADMIN",
+    });
+  } catch (notifErr) {
+    console.error("[generateInvoice] Notification trigger failed:", notifErr);
+  }
+
   return invoice;
 }
 
@@ -197,7 +224,7 @@ export async function recordPayment(
   }
 
   // Run in a transaction
-  return await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     // 1. Create payment record
     const payment = await tx.invoicePayment.create({
       data: {
@@ -220,6 +247,39 @@ export async function recordPayment(
 
     return { payment, invoice: updatedInvoice };
   });
+
+  // Trigger Notification for Payment Receipt
+  try {
+    const { createNotification } = await import("./notificationService");
+    const formattedAmount = amount.toFixed(2);
+    const formattedBalance = newBalance.toFixed(2);
+
+    // Notify guest
+    await createNotification({
+      title: "Payment Received",
+      message: `A payment of $${formattedAmount} has been received for Invoice ${invoice.invoice_number}. Remaining Balance: $${formattedBalance}. Status: ${newStatus}.`,
+      type: "billing",
+      priority: "Medium",
+      module: "billing",
+      reference_id: String(invoiceId),
+      recipient_user_id: invoice.guest_id,
+    });
+
+    // Notify Admin
+    await createNotification({
+      title: "Payment Recorded",
+      message: `Payment of $${formattedAmount} received for Invoice ${invoice.invoice_number}. New Status: ${newStatus}.`,
+      type: "billing",
+      priority: "Medium",
+      module: "billing",
+      reference_id: String(invoiceId),
+      role_target: "ADMIN",
+    });
+  } catch (notifErr) {
+    console.error("[recordPayment] Notification trigger failed:", notifErr);
+  }
+
+  return result;
 }
 
 // Service to fetch invoice lists with parameters

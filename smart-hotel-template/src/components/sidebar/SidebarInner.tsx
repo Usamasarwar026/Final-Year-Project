@@ -10,6 +10,7 @@ export default function SidebarInner({
   navItems,
   email,
   name,
+  role,
   onNavigate,
   onToggle,
 }: {
@@ -17,6 +18,7 @@ export default function SidebarInner({
   navItems: NavItem[];
   email?: string | null;
   name?: string | null;
+  role?: string;
   onNavigate?: () => void;
   onToggle?: () => void;
 }) {
@@ -25,6 +27,7 @@ export default function SidebarInner({
       <SidebarHeader
         collapsed={collapsed}
         name={name}
+        role={role}
         onToggle={onToggle}
         onNavigate={onNavigate}
       />

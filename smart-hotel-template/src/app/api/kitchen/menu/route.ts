@@ -98,7 +98,23 @@ export async function POST(req: NextRequest) {
         category: true,
       },
     });
-    
+
+    try {
+      const { createNotification } = await import("@/services/notificationService");
+      await createNotification({
+        title: "Menu Item Created",
+        message: `A new menu item "${item.name}" has been added to the kitchen.`,
+        type: "kitchen",
+        priority: "Low",
+        module: "kitchen",
+        reference_id: String(item.id),
+        role_target: "ADMIN",
+        sender_user_id: session.user.id,
+      });
+    } catch (notifErr) {
+      console.error("[POST /api/kitchen/menu] Notification trigger failed:", notifErr);
+    }
+
     return NextResponse.json({ item: { ...item, price: Number(item.price) } }, { status: 201 });
   } catch (err) {
     console.error("[POST /api/kitchen/menu]", err);

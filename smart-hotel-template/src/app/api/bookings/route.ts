@@ -115,6 +115,71 @@ export async function POST(req: NextRequest) {
       return b;
     });
 
+    // Create background notifications
+    try {
+      const { createNotification } = await import("@/services/notificationService");
+      
+      if (session.user.role === "ADMIN") {
+        // Notify the customer that the admin created/confirmed a booking for them
+        await createNotification({
+          title: "Booking Confirmed",
+          message: `Your booking for Room ${booking.room?.room_number} from ${ciDate.toLocaleDateString()} to ${coDate.toLocaleDateString()} has been confirmed.`,
+          type: "booking",
+          priority: "Medium",
+          module: "booking",
+          reference_id: String(booking.booking_id),
+          recipient_user_id: bookingUserId,
+          sender_user_id: session.user.id,
+        });
+        
+        // Notify the admin role as well (Dashboard visibility)
+        await createNotification({
+          title: "Booking Created",
+          message: `Booking for Room ${booking.room?.room_number} has been created and confirmed by Admin.`,
+          type: "booking",
+          priority: "Low",
+          module: "booking",
+          reference_id: String(booking.booking_id),
+          role_target: "ADMIN",
+          sender_user_id: session.user.id,
+        });
+      } else {
+        // Customer created booking -> Notify Customer, ADMIN and STAFF
+        await createNotification({
+          title: "Booking Request Submitted",
+          message: `Your booking request for Room ${booking.room?.room_number} from ${ciDate.toLocaleDateString()} to ${coDate.toLocaleDateString()} has been submitted successfully.`,
+          type: "booking",
+          priority: "Medium",
+          module: "booking",
+          reference_id: String(booking.booking_id),
+          recipient_user_id: bookingUserId,
+          sender_user_id: session.user.id,
+        });
+        await createNotification({
+          title: "New Booking Request",
+          message: `${booking.user?.name || "A guest"} has requested Room ${booking.room?.room_number} from ${ciDate.toLocaleDateString()} to ${coDate.toLocaleDateString()}.`,
+          type: "booking",
+          priority: "High",
+          module: "booking",
+          reference_id: String(booking.booking_id),
+          role_target: "ADMIN",
+          sender_user_id: session.user.id,
+        });
+        await createNotification({
+          title: "New Booking Request",
+          message: `${booking.user?.name || "A guest"} has requested Room ${booking.room?.room_number} from ${ciDate.toLocaleDateString()} to ${coDate.toLocaleDateString()}.`,
+          type: "booking",
+          priority: "High",
+          module: "booking",
+          reference_id: String(booking.booking_id),
+          role_target: "STAFF",
+          sender_user_id: session.user.id,
+        });
+      }
+    } catch (notifErr) {
+      console.error("[POST /api/bookings] Notification trigger failed:", notifErr);
+    }
+
     return NextResponse.json({ booking: serializeBooking(booking) }, { status: 201 });
   } catch (err) {
     console.error("[POST /api/bookings]", err);

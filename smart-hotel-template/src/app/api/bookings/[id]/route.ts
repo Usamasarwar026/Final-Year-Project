@@ -107,6 +107,59 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       },
     });
 
+    // Trigger Notifications for booking status change
+    if (status !== undefined && status !== booking.status) {
+      try {
+        const { createNotification } = await import("@/services/notificationService");
+        
+        let title = "Booking Status Updated";
+        let message = `Booking ID ${bookingId} has been updated to "${status}".`;
+        
+        if (status === "Confirmed") {
+          title = "Booking Confirmed";
+          message = `Your booking for Room ${updated.room?.room_number || "N/A"} has been confirmed.`;
+        } else if (status === "CheckedIn") {
+          title = "Checked In Successfully";
+          message = `You have successfully checked in to Room ${updated.room?.room_number || "N/A"}.`;
+        } else if (status === "CheckedOut") {
+          title = "Checked Out Successfully";
+          message = `You have successfully checked out of Room ${updated.room?.room_number || "N/A"}.`;
+        } else if (status === "Cancelled") {
+          title = "Booking Cancelled";
+          message = `Booking ID ${bookingId} has been cancelled.`;
+        }
+
+        // Notify guest/customer
+        if (updated.user_id) {
+          await createNotification({
+            title,
+            message,
+            type: "booking",
+            priority: status === "Cancelled" ? "High" : "Medium",
+            module: "booking",
+            reference_id: String(bookingId),
+            recipient_user_id: updated.user_id,
+            sender_user_id: session.user.id,
+          });
+        }
+
+        // Notify admin
+        await createNotification({
+          title: `Booking ${status}`,
+          message: `Booking ID ${bookingId} for guest ${updated.user?.name || "Guest"} has been updated to "${status}" by ${session.user.name || "User"}.`,
+          type: "booking",
+          priority: status === "Cancelled" ? "High" : "Medium",
+          module: "booking",
+          reference_id: String(bookingId),
+          role_target: "ADMIN",
+          sender_user_id: session.user.id,
+        });
+
+      } catch (notifErr) {
+        console.error("[PATCH /api/bookings/[id]] Notification trigger failed:", notifErr);
+      }
+    }
+
     return NextResponse.json({
       booking: {
         ...updated,
@@ -161,6 +214,23 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
         where: { room_id: booking.room_id },
         data: { status: "Available" },
       });
+    }
+
+    // Trigger notification for ADMIN
+    try {
+      const { createNotification } = await import("@/services/notificationService");
+      await createNotification({
+        title: "Booking Deleted",
+        message: `Booking ID ${bookingId} has been deleted by Admin (${session.user.name || "User"}).`,
+        type: "booking",
+        priority: "High",
+        module: "booking",
+        reference_id: String(bookingId),
+        role_target: "ADMIN",
+        sender_user_id: session.user.id,
+      });
+    } catch (notifErr) {
+      console.error("[DELETE /api/bookings/[id]] Notification trigger failed:", notifErr);
     }
 
     return NextResponse.json({ ok: true });

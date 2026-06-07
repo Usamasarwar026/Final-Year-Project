@@ -230,6 +230,48 @@ export async function POST(req: NextRequest) {
       });
       return newOrder;
     });
+
+    // Trigger Notifications for Kitchen Order
+    try {
+      const { createNotification } = await import("@/services/notificationService");
+      
+      // Notify Admin and Staff
+      await createNotification({
+        title: `New Food Order: #${order.id}`,
+        message: `New ${order.order_type} order placed for ${order.customer_name}. Total: $${Number(order.total_amount).toFixed(2)}.`,
+        type: "kitchen",
+        priority: "Medium",
+        module: "kitchen",
+        reference_id: String(order.id),
+        role_target: "ADMIN",
+      });
+
+      await createNotification({
+        title: `New Food Order: #${order.id}`,
+        message: `New ${order.order_type} order placed for ${order.customer_name}. Total: $${Number(order.total_amount).toFixed(2)}.`,
+        type: "kitchen",
+        priority: "Medium",
+        module: "kitchen",
+        reference_id: String(order.id),
+        role_target: "STAFF",
+      });
+
+      // Notify customer (if user_id present)
+      if (order.user_id) {
+        await createNotification({
+          title: "Food Order Placed",
+          message: `Your food order #${order.id} has been placed successfully. Current Status: Pending.`,
+          type: "kitchen",
+          priority: "Low",
+          module: "kitchen",
+          reference_id: String(order.id),
+          recipient_user_id: order.user_id,
+        });
+      }
+    } catch (notifErr) {
+      console.error("[POST /api/kitchen/orders] Notification trigger failed:", notifErr);
+    }
+
     return NextResponse.json({
       order: {
         ...order,

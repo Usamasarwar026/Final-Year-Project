@@ -253,6 +253,33 @@ export async function POST(req: NextRequest) {
       include: { staffProfile: { include: { department: true, shift: true } } },
     });
 
+    // Trigger Notification for Staff & Admin
+    try {
+      const { createNotification } = await import("@/services/notificationService");
+      // Notify Admin
+      await createNotification({
+        title: "New Staff Registered",
+        message: `Staff member ${user.name} (${designation}) has been registered with ID ${employeeId}.`,
+        type: "staff",
+        priority: "Low",
+        module: "staff",
+        reference_id: user.id,
+        role_target: "ADMIN",
+      });
+      // Notify the new staff user
+      await createNotification({
+        title: "Welcome to Smart Hotel!",
+        message: `Your staff account is ready. Your Employee ID is ${employeeId}. Welcome to the team!`,
+        type: "staff",
+        priority: "Medium",
+        module: "staff",
+        reference_id: user.id,
+        recipient_user_id: user.id,
+      });
+    } catch (notifErr) {
+      console.error("[POST /api/staff] Notification trigger failed:", notifErr);
+    }
+
     return NextResponse.json(
       {
         staff: { ...full, password: undefined },

@@ -69,6 +69,24 @@ export async function POST(req: NextRequest) {
       include: LAUNDRY_INCLUDE,
     });
 
+    // Trigger Notification for Guest
+    if (record.booking?.user_id) {
+      try {
+        const { createNotification } = await import("@/services/notificationService");
+        await createNotification({
+          title: "Laundry Request Received",
+          message: `Your laundry request for ${quantity}x "${item_name}" has been received and is being processed.`,
+          type: "laundry",
+          priority: "Low",
+          module: "laundry",
+          reference_id: String(record.text_id),
+          recipient_user_id: record.booking.user_id,
+        });
+      } catch (notifErr) {
+        console.error("[POST /api/housekeeping/laundry] Notification trigger failed:", notifErr);
+      }
+    }
+
     return NextResponse.json(
       { record: { ...record, charge_amount: record.charge_amount ? Number(record.charge_amount) : null } },
       { status: 201 }
