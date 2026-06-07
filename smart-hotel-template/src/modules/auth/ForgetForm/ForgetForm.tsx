@@ -8,13 +8,12 @@ import * as Yup from "yup";
 import { toast } from "sonner";
 import { ArrowRight } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
-import heroImg from "../../../../public/assets/hero-hotel.jpg";
 import { forgetPassword } from "@/services/authService";
 import { Button } from "@/components/button/Button";
 import { Input } from "@/components/input/Input";
 import { Label } from "@/components/label/Label";
 import { Card } from "@/components/card/Card";
-import { WebsiteName } from "@/constant/constant";
+import { IMAGES, WebsiteName } from "@/constant/constant";
 
 const forgetSchema = Yup.object({
   email: Yup.string().email("Invalid email").required("Email is required"),
@@ -65,9 +64,10 @@ export const ForgetForm = () => {
         className="hidden md:block relative"
       >
         <Image
-          src={heroImg}
+          src={IMAGES.heroImage}
           alt="Hotel"
           fill
+          sizes="100vw"
           priority
           className="object-cover"
         />

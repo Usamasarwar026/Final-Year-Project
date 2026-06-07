@@ -1,5 +1,16 @@
 
+
+export const IMAGES = {
+  heroImage: "/assets/hero-hotel.jpg",
+  deluxeImg: "/assets/room-deluxe.jpg",
+  suiteImg: "/assets/room-suite.jpg",
+  standardImg: "/assets/room-standard.jpg"
+};
+
+
 // lib/rooms/constants.ts
+
+
 
 export const ROOM_TYPES = [
   "Single",

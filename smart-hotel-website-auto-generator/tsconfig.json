@@ -29,6 +29,6 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-, "src/app/api/auth/[...nextauth].js"  ],
+, "src/app/api/auth/[...nextauth].js", "src/lib/generator/filepath.tst"  ],
   "exclude": ["node_modules"]
 }

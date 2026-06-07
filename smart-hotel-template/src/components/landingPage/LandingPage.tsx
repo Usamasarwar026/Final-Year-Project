@@ -7,25 +7,20 @@ import { signIn } from "next-auth/react";
 import Image from "next/image";
 import { Footer } from "../footer/Footer";
 import { Button } from "../button/Button";
-import { WebsiteName } from "@/constant/constant";
-
-const heroImg = "/assets/hero-hotel.jpg";
-const deluxeImg = "/assets/room-deluxe.jpg";
-const suiteImg = "/assets/room-suite.jpg";
-const standardImg = "/assets/room-standard.jpg";
+import { WebsiteName, IMAGES } from "@/constant/constant";
 
 const rooms = [
   {
     name: "Deluxe",
-    img: deluxeImg,
+    img: IMAGES.deluxeImg,
   },
   {
     name: "Suite",
-    img: suiteImg,
+    img: IMAGES.suiteImg,
   },
   {
     name: "Standard",
-    img: standardImg,
+    img: IMAGES.standardImg,
   },
 ];
 
@@ -54,7 +49,7 @@ export default function LandingPage() {
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4 text-white">
           <Link href="/" className="font-serif text-xl text-gold">
-          {WebsiteName}
+            {WebsiteName}
           </Link>
 
           <div className="flex gap-6 text-sm">
@@ -89,7 +84,7 @@ export default function LandingPage() {
           className="absolute inset-0"
         >
           <Image
-            src={heroImg}
+            src={IMAGES.heroImage}
             alt="Luxury Hotel"
             fill
             priority
@@ -160,18 +155,38 @@ export default function LandingPage() {
           ))}
         </div>
       </section>
-       <section className="bg-hero text-primary-foreground py-24">
+      <section className="bg-hero text-primary-foreground py-24">
         <div className="mx-auto max-w-4xl px-6 text-center">
-          <span className="text-xs tracking-[0.3em] uppercase text-gold">Reserve</span>
-          <h2 className="mt-3 font-serif text-4xl md:text-6xl">Your stay begins here.</h2>
-          <p className="mt-4 text-primary-foreground/80">Create an account to book, order in-room dining, and manage your stay end-to-end.</p>
+          <span className="text-xs tracking-[0.3em] uppercase text-gold">
+            Reserve
+          </span>
+          <h2 className="mt-3 font-serif text-4xl md:text-6xl">
+            Your stay begins here.
+          </h2>
+          <p className="mt-4 text-primary-foreground/80">
+            Create an account to book, order in-room dining, and manage your
+            stay end-to-end.
+          </p>
           <div className="mt-8 flex flex-wrap gap-3 justify-center">
-            <Button asChild size="lg" className="bg-gold text-primary hover:bg-gold/90"><Link href="/signup">Create account</Link></Button>
-            <Button asChild size="lg" variant="outline" className="border-white/40 text-primary-foreground bg-transparent hover:bg-white/10 hover:text-gold"><Link href="/rooms">Browse rooms</Link></Button>
+            <Button
+              asChild
+              size="lg"
+              className="bg-gold text-primary hover:bg-gold/90"
+            >
+              <Link href="/signup">Create account</Link>
+            </Button>
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="border-white/40 text-primary-foreground bg-transparent hover:bg-white/10 hover:text-gold"
+            >
+              <Link href="/rooms">Browse rooms</Link>
+            </Button>
           </div>
         </div>
       </section>
-      <Footer/>
+      <Footer />
     </div>
   );
 }

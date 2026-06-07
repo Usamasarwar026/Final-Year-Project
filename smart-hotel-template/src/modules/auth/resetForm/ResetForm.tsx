@@ -9,16 +9,13 @@ import { toast } from "sonner";
 import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
-
-import heroImg from "../../../../public/assets/hero-hotel.jpg";
-
 import { resetPassword } from "@/services/authService";
 
 import { Button } from "@/components/button/Button";
 import { Input } from "@/components/input/Input";
 import { Label } from "@/components/label/Label";
 import { Card } from "@/components/card/Card";
-import { WebsiteName } from "@/constant/constant";
+import { IMAGES, WebsiteName } from "@/constant/constant";
 
 const resetSchema = Yup.object({
   password: Yup.string()
@@ -102,9 +99,10 @@ export const ResetForm = () => {
         className="hidden md:block relative"
       >
         <Image
-          src={heroImg}
+          src={IMAGES.heroImage}
           alt="Hotel"
           fill
+          sizes="100vw"
           priority
           className="object-cover"
         />
