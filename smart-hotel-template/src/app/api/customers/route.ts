@@ -144,6 +144,35 @@ export async function POST(req: NextRequest) {
       `[New Customer] ${customer.email} / temp password: ${rawPassword}`,
     );
 
+    // Trigger Notifications for Customer & Admin
+    try {
+      const { createNotification } = await import("@/services/notificationService");
+      
+      // Notify guest
+      await createNotification({
+        title: "Welcome to Smart Hotel!",
+        message: `Your guest account has been successfully created. We look forward to hosting you!`,
+        type: "customer",
+        priority: "Medium",
+        module: "customer",
+        reference_id: customer.id,
+        recipient_user_id: customer.id,
+      });
+
+      // Notify Admin
+      await createNotification({
+        title: "Guest Registered",
+        message: `New customer ${customer.name} has been registered.`,
+        type: "customer",
+        priority: "Low",
+        module: "customer",
+        reference_id: customer.id,
+        role_target: "ADMIN",
+      });
+    } catch (notifErr) {
+      console.error("[POST /api/customers] Notification trigger failed:", notifErr);
+    }
+
     return NextResponse.json(
       {
         customer,

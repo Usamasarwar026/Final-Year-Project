@@ -15,6 +15,10 @@ async function checkAndCreateLowStockAlert(itemId: number) {
     const existing = await prisma.lowStockAlert.findFirst({
       where: { item_id: itemId, status: "Active" },
     });
+    
+    let isNewAlert = false;
+    let isOutOfStock = item.quantity === 0;
+
     if (!existing) {
       await prisma.lowStockAlert.create({
         data: {
@@ -24,11 +28,35 @@ async function checkAndCreateLowStockAlert(itemId: number) {
           status: "Active",
         },
       });
+      isNewAlert = true;
     } else {
+      const previouslyWasInStock = existing.current_quantity > 0;
       await prisma.lowStockAlert.update({
         where: { id: existing.id },
         data: { current_quantity: item.quantity },
       });
+      if (isOutOfStock && previouslyWasInStock) {
+        isNewAlert = true; // Trigger out of stock notification
+      }
+    }
+
+    if (isNewAlert) {
+      try {
+        const { createNotification } = await import("./notificationService");
+        await createNotification({
+          title: isOutOfStock ? `Out of Stock: ${item.name}` : `Low Stock Alert: ${item.name}`,
+          message: isOutOfStock
+            ? `Item "${item.name}" (SKU: ${item.sku || "N/A"}) is completely out of stock.`
+            : `Item "${item.name}" (SKU: ${item.sku || "N/A"}) is running low. Current quantity: ${item.quantity} (Threshold: ${item.low_stock_threshold}).`,
+          type: "inventory",
+          priority: isOutOfStock ? "High" : "Medium",
+          module: "inventory",
+          reference_id: String(itemId),
+          role_target: "ADMIN",
+        });
+      } catch (notifErr) {
+        console.error("[checkAndCreateLowStockAlert] Notification trigger failed:", notifErr);
+      }
     }
   } else {
     await prisma.lowStockAlert.updateMany({
@@ -51,14 +79,50 @@ export async function createCategory(data: {
   description?: string;
   icon?: string;
 }) {
-  return prisma.inventoryCategory.create({ data });
+  const category = await prisma.inventoryCategory.create({ data });
+
+  // Notification
+  try {
+    const { createNotification } = await import("./notificationService");
+    await createNotification({
+      title: "Inventory Category Created",
+      message: `Category "${category.name}" has been created.`,
+      type: "inventory",
+      priority: "Low",
+      module: "inventory",
+      reference_id: String(category.id),
+      role_target: "ADMIN",
+    });
+  } catch (notifErr) {
+    console.error("[createCategory] Notification trigger failed:", notifErr);
+  }
+
+  return category;
 }
 
 export async function updateCategory(
   id: number,
   data: { name?: string; description?: string; icon?: string; is_active?: boolean }
 ) {
-  return prisma.inventoryCategory.update({ where: { id }, data });
+  const category = await prisma.inventoryCategory.update({ where: { id }, data });
+
+  // Notification
+  try {
+    const { createNotification } = await import("./notificationService");
+    await createNotification({
+      title: "Inventory Category Updated",
+      message: `Category "${category.name}" has been updated.`,
+      type: "inventory",
+      priority: "Low",
+      module: "inventory",
+      reference_id: String(category.id),
+      role_target: "ADMIN",
+    });
+  } catch (notifErr) {
+    console.error("[updateCategory] Notification trigger failed:", notifErr);
+  }
+
+  return category;
 }
 
 // ─── Vendors ──────────────────────────────────────────────────────────────────
@@ -76,7 +140,25 @@ export async function createVendor(data: {
   phone?: string;
   address?: string;
 }) {
-  return prisma.inventoryVendor.create({ data });
+  const vendor = await prisma.inventoryVendor.create({ data });
+
+  // Notification
+  try {
+    const { createNotification } = await import("./notificationService");
+    await createNotification({
+      title: "Inventory Vendor Created",
+      message: `Vendor "${vendor.name}" has been added.`,
+      type: "inventory",
+      priority: "Low",
+      module: "inventory",
+      reference_id: String(vendor.id),
+      role_target: "ADMIN",
+    });
+  } catch (notifErr) {
+    console.error("[createVendor] Notification trigger failed:", notifErr);
+  }
+
+  return vendor;
 }
 
 export async function updateVendor(
@@ -90,7 +172,25 @@ export async function updateVendor(
     is_active?: boolean;
   }
 ) {
-  return prisma.inventoryVendor.update({ where: { id }, data });
+  const vendor = await prisma.inventoryVendor.update({ where: { id }, data });
+
+  // Notification
+  try {
+    const { createNotification } = await import("./notificationService");
+    await createNotification({
+      title: "Inventory Vendor Updated",
+      message: `Vendor "${vendor.name}" details have been updated.`,
+      type: "inventory",
+      priority: "Low",
+      module: "inventory",
+      reference_id: String(vendor.id),
+      role_target: "ADMIN",
+    });
+  } catch (notifErr) {
+    console.error("[updateVendor] Notification trigger failed:", notifErr);
+  }
+
+  return vendor;
 }
 
 // ─── Items ────────────────────────────────────────────────────────────────────
@@ -169,6 +269,23 @@ export async function createItem(data: {
     },
     include: { category: true },
   });
+
+  // Trigger Notification for new item creation
+  try {
+    const { createNotification } = await import("./notificationService");
+    await createNotification({
+      title: "New Inventory Item Created",
+      message: `Item "${item.name}" (SKU: ${item.sku || "N/A"}) has been added.`,
+      type: "inventory",
+      priority: "Low",
+      module: "inventory",
+      reference_id: String(item.id),
+      role_target: "ADMIN",
+    });
+  } catch (notifErr) {
+    console.error("[createItem] Notification trigger failed:", notifErr);
+  }
+
   await checkAndCreateLowStockAlert(item.id);
   return item;
 }
@@ -193,20 +310,72 @@ export async function updateItem(
   if (data.expiry_date !== undefined) {
     updateData.expiry_date = data.expiry_date ? new Date(data.expiry_date) : null;
   }
+  
+  // Get existing item to check activation status change
+  const existingItem = await prisma.inventoryItem.findUnique({ where: { id } });
+
   const item = await prisma.inventoryItem.update({
     where: { id },
     data: updateData,
     include: { category: true },
   });
+
+  // Trigger Notifications for item update or status change
+  try {
+    const { createNotification } = await import("./notificationService");
+    
+    if (data.is_active !== undefined && existingItem && data.is_active !== existingItem.is_active) {
+      await createNotification({
+        title: data.is_active ? "Inventory Item Activated" : "Inventory Item Deactivated",
+        message: `Inventory item "${item.name}" has been ${data.is_active ? "activated" : "deactivated"}.`,
+        type: "inventory",
+        priority: "Medium",
+        module: "inventory",
+        reference_id: String(id),
+        role_target: "ADMIN",
+      });
+    } else {
+      await createNotification({
+        title: "Inventory Item Updated",
+        message: `Inventory item "${item.name}" details have been updated.`,
+        type: "inventory",
+        priority: "Low",
+        module: "inventory",
+        reference_id: String(id),
+        role_target: "ADMIN",
+      });
+    }
+  } catch (notifErr) {
+    console.error("[updateItem] Notification trigger failed:", notifErr);
+  }
+
   await checkAndCreateLowStockAlert(id);
   return item;
 }
 
 export async function deactivateItem(id: number) {
-  return prisma.inventoryItem.update({
+  const item = await prisma.inventoryItem.update({
     where: { id },
     data: { is_active: false },
   });
+
+  // Trigger Notification for Admin
+  try {
+    const { createNotification } = await import("./notificationService");
+    await createNotification({
+      title: "Inventory Item Deactivated",
+      message: `Inventory item "${item.name}" has been deactivated/retired.`,
+      type: "inventory",
+      priority: "Medium",
+      module: "inventory",
+      reference_id: String(id),
+      role_target: "ADMIN",
+    });
+  } catch (notifErr) {
+    console.error("[deactivateItem] Notification trigger failed:", notifErr);
+  }
+
+  return item;
 }
 
 // ─── Purchase Orders ──────────────────────────────────────────────────────────
@@ -271,6 +440,22 @@ export async function createPurchaseOrder(
     },
   });
 
+  // Trigger Notification for new PO creation
+  try {
+    const { createNotification } = await import("./notificationService");
+    await createNotification({
+      title: "Purchase Order Created",
+      message: `Purchase Order ${po.po_number} has been created for Vendor "${po.vendor.name}" by Admin. Total Cost: $${totalCost.toFixed(2)}.`,
+      type: "inventory",
+      priority: "Low",
+      module: "inventory",
+      reference_id: String(po.id),
+      role_target: "ADMIN",
+    });
+  } catch (notifErr) {
+    console.error("[createPurchaseOrder] Notification trigger failed:", notifErr);
+  }
+
   return po;
 }
 
@@ -283,7 +468,7 @@ export async function updatePurchaseOrderStatus(
   if (status === "Sent") updateData.sent_at = new Date();
   if (status === "Received") updateData.received_at = new Date();
 
-  return prisma.purchaseOrder.update({
+  const po = await prisma.purchaseOrder.update({
     where: { id },
     data: updateData,
     include: {
@@ -291,6 +476,24 @@ export async function updatePurchaseOrderStatus(
       items: { include: { item: { select: { id: true, name: true, unit: true, sku: true } } } },
     },
   });
+
+  // Trigger Notification for PO status update
+  try {
+    const { createNotification } = await import("./notificationService");
+    await createNotification({
+      title: `Purchase Order ${status}`,
+      message: `Purchase Order ${po.po_number} status has been updated to "${status}".`,
+      type: "inventory",
+      priority: "Medium",
+      module: "inventory",
+      reference_id: String(po.id),
+      role_target: "ADMIN",
+    });
+  } catch (notifErr) {
+    console.error("[updatePurchaseOrderStatus] Notification trigger failed:", notifErr);
+  }
+
+  return po;
 }
 
 // ─── Stock Receiving ──────────────────────────────────────────────────────────
@@ -466,6 +669,22 @@ export async function createWastage(data: {
   });
 
   await checkAndCreateLowStockAlert(data.item_id);
+
+  // Notification
+  try {
+    const { createNotification } = await import("./notificationService");
+    await createNotification({
+      title: "Inventory Wastage Recorded",
+      message: `Wastage of ${data.quantity} ${item.unit} of "${item.name}" recorded due to ${data.reason}.`,
+      type: "inventory",
+      priority: "Medium",
+      module: "inventory",
+      reference_id: String(wastage.id),
+      role_target: "ADMIN",
+    });
+  } catch (notifErr) {
+    console.error("[createWastage] Notification trigger failed:", notifErr);
+  }
 
   return wastage;
 }

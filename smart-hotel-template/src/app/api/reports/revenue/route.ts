@@ -23,6 +23,23 @@ export async function GET(req: NextRequest) {
     }
 
     const report = await getRevenueReport(from, to);
+
+    // Trigger Notification for Report Generation
+    try {
+      const { createNotification } = await import("@/services/notificationService");
+      await createNotification({
+        title: "Revenue Report Generated",
+        message: `The revenue report from ${from} to ${to} was successfully generated.`,
+        type: "reports",
+        priority: "Low",
+        module: "reports",
+        role_target: "ADMIN",
+        sender_user_id: session.user.id,
+      });
+    } catch (notifErr) {
+      console.error("[GET /api/reports/revenue] Notification trigger failed:", notifErr);
+    }
+
     return NextResponse.json({ report });
   } catch (err: any) {
     console.error("[GET /api/reports/revenue]", err);

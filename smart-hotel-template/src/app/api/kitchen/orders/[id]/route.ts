@@ -127,6 +127,48 @@ export async function PATCH(
       }
       return resOrder;
     });
+
+    // Trigger Notifications on Order Status Update or Delivery Assignment
+    try {
+      const { createNotification } = await import("@/services/notificationService");
+      
+      // 1. Notify customer of status change
+      if (updatedOrder.user_id && status) {
+        await createNotification({
+          title: `Food Order ${status}`,
+          message: `Your food order #${orderId} status has been updated to "${status}".`,
+          type: "kitchen",
+          priority: status === "Delivered" ? "Medium" : "Low",
+          module: "kitchen",
+          reference_id: String(orderId),
+          recipient_user_id: updatedOrder.user_id,
+        });
+      }
+
+      // 2. Notify assigned staff of new delivery task
+      if (assigned_to !== undefined && assigned_to !== null) {
+        const staffId = parseInt(assigned_to);
+        const staffMember = await prisma.staff.findUnique({
+          where: { staff_id: staffId },
+          include: { user: true },
+        });
+
+        if (staffMember?.user?.id) {
+          await createNotification({
+            title: "New Delivery Assigned",
+            message: `You have been assigned to deliver kitchen order #${orderId} to Room/Table ${updatedOrder.room_number || updatedOrder.table_number || "N/A"}.`,
+            type: "kitchen",
+            priority: "Medium",
+            module: "kitchen",
+            reference_id: String(orderId),
+            recipient_user_id: staffMember.user.id,
+          });
+        }
+      }
+    } catch (notifErr) {
+      console.error("[PATCH /api/kitchen/orders/[id]] Notification trigger failed:", notifErr);
+    }
+
     return NextResponse.json({
       order: {
         ...updatedOrder,

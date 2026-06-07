@@ -55,6 +55,23 @@ export async function createRoom(
       is_active:       data.is_active,
     },
   });
+
+  // Trigger Notification for Admin & Staff
+  try {
+    const { createNotification } = await import("../services/notificationService");
+    await createNotification({
+      title: "New Room Added",
+      message: `Room ${data.room_number} (${data.room_type}) has been added to floor ${data.floor}.`,
+      type: "room",
+      priority: "Low",
+      module: "room",
+      reference_id: String(row.room_id),
+      role_target: "ADMIN",
+    });
+  } catch (notifErr) {
+    console.error("[createRoom] Notification trigger failed:", notifErr);
+  }
+
   return toRoom(row);
 }
 
@@ -80,12 +97,63 @@ export async function updateRoom(
   if (!Object.keys(payload).length) return getRoomById(id);
 
   const row = await prisma.room.update({ where: { room_id: id }, data: payload });
+
+  // Trigger Notification for Room Status Change
+  if (data.status !== undefined) {
+    try {
+      const { createNotification } = await import("../services/notificationService");
+      const isMaintenance = data.status === "Maintenance";
+      
+      await createNotification({
+        title: `Room ${row.room_number} is ${data.status}`,
+        message: `Room ${row.room_number} status has been updated to "${data.status}".`,
+        type: isMaintenance ? "maintenance" : "room",
+        priority: isMaintenance ? "High" : "Low",
+        module: "room",
+        reference_id: String(id),
+        role_target: "ADMIN",
+      });
+
+      await createNotification({
+        title: `Room ${row.room_number} is ${data.status}`,
+        message: `Room ${row.room_number} status has been updated to "${data.status}".`,
+        type: isMaintenance ? "maintenance" : "room",
+        priority: isMaintenance ? "High" : "Low",
+        module: "room",
+        reference_id: String(id),
+        role_target: "STAFF",
+      });
+    } catch (notifErr) {
+      console.error("[updateRoom] Notification trigger failed:", notifErr);
+    }
+  }
+
   return toRoom(row);
 }
 
 export async function deleteRoom(id: number): Promise<boolean> {
   try {
+    const room = await prisma.room.findUnique({ where: { room_id: id } });
+    if (!room) return false;
+
     await prisma.room.delete({ where: { room_id: id } });
+
+    // Trigger Notification for Admin
+    try {
+      const { createNotification } = await import("../services/notificationService");
+      await createNotification({
+        title: "Room Deleted",
+        message: `Room ${room.room_number} has been deleted.`,
+        type: "room",
+        priority: "High",
+        module: "room",
+        reference_id: String(id),
+        role_target: "ADMIN",
+      });
+    } catch (notifErr) {
+      console.error("[deleteRoom] Notification trigger failed:", notifErr);
+    }
+
     return true;
   } catch {
     return false;

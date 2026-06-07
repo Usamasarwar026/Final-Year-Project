@@ -1,4 +1,3 @@
-// lib/sidebarNav.ts
 import {
   LayoutDashboard,
   CalendarCheck,
@@ -10,6 +9,7 @@ import {
   Package,
   BrushCleaning,
   BarChart3,
+  Bell,
 } from "lucide-react";
 
 export type NavItem = {
@@ -71,6 +71,11 @@ export const adminNav: NavItem[] = [
     href: "/admin/reports",
     icon: BarChart3,
   },
+  {
+    label: "Notifications",
+    href: "/admin/notifications",
+    icon: Bell,
+  },
 ];
 
 export const staffNav: NavItem[] = [
@@ -105,10 +110,16 @@ export const staffNav: NavItem[] = [
     icon: BrushCleaning,
     permission: "housekeeping",
   },
+  {
+    label: "Notifications",
+    href: "/staff/notifications",
+    icon: Bell,
+  },
 ];
 
 export const customerNav: NavItem[] = [
   { label: "Dashboard", href: "/customer/dashboard", icon: LayoutDashboard },
   { label: "My Bookings", href: "/customer/booking", icon: CalendarCheck },
   { label: "Billing", href: "/customer/billing", icon: CreditCard },
+  { label: "Notifications", href: "/customer/notifications", icon: Bell },
 ];

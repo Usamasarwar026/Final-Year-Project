@@ -86,6 +86,22 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Trigger Notification for Admin
+    try {
+      const { createNotification } = await import("@/services/notificationService");
+      await createNotification({
+        title: "Report Schedule Created",
+        message: `A new scheduled "${report_type}" report (${frequency}) has been configured successfully.`,
+        type: "reports",
+        priority: "Low",
+        module: "reports",
+        reference_id: String(schedule.id),
+        role_target: "ADMIN",
+      });
+    } catch (notifErr) {
+      console.error("[POST /api/reports/schedules] Notification trigger failed:", notifErr);
+    }
+
     return NextResponse.json({ schedule }, { status: 201 });
   } catch (err: any) {
     console.error("[POST /api/reports/schedules]", err);

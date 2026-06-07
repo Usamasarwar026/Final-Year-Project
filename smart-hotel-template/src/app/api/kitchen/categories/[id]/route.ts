@@ -31,6 +31,23 @@ export async function PATCH(
         ...(active !== undefined ? { active } : {}),
       },
     });
+
+    try {
+      const { createNotification } = await import("@/services/notificationService");
+      await createNotification({
+        title: "Kitchen Category Updated",
+        message: `Kitchen category "${category.name}" has been updated.`,
+        type: "kitchen",
+        priority: "Low",
+        module: "kitchen",
+        reference_id: String(category.id),
+        role_target: "ADMIN",
+        sender_user_id: session.user.id,
+      });
+    } catch (notifErr) {
+      console.error("[PATCH /api/kitchen/categories/[id]] Notification trigger failed:", notifErr);
+    }
+
     return NextResponse.json({ category });
   } catch (err) {
     console.error("[PATCH /api/kitchen/categories/[id]]", err);
@@ -66,7 +83,25 @@ export async function DELETE(
         { status: 400 },
       );
     }
-    await prisma.foodCategory.delete({ where: { id: categoryId } });
+    const category = await prisma.foodCategory.findUnique({ where: { id: categoryId } });
+    if (category) {
+      await prisma.foodCategory.delete({ where: { id: categoryId } });
+      try {
+        const { createNotification } = await import("@/services/notificationService");
+        await createNotification({
+          title: "Kitchen Category Deleted",
+          message: `Kitchen category "${category.name}" has been deleted.`,
+          type: "kitchen",
+          priority: "Medium",
+          module: "kitchen",
+          reference_id: String(categoryId),
+          role_target: "ADMIN",
+          sender_user_id: session.user.id,
+        });
+      } catch (notifErr) {
+        console.error("[DELETE /api/kitchen/categories/[id]] Notification trigger failed:", notifErr);
+      }
+    }
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("[DELETE /api/kitchen/categories/[id]]", err);

@@ -89,6 +89,7 @@ export default function Sidebar() {
               navItems={navItems}
               email={email}
               name={name}
+              role={role}
               onNavigate={() => setMobileOpen(false)}
             />
           </motion.aside>
@@ -106,6 +107,7 @@ export default function Sidebar() {
           navItems={navItems}
           email={email}
           name={name}
+          role={role}
           onToggle={() => setDesktopCollapsed((v) => !v)}
         />
       </motion.aside>

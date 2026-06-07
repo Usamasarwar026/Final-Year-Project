@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOption";
 import { getInvoiceById } from "@/services/billingService";
+import { prisma } from "@/database/db";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -84,5 +85,68 @@ export async function GET(req: NextRequest, { params }: Params) {
   } catch (err: any) {
     console.error("[GET /api/billing/[id]]", err);
     return NextResponse.json({ error: err.message || "Failed to load invoice details" }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: NextRequest, { params }: Params) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const invoiceId = parseInt(id);
+    if (isNaN(invoiceId)) {
+      return NextResponse.json({ error: "Invalid invoice ID" }, { status: 400 });
+    }
+
+    const body = await req.json();
+    const { payment_status } = body;
+
+    const invoice = await prisma.billingInvoice.findUnique({
+      where: { invoice_id: invoiceId },
+    });
+    if (!invoice) {
+      return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+    }
+
+    const updated = await prisma.billingInvoice.update({
+      where: { invoice_id: invoiceId },
+      data: { payment_status },
+    });
+
+    if (payment_status === "Cancelled") {
+      try {
+        const { createNotification } = await import("@/services/notificationService");
+        await createNotification({
+          title: "Invoice Cancelled",
+          message: `Invoice ${invoice.invoice_number} has been cancelled by Admin.`,
+          type: "billing",
+          priority: "High",
+          module: "billing",
+          reference_id: String(invoiceId),
+          role_target: "ADMIN",
+          sender_user_id: session.user.id,
+        });
+        await createNotification({
+          title: "Invoice Cancelled",
+          message: `Your invoice ${invoice.invoice_number} has been cancelled.`,
+          type: "billing",
+          priority: "High",
+          module: "billing",
+          reference_id: String(invoiceId),
+          recipient_user_id: invoice.guest_id,
+          sender_user_id: session.user.id,
+        });
+      } catch (notifErr) {
+        console.error("[PATCH /api/billing/[id]] Notification trigger failed:", notifErr);
+      }
+    }
+
+    return NextResponse.json({ invoice: updated });
+  } catch (err: any) {
+    console.error("[PATCH /api/billing/[id]]", err);
+    return NextResponse.json({ error: err.message || "Failed to update invoice" }, { status: 500 });
   }
 }

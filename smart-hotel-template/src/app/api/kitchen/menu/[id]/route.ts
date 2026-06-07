@@ -53,6 +53,22 @@ export async function PATCH(
       },
     });
     
+    try {
+      const { createNotification } = await import("@/services/notificationService");
+      await createNotification({
+        title: "Menu Item Updated",
+        message: `Menu item "${item.name}" has been updated.`,
+        type: "kitchen",
+        priority: "Low",
+        module: "kitchen",
+        reference_id: String(item.id),
+        role_target: "ADMIN",
+        sender_user_id: session.user.id,
+      });
+    } catch (notifErr) {
+      console.error("[PATCH /api/kitchen/menu/[id]] Notification trigger failed:", notifErr);
+    }
+
     return NextResponse.json({ item: { ...item, price: Number(item.price) } });
   } catch (err) {
     console.error("[PATCH /api/kitchen/menu/[id]]", err);
@@ -76,7 +92,25 @@ export async function DELETE(
       return NextResponse.json({ error: "Invalid item ID" }, { status: 400 });
     }
     
-    await prisma.foodItem.delete({ where: { id } });
+    const item = await prisma.foodItem.findUnique({ where: { id } });
+    if (item) {
+      await prisma.foodItem.delete({ where: { id } });
+      try {
+        const { createNotification } = await import("@/services/notificationService");
+        await createNotification({
+          title: "Menu Item Deleted",
+          message: `Menu item "${item.name}" has been deleted.`,
+          type: "kitchen",
+          priority: "Medium",
+          module: "kitchen",
+          reference_id: String(id),
+          role_target: "ADMIN",
+          sender_user_id: session.user.id,
+        });
+      } catch (notifErr) {
+        console.error("[DELETE /api/kitchen/menu/[id]] Notification trigger failed:", notifErr);
+      }
+    }
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("[DELETE /api/kitchen/menu/[id]]", err);
