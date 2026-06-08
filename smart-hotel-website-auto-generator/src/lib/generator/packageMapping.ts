@@ -1,30 +1,109 @@
+// // src/lib/generator/packageMapping.ts
+// import { ModuleId } from "./moduleFiles";
+
+// // Module-specific packages
+// export const MODULE_PACKAGES: Partial<Record<ModuleId, string[]>> = {
+//   authentication: [
+//     "next-auth",
+//     "bcryptjs",
+//     "radix-ui",
+//     "yup",
+//     "sonner",
+//     "nodemailer",
+//     "lucide-react",
+//     "class-variance-authority",
+//   ],
+//   rooms: ["cloudinary"],
+//   booking: ["jspdf", "jspdf-autotable", "xlsx"],
+//   billing: ["jspdf", "jspdf-autotable"],
+//   reports: ["recharts", "xlsx", "jspdf", "jspdf-autotable"],
+//   customer: ["clsx"],
+//   housekeeping: [],
+//   inventory: [],
+//   staff: [],
+//   kitchen: [],
+// };
+// //
+// // Base packages jo hamesha chahiye
+// export const BASE_PACKAGES = [
+//   "next",
+//   "react",
+//   "react-dom",
+//   "next-auth",
+//   "@prisma/adapter-neon",
+//   "@prisma/client",
+//   "@tanstack/react-query",
+//   "axios",
+//   "bcryptjs",
+//   "clsx",
+//   "lucide-react",
+//   "sonner",
+//   "framer-motion",
+//   "class-variance-authority",
+//   "tailwind-merge",
+//   "tw-animate-css",
+//   "yup",
+//   "xlsx",
+
+// ];
+
+// // Dev dependencies
+// export const DEV_PACKAGES = [
+//   "prisma",
+//   "typescript",
+//   "@types/node",
+//   "@types/react",
+//   "@types/react-dom",
+//   "@types/bcryptjs",
+//   "tailwindcss",
+//   "autoprefixer",
+//   "postcss",
+//   "eslint",
+//   "eslint-config-next",
+// ];
+
+
+
 // src/lib/generator/packageMapping.ts
 import { ModuleId } from "./moduleFiles";
 
-// Module-specific packages
+/**
+ * Module-specific packages — added when module is selected.
+ * Base packages ko dobara mat daalo yahan (woh BASE_PACKAGES mein hain).
+ */
 export const MODULE_PACKAGES: Partial<Record<ModuleId, string[]>> = {
   authentication: [
-    "next-auth",
-    "bcryptjs",
-    "radix-ui",
-    "yup",
-    "sonner",
-    "nodemailer",
-    "lucide-react",
-    "class-variance-authority",
+    "nodemailer",       // password reset email
   ],
-  rooms: ["cloudinary"],
-  booking: ["jspdf", "jspdf-autotable", "xlsx"],
-  billing: ["jspdf", "jspdf-autotable"],
-  reports: ["recharts", "xlsx"],
-  customer: ["clsx"],
+  rooms: [
+    "cloudinary",       // image uploads
+  ],
+  booking: [
+    "jspdf",
+    "jspdf-autotable",
+    "xlsx",
+  ],
+  billing: [
+    "jspdf",
+    "jspdf-autotable",
+  ],
+  reports: [
+    "recharts",
+    "xlsx",
+    "jspdf",
+    "jspdf-autotable",
+  ],
+  customer: [],
   housekeeping: [],
   inventory: [],
   staff: [],
-  kitchen: [],
+  kitchen: ["recharts",],
 };
-//
-// Base packages jo hamesha chahiye
+
+/**
+ * Base packages — always included regardless of modules.
+ * These are the core of every generated project.
+ */
 export const BASE_PACKAGES = [
   "next",
   "react",
@@ -43,11 +122,14 @@ export const BASE_PACKAGES = [
   "tailwind-merge",
   "tw-animate-css",
   "yup",
-  "xlsx",
-
+  "radix-ui",
+  "recharts",
+  "cloudinary",
 ];
 
-// Dev dependencies
+/**
+ * Dev dependencies — always included.
+ */
 export const DEV_PACKAGES = [
   "prisma",
   "typescript",
@@ -55,9 +137,13 @@ export const DEV_PACKAGES = [
   "@types/react",
   "@types/react-dom",
   "@types/bcryptjs",
+  "@types/nodemailer",
+  "@types/recharts",
   "tailwindcss",
+  "@tailwindcss/postcss",
   "autoprefixer",
   "postcss",
   "eslint",
   "eslint-config-next",
+  "tsx",
 ];
