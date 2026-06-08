@@ -464,7 +464,7 @@ export default function Rooms() {
                         </span>
                       </td>
                       <td className="px-4 py-3.5 font-semibold text-foreground">
-                        ${Number(room.price_per_night).toFixed(0)}
+                        PKR {Number(room.price_per_night).toFixed(0)}
                       </td>
                       <td className="px-4 py-3.5">
                         <StatusBadge status={room.status} />

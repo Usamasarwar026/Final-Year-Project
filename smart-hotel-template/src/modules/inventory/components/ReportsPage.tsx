@@ -82,7 +82,7 @@ export default function ReportsPage() {
                   ) : cogs.map((row, i) => (
                     <tr key={i} className="border-t border-gray-100">
                       <td className="px-4 py-3">{row.department}</td>
-                      <td className="px-4 py-3 font-medium">Rs. {row.total_cost}</td>
+                      <td className="px-4 py-3 font-medium">PKR {row.total_cost}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -111,7 +111,7 @@ export default function ReportsPage() {
                       <td className="px-4 py-3 font-medium">{row.item_name}</td>
                       <td className="px-4 py-3">{row.reason}</td>
                       <td className="px-4 py-3">{row.quantity}</td>
-                      <td className="px-4 py-3">Rs. {row.total_cost}</td>
+                      <td className="px-4 py-3">PKR {row.total_cost}</td>
                     </tr>
                   ))}
                 </tbody>

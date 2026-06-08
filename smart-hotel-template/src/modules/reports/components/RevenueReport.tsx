@@ -12,7 +12,7 @@ import StatCard from "./StatCard";
 import { motion } from "framer-motion";
 
 const fmt = (n: number) =>
-  `Rs. ${n >= 1000 ? (n / 1000).toFixed(1) + "K" : n.toFixed(0)}`;
+  `PKR ${n >= 1000 ? (n / 1000).toFixed(1) + "K" : n.toFixed(0)}`;
 
 interface Props {
   from: string;

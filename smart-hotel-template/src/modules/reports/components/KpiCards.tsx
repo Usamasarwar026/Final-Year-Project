@@ -14,9 +14,9 @@ import StatCard from "./StatCard";
 import { useReportKpi } from "@/hooks/useReportModule";
 
 function fmt(n: number) {
-  if (n >= 1_000_000) return `Rs. ${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `Rs. ${(n / 1_000).toFixed(1)}K`;
-  return `Rs. ${n.toFixed(0)}`;
+  if (n >= 1_000_000) return `PKR ${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `PKR ${(n / 1_000).toFixed(1)}K`;
+  return `PKR ${n.toFixed(0)}`;
 }
 
 export default function KpiCards() {

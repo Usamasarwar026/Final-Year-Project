@@ -96,7 +96,7 @@ function RoomCard({ room, checkIn, checkOut, nights, onBook }: {
             <p className="text-xs text-muted-foreground mt-0.5">{room.bed_type} Bed · {room.capacity} Guests max</p>
           </div>
           <div className="text-right">
-            <p className="text-lg font-bold text-foreground">${Number(room.price_per_night).toFixed(0)}</p>
+            <p className="text-lg font-bold text-foreground">PKR ${Number(room.price_per_night).toFixed(0)}</p>
             <p className="text-[10px] text-muted-foreground">per night</p>
           </div>
         </div>
@@ -121,7 +121,7 @@ function RoomCard({ room, checkIn, checkOut, nights, onBook }: {
         <div className="flex items-center justify-between pt-2 border-t border-border">
           <div>
             <p className="text-xs text-muted-foreground">{nights} night{nights > 1 ? "s" : ""} total</p>
-            <p className="font-bold text-foreground">${total.toFixed(0)}</p>
+            <p className="font-bold text-foreground">PKR ${total.toFixed(0)}</p>
           </div>
           <button onClick={() => onBook(room)}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity">
@@ -196,7 +196,7 @@ function BookingModal({ room, checkIn, checkOut, nights, onConfirm, onClose }: {
             {[
               { label: "Check-in",  value: new Date(checkIn).toLocaleDateString("en-US", { day: "numeric", month: "short" }) },
               { label: "Check-out", value: new Date(checkOut).toLocaleDateString("en-US", { day: "numeric", month: "short" }) },
-              { label: "Total",     value: `$${(Number(room.price_per_night) * nights).toFixed(0)}` },
+              { label: "Total",     value: `PKR ${(Number(room.price_per_night) * nights).toFixed(0)}` },
             ].map(({ label, value }) => (
               <div key={label} className="bg-muted/50 border border-border rounded-xl px-2.5 py-2 text-center">
                 <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</p>
@@ -206,7 +206,7 @@ function BookingModal({ room, checkIn, checkOut, nights, onConfirm, onClose }: {
           </div>
 
           <p className="text-xs text-muted-foreground text-center">
-            {nights} night{nights > 1 ? "s" : ""} · ${Number(room.price_per_night).toFixed(0)}/night
+            {nights} night{nights > 1 ? "s" : ""} · PKR ${Number(room.price_per_night).toFixed(0)}/night
           </p>
 
           {/* Special requests */}
@@ -282,7 +282,7 @@ function MyBookingCard({ booking, onCancel }: { booking: Booking; onCancel: (id:
               {new Date(booking.check_out_date).toLocaleDateString("en-US", { day: "numeric", month: "short" })}
             </span>
             <span>{booking.total_nights} nights</span>
-            <span className="font-semibold text-foreground">${booking.total_amount.toFixed(0)}</span>
+            <span className="font-semibold text-foreground">PKR ${booking.total_amount.toFixed(0)}</span>
           </div>
 
           {canCancel && (

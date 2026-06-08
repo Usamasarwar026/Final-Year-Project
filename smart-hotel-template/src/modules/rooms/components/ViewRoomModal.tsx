@@ -98,14 +98,14 @@ export function ViewRoomModal({ room, onClose, onEdit }: Props) {
                     <h2 className="text-xl font-bold text-foreground">Room {room.room_number}</h2>
                     {typeCfg && <p className={clsx("text-sm font-medium mt-0.5", typeCfg.color)}>{typeCfg.icon} {room.room_type}</p>}
                   </div>
-                  <p className="text-xl font-bold text-foreground">${Number(room.price_per_night).toFixed(0)}<span className="text-xs text-muted-foreground font-normal">/night</span></p>
+                  <p className="text-xl font-bold text-foreground">PKR ${Number(room.price_per_night).toFixed(0)}<span className="text-xs text-muted-foreground font-normal">/night</span></p>
                 </div>
               )}
 
               {/* Stats row */}
               <div className="grid grid-cols-4 gap-2">
                 {[
-                  { label: "Rate",     value: `$${Number(room.price_per_night).toFixed(0)}/night` },
+                  { label: "Rate",     value: `PKR ${Number(room.price_per_night).toFixed(0)}/night` },
                   { label: "Floor",    value: `Floor ${room.floor}` },
                   { label: "Guests",   value: `${room.capacity} guests` },
                   { label: "Size",     value: room.size_sqft ? `${room.size_sqft} sqft` : "—" },

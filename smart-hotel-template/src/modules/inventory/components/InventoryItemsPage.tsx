@@ -254,7 +254,7 @@ export default function InventoryItemsPage() {
                 <input name="low_stock_threshold" type="number" value={form.low_stock_threshold} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-1" placeholder="10" />
               </div>
               <div>
-                <label className="text-xs text-gray-500">Unit Cost (Rs.)</label>
+                <label className="text-xs text-gray-500">Unit Cost (PKR)</label>
                 <input name="unit_cost" type="number" value={form.unit_cost} onChange={handleChange} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-1" placeholder="0" />
               </div>
               <div>

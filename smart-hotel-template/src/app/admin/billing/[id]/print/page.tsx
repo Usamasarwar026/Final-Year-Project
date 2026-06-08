@@ -257,9 +257,9 @@ export default function PrintInvoicePage() {
                 <span className="text-[9px] font-bold text-indigo-700 border border-indigo-150 bg-indigo-50/20 px-2 py-0.5 rounded">ROOM</span>
               </td>
               <td className="py-3.5 text-center text-slate-500">
-                {invoice.booking?.total_nights} Nights × ${Number(invoice.booking?.room?.price_per_night || 0).toFixed(2)}/night
+                {invoice.booking?.total_nights} Nights × PKR {Number(invoice.booking?.room?.price_per_night || 0).toFixed(2)}/night
               </td>
-              <td className="py-3.5 text-right font-bold">${invoice.room_charges.toFixed(2)}</td>
+              <td className="py-3.5 text-right font-bold">PKR {invoice.room_charges.toFixed(2)}</td>
             </tr>
 
             {/* Laundry Charges */}
@@ -273,7 +273,7 @@ export default function PrintInvoicePage() {
                   <span className="text-[9px] font-bold text-teal-700 border border-teal-150 bg-teal-50/20 px-2 py-0.5 rounded">LAUNDRY</span>
                 </td>
                 <td className="py-3.5 text-center text-slate-500">Qty: {lr.quantity}</td>
-                <td className="py-3.5 text-right font-bold">${lr.charge_amount.toFixed(2)}</td>
+                <td className="py-3.5 text-right font-bold">PKR ${lr.charge_amount.toFixed(2)}</td>
               </tr>
             ))}
 
@@ -288,7 +288,7 @@ export default function PrintInvoicePage() {
                   <span className="text-[9px] font-bold text-amber-700 border border-amber-150 bg-amber-50/20 px-2 py-0.5 rounded">SERVICE</span>
                 </td>
                 <td className="py-3.5 text-center text-slate-500">—</td>
-                <td className="py-3.5 text-right font-bold">${ht.charge_amount.toFixed(2)}</td>
+                <td className="py-3.5 text-right font-bold">PKR ${ht.charge_amount.toFixed(2)}</td>
               </tr>
             ))}
 
@@ -307,7 +307,7 @@ export default function PrintInvoicePage() {
                 <td className="py-3.5 text-center text-slate-500">
                   {fo.order_type === "RoomService" ? "Room Service" : "Restaurant"}
                 </td>
-                <td className="py-3.5 text-right font-bold">${fo.total_amount.toFixed(2)}</td>
+                <td className="py-3.5 text-right font-bold">PKR ${fo.total_amount.toFixed(2)}</td>
               </tr>
             ))}
 
@@ -321,33 +321,33 @@ export default function PrintInvoicePage() {
           
           <div className="flex justify-between">
             <span>Room Charges Subtotal:</span>
-            <span className="font-bold text-slate-900">${invoice.room_charges.toFixed(2)}</span>
+            <span className="font-bold text-slate-900">PKR ${invoice.room_charges.toFixed(2)}</span>
           </div>
           
           <div className="flex justify-between">
             <span>Additional Services Subtotal:</span>
-            <span className="font-bold text-slate-900">${invoice.service_charges.toFixed(2)}</span>
+            <span className="font-bold text-slate-900">PKR {invoice.service_charges.toFixed(2)}</span>
           </div>
           
           <div className="flex justify-between">
             <span>Dining/Orders Subtotal:</span>
-            <span className="font-bold text-slate-900">${invoice.food_charges.toFixed(2)}</span>
+            <span className="font-bold text-slate-900">PKR ${invoice.food_charges.toFixed(2)}</span>
           </div>
 
           <div className="flex justify-between border-t border-slate-100 pt-2 font-bold text-slate-900">
             <span>Gross Subtotal:</span>
-            <span>${invoice.subtotal.toFixed(2)}</span>
+            <span>PKR ${invoice.subtotal.toFixed(2)}</span>
           </div>
 
           <div className="flex justify-between">
             <span>Tax ({invoice.tax_percent}%):</span>
-            <span className="font-bold text-slate-900">+${invoice.tax_amount.toFixed(2)}</span>
+            <span className="font-bold text-slate-900">+PKR {invoice.tax_amount.toFixed(2)}</span>
           </div>
 
           {invoice.discount_percent > 0 && (
             <div className="flex justify-between text-rose-600 font-bold border-b border-slate-100 pb-1">
               <span>Discount ({invoice.discount_percent}%):</span>
-              <span>-${invoice.discount_amount.toFixed(2)}</span>
+              <span>-PKR ${invoice.discount_amount.toFixed(2)}</span>
             </div>
           )}
 
@@ -358,12 +358,12 @@ export default function PrintInvoicePage() {
 
           <div className="flex justify-between text-emerald-800 font-extrabold bg-slate-50 px-2 py-1 rounded">
             <span>Amount Paid:</span>
-            <span>${invoice.amount_paid.toFixed(2)}</span>
+            <span>PKR ${invoice.amount_paid.toFixed(2)}</span>
           </div>
 
           <div className="flex justify-between border-t border-slate-200 pt-2 text-sm font-black text-slate-950 bg-slate-100/60 px-2 py-1.5 rounded">
             <span>Balance Due:</span>
-            <span>${invoice.balance_due.toFixed(2)}</span>
+            <span>PKR ${invoice.balance_due.toFixed(2)}</span>
           </div>
 
         </div>
@@ -379,7 +379,7 @@ export default function PrintInvoicePage() {
                 <span className="font-semibold text-slate-700">
                   ✔ {fmtDateTime(p.recorded_at)} — Payment recorded via <span className="uppercase text-slate-900 font-bold">{p.payment_method}</span> {p.notes ? `[Note: "${p.notes}"]` : ""}
                 </span>
-                <span className="font-black text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-100">${p.amount_paid.toFixed(2)}</span>
+                <span className="font-black text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-100">PKR {p.amount_paid.toFixed(2)}</span>
               </div>
             ))}
           </div>

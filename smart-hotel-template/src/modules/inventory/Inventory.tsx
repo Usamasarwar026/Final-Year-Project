@@ -23,8 +23,8 @@ export default function Inventory() {
           { label: "Low Stock Alerts", value: loading ? "..." : stats?.lowStockCount ?? 0, icon: AlertTriangle, iconBg: "bg-rose-600", iconColor: "text-white", cardBg: "border-rose-100 bg-rose-50" },
           { label: "Expiring Soon (7 days)", value: loading ? "..." : stats?.expiringCount ?? 0, icon: Clock, iconBg: "bg-amber-600", iconColor: "text-white", cardBg: "border-amber-100 bg-amber-50" },
           { label: "Pending POs", value: loading ? "..." : stats?.pendingPOs ?? 0, icon: ShoppingCart, iconBg: "bg-indigo-600", iconColor: "text-white", cardBg: "border-indigo-100 bg-indigo-50" },
-          { label: "Monthly Wastage Cost", value: loading ? "..." : `Rs. ${stats?.monthlyWastageCost ?? 0}`, icon: TrendingDown, iconBg: "bg-orange-600", iconColor: "text-white", cardBg: "border-orange-100 bg-orange-50" },
-          { label: "COGS (This Month)", value: loading ? "..." : `Rs. ${stats?.monthlyCOGS ?? 0}`, icon: BarChart3, iconBg: "bg-emerald-600", iconColor: "text-white", cardBg: "border-emerald-100 bg-emerald-50" },
+          { label: "Monthly Wastage Cost", value: loading ? "..." : `PKR ${stats?.monthlyWastageCost ?? 0}`, icon: TrendingDown, iconBg: "bg-orange-600", iconColor: "text-white", cardBg: "border-orange-100 bg-orange-50" },
+          { label: "COGS (This Month)", value: loading ? "..." : `PKR ${stats?.monthlyCOGS ?? 0}`, icon: BarChart3, iconBg: "bg-emerald-600", iconColor: "text-white", cardBg: "border-emerald-100 bg-emerald-50" },
         ].map((card, idx) => (
           <StatCard key={card.label} {...card} loading={loading} index={idx} />
         ))}

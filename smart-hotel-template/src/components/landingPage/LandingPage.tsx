@@ -210,7 +210,7 @@ export default function LandingPage() {
                       <h3 className="font-serif text-xl">Room {room.room_number}</h3>
                       <p className="text-sm text-muted-foreground">{room.room_type}</p>
                       <p className="text-lg font-bold text-primary mt-2">
-                        ${Number(room.price_per_night).toFixed(0)}/night
+                        PKR ${Number(room.price_per_night).toFixed(0)}/night
                       </p>
                       <button
                         onClick={handleRoomBook}
