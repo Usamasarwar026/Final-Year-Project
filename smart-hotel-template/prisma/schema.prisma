@@ -451,14 +451,14 @@ enum AlertStatus {
   Dismissed
 }
 
-enum Department {
-  Reception
-  Housekeeping
-  Kitchen
-  Management
-  Security
-  Other
-}
+// enum Department {
+//   Reception
+//   Housekeeping
+//   Kitchen
+//   Management
+//   Security
+//   Other
+// }
 
 
 enum InventoryDepartment {
@@ -494,12 +494,12 @@ enum POStatus {
   Cancelled
 }
 
-enum ShiftType {
-  Morning
-  Evening
-  Night
-  Flexible
-}
+// enum ShiftType {
+//   Morning
+//   Evening
+//   Night
+//   Flexible
+// }
 
 
 

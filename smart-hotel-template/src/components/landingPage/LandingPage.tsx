@@ -8,10 +8,8 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { Footer } from "../footer/Footer";
 import { Button } from "../button/Button";
-import { WebsiteName, STATUS_CONFIG, type Room } from "@/constant/constant";
+import { WebsiteName, IMAGES, STATUS_CONFIG, type Room } from "@/constant/constant";
 import { clsx } from "clsx";
-
-const heroImg = "/assets/hero-hotel.jpg";
 
 export default function LandingPage() {
   const router = useRouter();
@@ -112,7 +110,7 @@ export default function LandingPage() {
           className="absolute inset-0"
         >
           <Image
-            src={heroImg}
+            src={IMAGES.heroImage}
             alt="Luxury Hotel"
             fill
             priority

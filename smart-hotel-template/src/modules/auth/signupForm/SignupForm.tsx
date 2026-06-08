@@ -4,7 +4,6 @@ import { useState } from "react";
 import * as Yup from "yup";
 import Image from "next/image";
 import { toast } from "sonner";
-import heroImg from "../../../../public/assets/hero-hotel.jpg";
 import { Button } from "../../../components/button/Button";
 import { Input } from "../../../components/input/Input";
 import { Label } from "../../../components/label/Label";
@@ -12,7 +11,7 @@ import { Card } from "../../../components/card/Card";
 import { useMutation } from "@tanstack/react-query";
 import { registerUser } from "@/services/authService";
 import { useRouter } from "next/navigation";
-import { WebsiteName } from "@/constant/constant";
+import { WebsiteName, IMAGES } from "@/constant/constant";
 
 const registerSchema = Yup.object({
   name: Yup.string()
@@ -69,8 +68,10 @@ export const SignupForm = () => {
     <div className="min-h-screen grid md:grid-cols-2">
       <div className="hidden md:block relative">
         <Image
-          src={heroImg}
-          alt=""
+          src={IMAGES.heroImage}
+          alt="hotel"
+          fill
+          sizes="100vw"
           className="absolute inset-0 h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-primary/60" />
@@ -130,14 +131,7 @@ export const SignupForm = () => {
               {loading ? "Creating..." : "Create account"}
             </Button>
           </form>
-          <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
-            <div className="h-px flex-1 bg-border" />
-            or
-            <div className="h-px flex-1 bg-border" />
-          </div>
-          <Button variant="outline" className="w-full">
-            Continue with Google
-          </Button>
+          
           <p className="mt-6 text-sm text-center text-muted-foreground">
             Already have an account?{" "}
             <Link href="/login" className="text-accent hover:underline">

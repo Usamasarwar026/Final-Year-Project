@@ -48,37 +48,67 @@ export const DEPT_FALLBACK: Record<string, { icon: string; bg: string; color: st
   _default:     { icon: "👤",  bg: "bg-gray-100",   color: "text-gray-700"   },
 };
 
-// ─── Module Permissions (key must match staffNav permission field) ─────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// MODULE PERMISSIONS
+// key MUST exactly match the `permission` field in staffNav
+// ─────────────────────────────────────────────────────────────────────────────
 export interface ModulePermission {
   key:         string;
   label:       string;
   description: string;
-  href:        string;
+  group:       string;
   icon:        string;
 }
 
 export const MODULE_PERMISSIONS: ModulePermission[] = [
-  { key: "booking",      label: "Booking",      description: "View and manage hotel reservations", href: "/staff/booking",      icon: "📅" },
-  { key: "rooms",        label: "Rooms",        description: "View room availability and status",  href: "/staff/rooms",        icon: "🛏️" },
-  { key: "customer",     label: "Customer",     description: "View and manage guest profiles",     href: "/staff/customer",     icon: "👤" },
-  // { key: "kitchen",      label: "Kitchen",      description: "View and manage food orders",        href: "/staff/kitchen",      icon: "👨‍🍳" },
-  { key: "KITCHEN_ACCESS", label: "Kitchen Access", description: "View kitchen dashboard and active orders", href: "/staff/kitchen", icon: "🍳" },
-  { key: "KITCHEN_ORDER_PROCESS", label: "Kitchen Process", description: "Accept and prepare kitchen items", href: "/staff/kitchen/process", icon: "🥘" },
-  { key: "DELIVERY_ACCESS", label: "Delivery Access", description: "View and update assigned food deliveries", href: "/staff/kitchen/delivery", icon: "🛵" },
-  { key: "inventory",    label: "Inventory",    description: "View and manage stock items",        href: "/staff/inventory",    icon: "📦" },
-  { key: "housekeeping", label: "House Keeping",description: "View and manage cleaning tasks",     href: "/staff/housekeeping", icon: "🧹" },
-  { key: "billing",      label: "Billing",      description: "View and process invoices",          href: "/staff/billing",      icon: "💳" },
-  { key: "reports",      label: "Reports",      description: "View analytics and export reports",  href: "/staff/reports",      icon: "📊" },
+  // ── General ────────────────────────────────────────────────────────────────
+  { key: "booking",      label: "Booking",           description: "View and manage hotel reservations",          group: "General", icon: "📅" },
+  { key: "rooms",        label: "Rooms",             description: "View room availability and status",           group: "General", icon: "🛏️" },
+  { key: "customer",     label: "Customer",          description: "View and manage guest profiles",              group: "General", icon: "👤" },
+  { key: "inventory",    label: "Inventory",         description: "View and manage stock items",                 group: "General", icon: "📦" },
+  { key: "housekeeping", label: "House Keeping",     description: "View and manage cleaning tasks",              group: "General", icon: "🧹" },
+  { key: "billing",      label: "Billing",           description: "View and process invoices",                   group: "General", icon: "💳" },
+  { key: "reports",      label: "Reports",           description: "View analytics and export reports",           group: "General", icon: "📊" },
+
+  // ── Kitchen (granular) ─────────────────────────────────────────────────────
+  // Each key maps 1-to-1 with a `permission` field in staffNav kitchen children
+  { key: "KITCHEN_ACCESS",             label: "Kitchen — Dashboard",       description: "View kitchen dashboard and active orders overview",      group: "Kitchen", icon: "🍳" },
+  { key: "KITCHEN_ORDER_PROCESS",      label: "Kitchen — Process Orders",  description: "Accept, prepare and update status of kitchen orders",    group: "Kitchen", icon: "🥘" },
+  { key: "KITCHEN_MENU_MANAGE",        label: "Kitchen — Menu Management", description: "Add, edit and remove menu items",                        group: "Kitchen", icon: "🗒️" },
+  { key: "KITCHEN_CATEGORIES_MANAGE",  label: "Kitchen — Categories",      description: "Create and manage food categories",                      group: "Kitchen", icon: "🏷️" },
+  { key: "KITCHEN_STAFF_MANAGE",       label: "Kitchen — Staff",           description: "View and manage kitchen staff assignments",               group: "Kitchen", icon: "👨‍🍳" },
+  { key: "KITCHEN_REPORTS",            label: "Kitchen — Reports",         description: "View kitchen performance and sales reports",              group: "Kitchen", icon: "📈" },
+  { key: "DELIVERY_ASSIGN",            label: "Delivery — Assign",         description: "Assign delivery tasks to staff and track all deliveries", group: "Kitchen", icon: "🛵" },
+  { key: "DELIVERY_ACCESS",            label: "Delivery — My Deliveries",  description: "View and update own assigned food deliveries",            group: "Kitchen", icon: "🚴" },
 ];
 
-// Default permissions per department name
+// ─── Permissions grouped for UI picker ───────────────────────────────────────
+export interface PermissionGroup {
+  group:       string;
+  permissions: ModulePermission[];
+}
+
+export function getGroupedPermissions(): PermissionGroup[] {
+  const map: Record<string, ModulePermission[]> = {};
+  for (const p of MODULE_PERMISSIONS) {
+    if (!map[p.group]) map[p.group] = [];
+    map[p.group].push(p);
+  }
+  return Object.entries(map).map(([group, permissions]) => ({ group, permissions }));
+}
+
+// ─── Default permissions per department name ──────────────────────────────────
 export const DEPT_DEFAULT_PERMISSIONS: Record<string, string[]> = {
   Reception:    ["booking", "rooms", "customer", "billing"],
   Housekeeping: ["rooms", "housekeeping"],
-  // Kitchen:      ["kitchen", "inventory"],
-  // Management:   ["booking", "rooms", "customer", "kitchen", "inventory", "housekeeping", "billing", "reports"],
-  Kitchen:      [ "inventory", "KITCHEN_ACCESS", "KITCHEN_ORDER_PROCESS", "DELIVERY_ACCESS"],
-  Management:   ["booking", "rooms", "customer", "kitchen", "inventory", "housekeeping", "billing", "reports", "KITCHEN_ACCESS", "KITCHEN_ORDER_PROCESS", "DELIVERY_ACCESS"],
+  Kitchen:      ["KITCHEN_ACCESS", "KITCHEN_ORDER_PROCESS", "inventory"],
+  Management:   [
+    "booking", "rooms", "customer", "inventory", "housekeeping", "billing", "reports",
+    "KITCHEN_ACCESS", "KITCHEN_ORDER_PROCESS",
+    "KITCHEN_MENU_MANAGE", "KITCHEN_CATEGORIES_MANAGE",
+    "KITCHEN_STAFF_MANAGE", "KITCHEN_REPORTS",
+    "DELIVERY_ASSIGN", "DELIVERY_ACCESS",
+  ],
   Security:     ["booking", "rooms", "customer"],
   Other:        [],
 };
@@ -137,7 +167,6 @@ export interface AttendanceLog {
   created_at?: string;
 }
 
-// ─── Payloads ─────────────────────────────────────────────────────────────────
 export interface CreateStaffPayload {
   name:          string;
   email:         string;

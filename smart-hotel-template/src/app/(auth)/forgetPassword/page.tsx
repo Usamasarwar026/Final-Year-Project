@@ -1,4 +1,4 @@
-import { ForgetForm } from "@/modules/auth/FogetForm/ForgetForm";
+import { ForgetForm } from "@/modules/auth/ForgetForm/ForgetForm";
 
 export default function ForgetPasswordPage() {
   return <ForgetForm />;

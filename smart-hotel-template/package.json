@@ -10,7 +10,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@prisma/adapter-neon": "^7.8.0",
+    "@prisma/adapter-neon": "^7.8.0", 
     "@prisma/client": "^7.8.0",
     "@tanstack/react-query": "^5.100.11",
     "@tanstack/react-router": "^1.170.7",
@@ -45,6 +45,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/recharts": "^1.8.29",
+    "@types/bcryptjs": "^2.4.6",
     "autoprefixer": "^10.5.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",

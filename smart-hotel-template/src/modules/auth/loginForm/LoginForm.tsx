@@ -6,13 +6,12 @@ import { useRouter } from "next/navigation";
 import * as Yup from "yup";
 import Image from "next/image";
 import { toast } from "sonner";
-import heroImg from "../../../../public/assets/hero-hotel.jpg";
 import { Button } from "../../../components/button/Button";
 import { Input } from "../../../components/input/Input";
 import { Label } from "../../../components/label/Label";
 import { Card } from "../../../components/card/Card";
 import { Eye, EyeOff } from "lucide-react";
-import { WebsiteName } from "@/constant/constant";
+import { WebsiteName, IMAGES } from "@/constant/constant";
 
 const loginSchema = Yup.object({
   email: Yup.string()
@@ -81,8 +80,10 @@ export const LoginForm = () => {
     <div className="min-h-screen grid md:grid-cols-2">
       <div className="hidden md:block relative">
         <Image
-          src={heroImg}
+          src={IMAGES.heroImage}
           alt=""
+          fill
+          sizes="100vw"
           className="absolute inset-0 h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-primary/60" />
@@ -115,10 +116,7 @@ export const LoginForm = () => {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            {/* <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-            </div> */}
+           
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
@@ -162,14 +160,7 @@ export const LoginForm = () => {
               {loading ? "Signing in..." : "Sign in"}
             </Button>
           </form>
-          <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
-            <div className="h-px flex-1 bg-border" />
-            or
-            <div className="h-px flex-1 bg-border" />
-          </div>
-          <Button variant="outline" className="w-full">
-            Continue with Google
-          </Button>
+          
           <p className="mt-6 text-sm text-center text-muted-foreground">
             New here?{" "}
             <Link href="/signup" className="text-accent hover:underline">
