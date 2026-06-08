@@ -116,7 +116,7 @@ function RecordPaymentModal({ invoice, onClose, onSuccess }: PaymentModalProps) 
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground font-medium">Total Invoice Amount:</span>
-            <span className="font-semibold text-foreground">${invoice.total_amount.toFixed(2)}</span>
+            <span className="font-semibold text-foreground">PKR {invoice.total_amount.toFixed(2)}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground font-medium">Amount Already Paid:</span>
@@ -615,7 +615,7 @@ export default function Billing() {
                         {fmtDate(inv.generated_at)}
                       </td>
                       <td className="px-4 py-4 text-xs font-medium text-foreground">
-                        PKR ${inv.subtotal.toFixed(2)}
+                        PKR {inv.subtotal.toFixed(2)}
                       </td>
                       <td className="px-4 py-4 text-xs text-muted-foreground">
                         <span>+{inv.tax_percent}% Tax</span>
@@ -624,7 +624,7 @@ export default function Billing() {
                         )}
                       </td>
                       <td className="px-4 py-4 text-xs font-bold text-foreground">
-                        PKR ${inv.total_amount.toFixed(2)}
+                        PKR {inv.total_amount.toFixed(2)}
                       </td>
                       <td className="px-4 py-4">
                         <span
@@ -633,7 +633,7 @@ export default function Billing() {
                             inv.balance_due > 0 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"
                           )}
                         >
-                          PKR ${inv.balance_due.toFixed(2)}
+                          PKR {inv.balance_due.toFixed(2)}
                         </span>
                       </td>
                       <td className="px-4 py-4">
