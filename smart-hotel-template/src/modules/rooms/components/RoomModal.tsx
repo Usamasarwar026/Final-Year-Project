@@ -240,10 +240,10 @@ export function RoomModal({ open, onClose, editRoom, onSave, onUpload }: Props) 
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-foreground">Price / Night <span className="text-red-500">*</span></label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">PKR</span>
                       <input type="number" min={0} step="0.01" value={form.price_per_night}
                         onChange={(e) => set("price_per_night", Number(e.target.value))}
-                        className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-border bg-muted/40 text-sm text-foreground focus:outline-none focus:border-gold/60 transition-colors" />
+                        className="w-full pl-12 pr-3 py-2.5 rounded-xl border border-border bg-muted/40 text-sm text-foreground focus:outline-none focus:border-gold/60 transition-colors" />
                     </div>
                   </div>
                   <div className="space-y-1.5">

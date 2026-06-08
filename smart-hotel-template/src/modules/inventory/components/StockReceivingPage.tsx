@@ -85,7 +85,7 @@ export default function StockReceivingPage() {
                         {config.label}
                       </span>
                     </td>
-                    <td className="px-4 py-3">Rs. {po.total_cost}</td>
+                    <td className="px-4 py-3">PKR {po.total_cost}</td>
                     <td className="px-4 py-3 text-gray-500">{new Date(po.ordered_at).toLocaleDateString()}</td>
                     <td className="px-4 py-3">
                       <button onClick={() => openReceive(po)}

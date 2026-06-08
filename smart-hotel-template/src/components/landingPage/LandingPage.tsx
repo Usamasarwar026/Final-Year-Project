@@ -3,29 +3,37 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { useSession, signIn } from "next-auth/react";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import { Footer } from "../footer/Footer";
 import { Button } from "../button/Button";
-import { WebsiteName, IMAGES } from "@/constant/constant";
-
-const rooms = [
-  {
-    name: "Deluxe",
-    img: IMAGES.deluxeImg,
-  },
-  {
-    name: "Suite",
-    img: IMAGES.suiteImg,
-  },
-  {
-    name: "Standard",
-    img: IMAGES.standardImg,
-  },
-];
+import { WebsiteName, IMAGES, STATUS_CONFIG, type Room } from "@/constant/constant";
+import { clsx } from "clsx";
 
 export default function LandingPage() {
   const router = useRouter();
+  const { data: session } = useSession();
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(9);
+
+  // Fetch rooms from public API
+  useEffect(() => {
+    async function fetchRooms() {
+      try {
+        const res = await fetch("/api/rooms/public");
+        const data = await res.json();
+        setRooms(data.rooms || []);
+      } catch (err) {
+        console.error("Failed to fetch rooms:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchRooms();
+  }, []);
+
   const handleBookNow = async () => {
     const res = await signIn("credentials", {
       redirect: false,
@@ -36,8 +44,26 @@ export default function LandingPage() {
       return;
     }
 
-    router.push("/rooms");
+    router.push("/customer/booking");
   };
+
+  const handleRoomBook = () => {
+    if (!session) {
+      router.push("/login");
+      return;
+    }
+    router.push("/customer/booking");
+  };
+
+  const handleShowMore = () => {
+    setVisibleCount((prev) => prev + 6);
+  };
+
+  const handleShowLess = () => {
+    setVisibleCount(9);
+  };
+
+  const visibleRooms = rooms.slice(0, visibleCount);
 
   return (
     <div className="min-h-screen bg-background">
@@ -89,7 +115,7 @@ export default function LandingPage() {
             fill
             priority
             className="object-cover"
-          />{" "}
+          />
           <div className="absolute inset-0 bg-black/50" />
         </motion.div>
 
@@ -115,7 +141,7 @@ export default function LandingPage() {
             </button>
 
             <Link
-              href="/rooms"
+              href="#rooms"
               className="border border-white px-6 py-3 rounded-lg"
             >
               Explore Rooms
@@ -130,30 +156,94 @@ export default function LandingPage() {
           Featured Rooms
         </h2>
 
-        <div className="grid md:grid-cols-3 gap-6">
-          {rooms.map((room) => (
-            <motion.div
-              key={room.name}
-              whileHover={{ scale: 1.05 }}
-              className="bg-card rounded-xl overflow-hidden shadow-lg"
-            >
-              <Image
-                src={room.img}
-                alt={room.name}
-                width={600}
-                height={400}
-                className="h-56 w-full object-cover"
-              />
+        {loading ? (
+          <div className="flex flex-col items-center gap-3 py-20">
+            <div className="w-7 h-7 rounded-full border-2 border-muted-foreground/20 border-t-primary animate-spin" />
+            <p className="text-sm text-muted-foreground">Loading rooms…</p>
+          </div>
+        ) : (
+          <>
+            <div className="grid md:grid-cols-3 gap-6">
+              {visibleRooms.map((room, i) => {
+                const statusConfig = STATUS_CONFIG[room.status];
+                const roomImage =
+                  room.photos?.[0] || "/assets/room-standard.jpg";
+                return (
+                  <motion.div
+                    key={room.room_id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    whileHover={{ scale: 1.03 }}
+                    className="bg-card rounded-xl overflow-hidden shadow-lg flex flex-col"
+                  >
+                    <div className="relative h-56 w-full">
+                      <Image
+                        src={roomImage}
+                        alt={`Room ${room.room_number}`}
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
+                      <div className="absolute top-3 right-3">
+                        <span
+                          className={clsx(
+                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold",
+                            statusConfig.bg,
+                            statusConfig.text
+                          )}
+                        >
+                          <span
+                            className={clsx(
+                              "w-1.5 h-1.5 rounded-full",
+                              statusConfig.dot
+                            )}
+                          />
+                          {statusConfig.label}
+                        </span>
+                      </div>
+                    </div>
 
-              <div className="p-4">
-                <h3 className="font-serif text-xl">{room.name} Room</h3>
-                <p className="text-sm text-muted-foreground">
-                  Premium comfort with luxury service
-                </p>
+                    <div className="p-4 flex flex-col flex-1">
+                      <h3 className="font-serif text-xl">Room {room.room_number}</h3>
+                      <p className="text-sm text-muted-foreground">{room.room_type}</p>
+                      <p className="text-lg font-bold text-primary mt-2">
+                        PKR ${Number(room.price_per_night).toFixed(0)}/night
+                      </p>
+                      <button
+                        onClick={handleRoomBook}
+                        className="mt-4 bg-gold text-black px-4 py-2 rounded-lg font-semibold hover:bg-gold/90 transition-colors"
+                      >
+                        Book Now
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            {rooms.length > 9 && (
+              <div className="flex justify-center gap-4 mt-10">
+                {visibleCount < rooms.length && (
+                  <button
+                    onClick={handleShowMore}
+                    className="border border-primary px-6 py-2 rounded-lg text-primary font-semibold hover:bg-primary hover:text-primary-foreground transition-colors"
+                  >
+                    Show More
+                  </button>
+                )}
+                {visibleCount > 9 && (
+                  <button
+                    onClick={handleShowLess}
+                    className="border border-muted-foreground px-6 py-2 rounded-lg text-muted-foreground font-semibold hover:bg-muted transition-colors"
+                  >
+                    Show Less
+                  </button>
+                )}
               </div>
-            </motion.div>
-          ))}
-        </div>
+            )}
+          </>
+        )}
       </section>
       <section className="bg-hero text-primary-foreground py-24">
         <div className="mx-auto max-w-4xl px-6 text-center">
@@ -181,7 +271,7 @@ export default function LandingPage() {
               variant="outline"
               className="border-white/40 text-primary-foreground bg-transparent hover:bg-white/10 hover:text-gold"
             >
-              <Link href="/rooms">Browse rooms</Link>
+              <Link href="#rooms">Browse rooms</Link>
             </Button>
           </div>
         </div>

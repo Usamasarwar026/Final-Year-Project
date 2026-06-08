@@ -101,7 +101,7 @@ const fmt = (d: string) =>
   });
 
 const fmtCurrency = (n: number) =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 }).format(n);
+  `PKR ${new Intl.NumberFormat("en-US", { minimumFractionDigits: 0 }).format(n)}`;
 
 function daysUntilCheckout(checkoutDate: string): number {
   const now = new Date();

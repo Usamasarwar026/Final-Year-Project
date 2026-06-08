@@ -76,7 +76,7 @@ function RecordPaymentModal({ invoice, onClose, onSuccess }: PaymentModalProps) 
       return toast.error("Please enter a valid payment amount");
     }
     if (payAmt > invoice.balance_due) {
-      return toast.error(`Payment amount cannot exceed balance due ($${invoice.balance_due.toFixed(2)})`);
+      return toast.error(`Payment amount cannot exceed balance due (PKR ${invoice.balance_due.toFixed(2)})`);
     }
 
     setLoading(true);
@@ -120,7 +120,7 @@ function RecordPaymentModal({ invoice, onClose, onSuccess }: PaymentModalProps) 
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground font-medium">Amount Already Paid:</span>
-            <span className="font-semibold text-emerald-600">${invoice.amount_paid.toFixed(2)}</span>
+            <span className="font-semibold text-emerald-600">PKR ${invoice.amount_paid.toFixed(2)}</span>
           </div>
           <div className="flex justify-between border-t border-border pt-1.5 font-bold text-sm">
             <span className="text-foreground">Remaining Balance:</span>
@@ -130,7 +130,7 @@ function RecordPaymentModal({ invoice, onClose, onSuccess }: PaymentModalProps) 
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Payment Amount ($) *</label>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Payment Amount (PKR) *</label>
             <input
               type="number"
               step="0.01"
@@ -438,19 +438,19 @@ export default function Billing() {
       {/* Stats Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          label="Total Revenue Collected"
-          value={stats.revenue}
-          icon={TrendingUp}
-          color="bg-emerald-500"
-          prefix="$"
-        />
-        <StatCard
-          label="Outstanding Balances"
-          value={stats.outstanding}
-          icon={AlertTriangle}
-          color="bg-amber-500"
-          prefix="$"
-        />
+              label="Total Revenue Collected"
+              value={stats.revenue}
+              icon={TrendingUp}
+              color="bg-emerald-500"
+              prefix="PKR "
+            />
+            <StatCard
+              label="Outstanding Balances"
+              value={stats.outstanding}
+              icon={AlertTriangle}
+              color="bg-amber-500"
+              prefix="PKR "
+            />
         <StatCard
           label="Fully Paid Invoices"
           value={stats.paidCount}
@@ -615,7 +615,7 @@ export default function Billing() {
                         {fmtDate(inv.generated_at)}
                       </td>
                       <td className="px-4 py-4 text-xs font-medium text-foreground">
-                        ${inv.subtotal.toFixed(2)}
+                        PKR ${inv.subtotal.toFixed(2)}
                       </td>
                       <td className="px-4 py-4 text-xs text-muted-foreground">
                         <span>+{inv.tax_percent}% Tax</span>
@@ -624,7 +624,7 @@ export default function Billing() {
                         )}
                       </td>
                       <td className="px-4 py-4 text-xs font-bold text-foreground">
-                        ${inv.total_amount.toFixed(2)}
+                        PKR ${inv.total_amount.toFixed(2)}
                       </td>
                       <td className="px-4 py-4">
                         <span
@@ -633,7 +633,7 @@ export default function Billing() {
                             inv.balance_due > 0 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"
                           )}
                         >
-                          ${inv.balance_due.toFixed(2)}
+                          PKR ${inv.balance_due.toFixed(2)}
                         </span>
                       </td>
                       <td className="px-4 py-4">

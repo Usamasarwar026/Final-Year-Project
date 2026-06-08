@@ -120,11 +120,9 @@ export default function AdminDashboard() {
   }, []);
 
   const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    return `PKR ${new Intl.NumberFormat("en-US", {
       minimumFractionDigits: 0,
-    }).format(val);
+    }).format(val)}`;
   };
 
   const getStatusBadge = (status: string) => {
@@ -418,7 +416,7 @@ export default function AdminDashboard() {
                     tick={{ fontSize: 10, fill: "#64748b" }}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(v) => `$${v}`}
+                    tickFormatter={(v) => `PKR ${v}`}
                   />
                   <Tooltip
                     formatter={(value: any) => [formatCurrency(value), "Paid Revenue"]}

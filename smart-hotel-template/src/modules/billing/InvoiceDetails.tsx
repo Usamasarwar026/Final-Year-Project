@@ -75,7 +75,7 @@ export default function InvoiceDetails() {
       return toast.error("Please enter a valid amount");
     }
     if (amount > invoice.balance_due) {
-      return toast.error(`Payment cannot exceed balance due ($${invoice.balance_due.toFixed(2)})`);
+      return toast.error(`Payment cannot exceed balance due (PKR ${invoice.balance_due.toFixed(2)})`);
     }
 
     setSubmittingPayment(true);
@@ -210,7 +210,7 @@ export default function InvoiceDetails() {
               {isPaid ? "Invoice Settled Successfully" : "Pending Balance Payment"}
             </h4>
             <p className="text-xs opacity-80 mt-0.5">
-              {isPaid ? "This folio is fully closed. No outstanding balances remain." : `A pending balance of $${invoice.balance_due.toFixed(2)} is remaining for checkout.`}
+              {isPaid ? "This folio is fully closed. No outstanding balances remain." : `A pending balance of PKR ${invoice.balance_due.toFixed(2)} is remaining for checkout.`}
             </p>
           </div>
         </div>
@@ -292,7 +292,7 @@ export default function InvoiceDetails() {
             </div>
             <div className="text-right">
               <span className="text-[9px] uppercase tracking-wider text-slate-400 dark:text-zinc-500 font-bold block">Daily Rate</span>
-              <span className="text-xs font-extrabold text-indigo-600 dark:text-indigo-400">${Number(invoice.booking?.room?.price_per_night || 0).toFixed(2)}</span>
+              <span className="text-xs font-extrabold text-indigo-600 dark:text-indigo-400">PKR {Number(invoice.booking?.room?.price_per_night || 0).toFixed(2)}</span>
             </div>
           </div>
         </div>
@@ -338,10 +338,10 @@ export default function InvoiceDetails() {
                       </span>
                     </td>
                     <td className="p-4 text-center text-slate-500 dark:text-zinc-400">
-                      {invoice.booking?.total_nights} Nights × ${Number(invoice.booking?.room?.price_per_night || 0).toFixed(2)}
+                      {invoice.booking?.total_nights} Nights × PKR {Number(invoice.booking?.room?.price_per_night || 0).toFixed(2)}
                     </td>
                     <td className="p-4 text-right font-bold text-slate-800 dark:text-zinc-200 pr-6">
-                      ${invoice.room_charges.toFixed(2)}
+                      PKR {invoice.room_charges.toFixed(2)}
                     </td>
                   </tr>
 
@@ -363,7 +363,7 @@ export default function InvoiceDetails() {
                       </td>
                       <td className="p-4 text-center text-slate-500 dark:text-zinc-400">—</td>
                       <td className="p-4 text-right font-bold text-slate-800 dark:text-zinc-200 pr-6">
-                        ${ht.charge_amount.toFixed(2)}
+                        PKR {ht.charge_amount.toFixed(2)}
                       </td>
                     </tr>
                   ))}
@@ -388,7 +388,7 @@ export default function InvoiceDetails() {
                         Qty: {lr.quantity}
                       </td>
                       <td className="p-4 text-right font-bold text-slate-800 dark:text-zinc-200 pr-6">
-                        ${lr.charge_amount.toFixed(2)}
+                        PKR {lr.charge_amount.toFixed(2)}
                       </td>
                     </tr>
                   ))}
@@ -407,7 +407,7 @@ export default function InvoiceDetails() {
                           <div className="pl-5 space-y-0.5 border-l border-slate-200 dark:border-zinc-800 mt-1.5">
                             {fo.order_items.map((oi: any) => (
                               <span key={oi.id} className="text-[10px] text-slate-500 dark:text-zinc-400 block font-medium">
-                                • {oi.menu_items?.name} (x{oi.quantity}) — ${Number(oi.subtotal).toFixed(2)}
+                                • {oi.menu_items?.name} (x{oi.quantity}) — PKR {Number(oi.subtotal).toFixed(2)}
                               </span>
                             ))}
                           </div>
@@ -420,7 +420,7 @@ export default function InvoiceDetails() {
                       </td>
                       <td className="p-4 text-center text-slate-500 dark:text-zinc-400">—</td>
                       <td className="p-4 text-right font-bold text-slate-800 dark:text-zinc-200 pr-6">
-                        ${fo.total_amount.toFixed(2)}
+                        PKR {fo.total_amount.toFixed(2)}
                       </td>
                     </tr>
                   ))}
@@ -453,44 +453,44 @@ export default function InvoiceDetails() {
               
               <div className="flex justify-between text-slate-500 dark:text-zinc-400">
                 <span>Room Charges:</span>
-                <span className="font-semibold text-slate-800 dark:text-zinc-200">${invoice.room_charges.toFixed(2)}</span>
+                <span className="font-semibold text-slate-800 dark:text-zinc-200">PKR {invoice.room_charges.toFixed(2)}</span>
               </div>
               
               <div className="flex justify-between text-slate-500 dark:text-zinc-400">
                 <span>Additional Services:</span>
-                <span className="font-semibold text-slate-800 dark:text-zinc-200">${invoice.service_charges.toFixed(2)}</span>
+                <span className="font-semibold text-slate-800 dark:text-zinc-200">PKR {invoice.service_charges.toFixed(2)}</span>
               </div>
               
               <div className="flex justify-between text-slate-500 dark:text-zinc-400">
                 <span>Dining & Orders:</span>
-                <span className="font-semibold text-slate-800 dark:text-zinc-200">${invoice.food_charges.toFixed(2)}</span>
+                <span className="font-semibold text-slate-800 dark:text-zinc-200">PKR {invoice.food_charges.toFixed(2)}</span>
               </div>
 
               <div className="border-t border-slate-100 dark:border-zinc-800/50 pt-3 flex justify-between font-bold text-slate-800 dark:text-zinc-200">
                 <span>Gross Subtotal:</span>
-                <span>${invoice.subtotal.toFixed(2)}</span>
+                <span>PKR {invoice.subtotal.toFixed(2)}</span>
               </div>
 
               <div className="flex justify-between text-slate-500 dark:text-zinc-400 items-center">
                 <span className="flex items-center gap-1"><Receipt size={12} className="text-slate-400" /> Sales Tax ({invoice.tax_percent}%):</span>
-                <span className="font-semibold text-slate-800 dark:text-zinc-200">+${invoice.tax_amount.toFixed(2)}</span>
+                <span className="font-semibold text-slate-800 dark:text-zinc-200">+PKR {invoice.tax_amount.toFixed(2)}</span>
               </div>
 
               {invoice.discount_percent > 0 && (
                 <div className="flex justify-between text-rose-500 font-semibold items-center">
                   <span className="flex items-center gap-1"><Percent size={12} /> Discount ({invoice.discount_percent}%):</span>
-                  <span>-${invoice.discount_amount.toFixed(2)}</span>
+                  <span>-PKR {invoice.discount_amount.toFixed(2)}</span>
                 </div>
               )}
 
               <div className="border-t border-slate-200 dark:border-zinc-800 pt-3 flex justify-between items-baseline">
                 <span className="text-sm font-black text-slate-900 dark:text-zinc-100">Grand Total:</span>
-                <span className="text-xl font-black text-indigo-600 dark:text-indigo-400">${invoice.total_amount.toFixed(2)}</span>
+                <span className="text-xl font-black text-indigo-600 dark:text-indigo-400">PKR {invoice.total_amount.toFixed(2)}</span>
               </div>
 
               <div className="bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/20 rounded-2xl p-3 flex justify-between items-center text-emerald-700 dark:text-emerald-400 font-bold">
                 <span>Amount Paid:</span>
-                <span>${invoice.amount_paid.toFixed(2)}</span>
+                <span>PKR {invoice.amount_paid.toFixed(2)}</span>
               </div>
 
               <div className={clsx(
@@ -500,7 +500,7 @@ export default function InvoiceDetails() {
                   : "bg-emerald-50/50 border-emerald-100 dark:bg-emerald-950/10 dark:border-emerald-900/20 text-emerald-700 dark:text-emerald-400"
               )}>
                 <span>Balance Due:</span>
-                <span>${invoice.balance_due.toFixed(2)}</span>
+                <span>PKR {invoice.balance_due.toFixed(2)}</span>
               </div>
 
             </div>
@@ -526,7 +526,7 @@ export default function InvoiceDetails() {
                       
                       <div className="flex justify-between items-center">
                         <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                          +${p.amount_paid.toFixed(2)}
+                          +PKR {p.amount_paid.toFixed(2)}
                         </span>
                         <span className="text-[9px] font-extrabold bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 px-2 py-0.5 rounded border border-slate-200/50 dark:border-zinc-800 uppercase">
                           {p.payment_method}
@@ -581,21 +581,21 @@ export default function InvoiceDetails() {
             <form onSubmit={handleRecordPayment} className="space-y-4">
               
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-1.5">Payment Amount ($) *</label>
+                <label className="block text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-1.5">Payment Amount (PKR) *</label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-2.5 text-slate-400 dark:text-zinc-500 font-bold">$</span>
+                  <span className="absolute left-3.5 top-2.5 text-slate-400 dark:text-zinc-500 font-bold">PKR</span>
                   <input
                     type="number"
                     step="0.01"
                     value={payAmount}
                     onChange={(e) => setPayAmount(e.target.value)}
-                    className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-background text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600/50 dark:focus:ring-indigo-400/10 dark:focus:border-indigo-400/50 transition-all text-slate-900 dark:text-zinc-100"
+                    className="w-full pl-14 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-background text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600/50 dark:focus:ring-indigo-400/10 dark:focus:border-indigo-400/50 transition-all text-slate-900 dark:text-zinc-100"
                     placeholder="0.00"
                     required
                   />
                 </div>
                 <span className="text-[10px] text-slate-400 dark:text-zinc-500 mt-1 block">
-                  Remaining dues: <strong className="text-slate-600 dark:text-zinc-400">${invoice.balance_due.toFixed(2)}</strong>
+                  Remaining dues: <strong className="text-slate-600 dark:text-zinc-400">PKR {invoice.balance_due.toFixed(2)}</strong>
                 </span>
               </div>
 

@@ -118,7 +118,7 @@ function BookingDetailModal({ booking, onClose, onStatusChange }: {
               </p>
             </div>
             <div className="text-right">
-              <p className="text-xl font-bold text-foreground">${Number(booking.total_amount).toFixed(2)}</p>
+              <p className="text-xl font-bold text-foreground">PKR ${Number(booking.total_amount).toFixed(2)}</p>
               <p className="text-xs text-muted-foreground">{booking.total_nights} nights</p>
             </div>
           </div>
@@ -352,7 +352,7 @@ function RoomDropdown({ rooms, selected, onSelect, loading, error, disabled }: {
             </div>
             <div className="min-w-0">
               <p className="font-medium">{selected.room_type} · Floor {selected.floor}</p>
-              <p className="text-[10px] text-muted-foreground">${Number(selected.price_per_night)}/night · {selected.bed_type} Bed</p>
+              <p className="text-[10px] text-muted-foreground">PKR ${Number(selected.price_per_night)}/night · {selected.bed_type} Bed</p>
             </div>
           </div>
         ) : (
@@ -416,7 +416,7 @@ function RoomDropdown({ rooms, selected, onSelect, loading, error, disabled }: {
                         )}
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-sm font-bold text-foreground">${price}</p>
+                        <p className="text-sm font-bold text-foreground">PKR {price}</p>
                         <p className="text-[9px] text-muted-foreground">/night</p>
                       </div>
                     </button>
@@ -779,12 +779,12 @@ function CreateBookingModal({ onClose, onCreated }: {
                       {/* Price breakdown mini card */}
                       <div className="mt-2 p-3 rounded-xl bg-muted/50 border border-border space-y-1.5 text-xs">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">${Number(selectedRoom.price_per_night)} × {nightCount} nights</span>
-                          <span className="font-medium">${total.toFixed(0)}</span>
+                          <span className="text-muted-foreground">PKR ${Number(selectedRoom.price_per_night)} × {nightCount} nights</span>
+                          <span className="font-medium">PKR ${total.toFixed(0)}</span>
                         </div>
                         <div className="flex justify-between border-t border-border pt-1.5 font-semibold text-sm">
                           <span className="text-foreground">Total</span>
-                          <span className="text-accent">${total.toFixed(2)}</span>
+                          <span className="text-accent">PKR ${total.toFixed(2)}</span>
                         </div>
                         <p className="text-[10px] text-muted-foreground">Booking will be auto-confirmed (Admin)</p>
                       </div>
@@ -999,7 +999,7 @@ export default function AdminBookings() {
                       {/* Nights */}
                       <td className="px-4 py-3.5 text-muted-foreground text-xs">{b.total_nights}n</td>
                       {/* Amount */}
-                      <td className="px-4 py-3.5 font-semibold text-foreground text-xs">${Number(b.total_amount).toFixed(0)}</td>
+                      <td className="px-4 py-3.5 font-semibold text-foreground text-xs">PKR {Number(b.total_amount).toFixed(0)}</td>
                       {/* Status */}
                       <td className="px-4 py-3.5"><StatusBadge status={b.status} /></td>
                       {/* Source */}

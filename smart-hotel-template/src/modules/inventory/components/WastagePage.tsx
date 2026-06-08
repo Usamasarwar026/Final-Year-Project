@@ -93,7 +93,7 @@ export default function WastagePage() {
                       {record.reason}
                     </span>
                   </td>
-                  <td className="px-4 py-3">Rs. {record.total_cost}</td>
+                  <td className="px-4 py-3">PKR {record.total_cost}</td>
                   <td className="px-4 py-3 text-gray-500">{record.reported_by}</td>
                   <td className="px-4 py-3 text-gray-500">{new Date(record.wasted_at).toLocaleDateString()}</td>
                   {/* CHANGE 4: Added action cell containing the delete button */}

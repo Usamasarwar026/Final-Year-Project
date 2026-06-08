@@ -2,12 +2,30 @@
 
 import { useState } from "react";
 import { useCategories } from "@/hooks/useInventory";
-import { Plus, X, Pencil, ToggleLeft, ToggleRight } from "lucide-react";
+import { Plus, X, Pencil, ToggleLeft, ToggleRight, Package, UtensilsCrossed, Brush, Beer, Wrench, ShoppingCart, Droplet, Beef, Wheat, IceCream, Utensils, ShowerHead } from "lucide-react";
 import type { InventoryCategory } from "@/types/inventory";
 
-const ICONS = ["📦", "🍳", "🧹", "🍹", "🔧", "🛒", "🧴", "🥩", "🌾", "🧊", "🍽️", "🚿"];
+const ICONS = [
+  { name: "Package", Component: Package },
+  { name: "UtensilsCrossed", Component: UtensilsCrossed },
+  { name: "Brush", Component: Brush },
+  { name: "Beer", Component: Beer },
+  { name: "Wrench", Component: Wrench },
+  { name: "ShoppingCart", Component: ShoppingCart },
+  { name: "Droplet", Component: Droplet },
+  { name: "Beef", Component: Beef },
+  { name: "Wheat", Component: Wheat },
+  { name: "IceCream", Component: IceCream },
+  { name: "Utensils", Component: Utensils },
+  { name: "ShowerHead", Component: ShowerHead },
+];
 
-const EMPTY_FORM = { name: "", description: "", icon: "📦" };
+const EMPTY_FORM = { name: "", description: "", icon: "Package" };
+
+const getIconComponent = (iconName: string) => {
+  const icon = ICONS.find(i => i.name === iconName);
+  return icon?.Component || Package;
+};
 
 export default function CategoriesPage() {
   const { categories, loading, createCategory, updateCategory } = useCategories();
@@ -27,7 +45,7 @@ export default function CategoriesPage() {
 
   const openEdit = (cat: InventoryCategory) => {
     setEditTarget(cat);
-    setForm({ name: cat.name, description: cat.description ?? "", icon: cat.icon ?? "📦" });
+    setForm({ name: cat.name, description: cat.description ?? "", icon: cat.icon ?? "Package" });
     setError("");
     setShowModal(true);
   };
@@ -44,8 +62,8 @@ export default function CategoriesPage() {
     setSaving(true); setError("");
 
     const result = editTarget
-      ? await updateCategory(editTarget.id, { name: form.name.trim(), description: form.description || undefined, icon: form.icon || "📦" })
-      : await createCategory({ name: form.name.trim(), description: form.description || undefined, icon: form.icon || "📦" });
+      ? await updateCategory(editTarget.id, { name: form.name.trim(), description: form.description || undefined, icon: form.icon || "Package" })
+      : await createCategory({ name: form.name.trim(), description: form.description || undefined, icon: form.icon || "Package" });
 
     setSaving(false);
     if (result.ok) { closeModal(); }
@@ -71,9 +89,11 @@ export default function CategoriesPage() {
         <div className="bg-white border border-gray-200 rounded-xl p-8 text-center text-gray-400">No categories yet — add one!</div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {categories.map((cat) => (
+          {categories.map((cat) => {
+            const Icon = getIconComponent(cat.icon || "Package");
+            return (
             <div key={cat.id} className={`bg-white border rounded-xl p-5 flex items-center gap-4 ${cat.is_active ? "border-gray-200" : "border-gray-100 opacity-60"}`}>
-              <span className="text-3xl">{cat.icon}</span>
+              <Icon className="w-8 h-8 text-slate-600" />
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-gray-900">{cat.name}</p>
                 <p className="text-sm text-gray-500 truncate">{cat.description ?? "No description"}</p>
@@ -90,7 +110,8 @@ export default function CategoriesPage() {
                 </button>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -114,9 +135,9 @@ export default function CategoriesPage() {
                 <label className="text-xs text-gray-500">Icon</label>
                 <div className="flex flex-wrap gap-2 mt-1">
                   {ICONS.map((icon) => (
-                    <button key={icon} onClick={() => setForm((p) => ({ ...p, icon }))}
-                      className={`text-2xl p-2 rounded-lg border-2 transition ${form.icon === icon ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-gray-300"}`}>
-                      {icon}
+                    <button key={icon.name} onClick={() => setForm((p) => ({ ...p, icon: icon.name }))}
+                      className={`p-2 rounded-lg border-2 transition ${form.icon === icon.name ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-gray-300"}`}>
+                      <icon.Component className="w-6 h-6 text-slate-600" />
                     </button>
                   ))}
                 </div>

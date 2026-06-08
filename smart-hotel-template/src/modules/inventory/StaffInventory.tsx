@@ -199,7 +199,7 @@ export default function StaffInventory() {
         />
         <StatCard
           label="Stock Value"
-          value={`Rs. ${Math.round(totalStockValue).toLocaleString()}`}
+          value={`PKR ${Math.round(totalStockValue).toLocaleString()}`}
           icon={Package}
           color="bg-emerald-500"
         />

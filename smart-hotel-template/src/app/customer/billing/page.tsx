@@ -115,13 +115,13 @@ export default function CustomerBillingPage() {
                       {fmtDate(inv.generated_at)}
                     </td>
                     <td className="px-4 py-4 text-xs font-medium text-foreground">
-                      ${inv.subtotal.toFixed(2)}
+                      PKR ${inv.subtotal.toFixed(2)}
                     </td>
                     <td className="px-4 py-4 text-xs font-bold text-foreground">
-                      ${inv.total_amount.toFixed(2)}
+                      PKR {inv.total_amount.toFixed(2)}
                     </td>
                     <td className="px-4 py-4 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                      ${inv.amount_paid.toFixed(2)}
+                      PKR {inv.amount_paid.toFixed(2)}
                     </td>
                     <td className="px-4 py-4">
                       <span
@@ -130,7 +130,7 @@ export default function CustomerBillingPage() {
                           inv.balance_due > 0 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"
                         )}
                       >
-                        ${inv.balance_due.toFixed(2)}
+                        PKR {inv.balance_due.toFixed(2)}
                       </span>
                     </td>
                     <td className="px-4 py-4">
