@@ -26,7 +26,7 @@ enum Role {
 // ─── NOTIFICATION (always included) ────────────────────────────
 const NOTIFICATION_MODEL = `
 model Notification {
-  id                Int      @id @default(autoincrement())
+  notification_id                Int      @id @default(autoincrement())
   title             String
   message           String   @db.Text
   type              String
@@ -580,7 +580,7 @@ model BillingInvoice {
 }
 
 model InvoicePayment {
-  id             Int            @id @default(autoincrement())
+  payment_id             Int            @id @default(autoincrement())
   invoice_id     Int
   amount_paid    Decimal        @db.Decimal(10, 2)
   payment_method String
@@ -688,7 +688,7 @@ model PurchaseOrder {
   id          Int      @id @default(autoincrement())
   po_number   String   @unique
   vendor_id   Int
-  status      POStatus @default(PENDING)
+  status      POStatus @default(Pending)
   ordered_by  String
   notes       String?
   total_cost  Float    @default(0)

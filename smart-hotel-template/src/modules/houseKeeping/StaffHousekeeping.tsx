@@ -113,7 +113,7 @@ function MyTaskCard({
         status === "InProgress"
           ? "Task started!"
           : status === "Done"
-            ? "Task completed! ✅"
+            ? "Task completed! "
             : "Task cancelled",
       );
       onUpdate();

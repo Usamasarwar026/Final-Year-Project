@@ -131,7 +131,6 @@ export const customerNav: NavItem[] = [
   { label: "Dashboard",    href: "/customer/dashboard",        icon: LayoutDashboard },
   { label: "My Bookings",  href: "/customer/booking",          icon: CalendarCheck   },
   { label: "Order Food",   href: "/customer/kitchen",          icon: ShoppingCart    },
-  { label: "My Orders",    href: "/customer/kitchen/orders",   icon: Utensils        },
   { label: "Billing",      href: "/customer/billing",          icon: CreditCard      },
   { label: "Housekeeping", href: "/customer/housekeeping",     icon: Brush           },
 ];

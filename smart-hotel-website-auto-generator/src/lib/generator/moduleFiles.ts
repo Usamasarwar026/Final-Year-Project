@@ -85,6 +85,8 @@ export const BASE_FILES: string[] = [
   "src/modules/dashboard/staff/StaffDashboard.tsx",
   "src/app/api/admin/dashboard/route.ts",
 
+  "src/app/api/rooms/public/route.ts",
+
   // Notifications
   "src/app/admin/notifications/page.tsx",
   "src/app/customer/notifications/page.tsx",
@@ -153,7 +155,8 @@ export const MODULE_FILES: Record<ModuleId, string[]> = {
     "src/app/api/customers/service-requests/route.ts",
     "src/app/api/customers/active-booking/route.ts",
     "src/app/api/customers/dashboard/route.ts",
-    "src/app/customers/profile/page.tsx",
+    "src/app/customer/profile/page.tsx",  //changes 
+    "src/app/customer/kitchen/page.tsx",  //changes 
     "src/hooks/useCustomerModule.ts",
     "src/hooks/useCustomers.ts",
     "src/hooks/useCustomerHousekeeping.ts",
@@ -179,8 +182,10 @@ export const MODULE_FILES: Record<ModuleId, string[]> = {
     "src/app/api/staff/me/route.ts",
     "src/app/api/staff/me/checkin/route.ts",
     "src/app/api/staff/departments/route.ts",
-    "src/app/api/staff/my-task/route.ts",
+    "src/app/api/staff/my-tasks/route.ts",
     "src/app/api/staff/shifts/route.ts",
+    "src/app/api/staff/inventory/route.ts",
+    "src/app/api/staff/inventory/wastage/route.ts",
     "src/app/api/staff/[id]/route.ts",
     "src/app/api/staff/[id]/activate/route.ts",
     "src/hooks/useStaff.ts",
