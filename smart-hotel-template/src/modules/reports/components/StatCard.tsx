@@ -1,6 +1,7 @@
 "use client";
 // src/modules/reports/components/StatCard.tsx
 import { type LucideIcon } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface StatCardProps {
   label: string;
@@ -11,6 +12,8 @@ interface StatCardProps {
   sub?: string;
   subColor?: string;
   loading?: boolean;
+  cardBg?: string;
+  index?: number;
 }
 
 export default function StatCard({
@@ -22,9 +25,15 @@ export default function StatCard({
   sub,
   subColor = "text-gray-500",
   loading = false,
+  cardBg,
+  index = 0,
 }: StatCardProps) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-start gap-4 hover:shadow-md transition-shadow">
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05 }}
+      className={`bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-start gap-4 hover:shadow-md transition-shadow ${cardBg}`}>
       <div className={`flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center ${iconBg}`}>
         <Icon className={`w-5 h-5 ${iconColor}`} />
       </div>
@@ -43,6 +52,6 @@ export default function StatCard({
           <p className={`text-xs mt-0.5 truncate ${subColor}`}>{sub}</p>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }

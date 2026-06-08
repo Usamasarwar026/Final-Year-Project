@@ -7,6 +7,9 @@ import {
 import ChartCard from "./ChartCard";
 import ExportButton from "./ExportButton";
 import { useRevenueReport } from "@/hooks/useReportModule";
+import { BedDouble, Utensils, Wrench, DollarSign, TrendingDown, TrendingUp, CreditCard, Clock } from "lucide-react";
+import StatCard from "./StatCard";
+import { motion } from "framer-motion";
 
 const fmt = (n: number) =>
   `Rs. ${n >= 1000 ? (n / 1000).toFixed(1) + "K" : n.toFixed(0)}`;
@@ -20,14 +23,14 @@ export default function RevenueReport({ from, to }: Props) {
   const { report, loading, error } = useRevenueReport(from, to);
 
   const summaryCards = [
-    { label: "Room Revenue", value: fmt(report?.room_revenue ?? 0), color: "text-sky-600" },
-    { label: "Food Revenue", value: fmt(report?.food_revenue ?? 0), color: "text-emerald-600" },
-    { label: "Service Revenue", value: fmt(report?.service_revenue ?? 0), color: "text-violet-600" },
-    { label: "Total Tax", value: fmt(report?.tax_amount ?? 0), color: "text-amber-600" },
-    { label: "Discounts", value: fmt(report?.discount_amount ?? 0), color: "text-rose-600" },
-    { label: "Net Revenue", value: fmt(report?.net_revenue ?? 0), color: "text-slate-800" },
-    { label: "Amount Paid", value: fmt(report?.amount_paid ?? 0), color: "text-green-600" },
-    { label: "Pending", value: fmt(report?.pending_amount ?? 0), color: "text-red-600" },
+    { label: "Room Revenue", value: fmt(report?.room_revenue ?? 0), icon: BedDouble, iconBg: "bg-sky-600", iconColor: "text-white", cardBg: "border-sky-100 bg-sky-50" },
+    { label: "Food Revenue", value: fmt(report?.food_revenue ?? 0), icon: Utensils, iconBg: "bg-emerald-600", iconColor: "text-white", cardBg: "border-emerald-100 bg-emerald-50" },
+    { label: "Service Revenue", value: fmt(report?.service_revenue ?? 0), icon: Wrench, iconBg: "bg-violet-600", iconColor: "text-white", cardBg: "border-violet-100 bg-violet-50" },
+    { label: "Total Tax", value: fmt(report?.tax_amount ?? 0), icon: DollarSign, iconBg: "bg-amber-600", iconColor: "text-white", cardBg: "border-amber-100 bg-amber-50" },
+    { label: "Discounts", value: fmt(report?.discount_amount ?? 0), icon: TrendingDown, iconBg: "bg-rose-600", iconColor: "text-white", cardBg: "border-rose-100 bg-rose-50" },
+    { label: "Net Revenue", value: fmt(report?.net_revenue ?? 0), icon: TrendingUp, iconBg: "bg-slate-600", iconColor: "text-white", cardBg: "border-slate-100 bg-slate-50" },
+    { label: "Amount Paid", value: fmt(report?.amount_paid ?? 0), icon: CreditCard, iconBg: "bg-green-600", iconColor: "text-white", cardBg: "border-green-100 bg-green-50" },
+    { label: "Pending", value: fmt(report?.pending_amount ?? 0), icon: Clock, iconBg: "bg-red-600", iconColor: "text-white", cardBg: "border-red-100 bg-red-50" },
   ];
 
   const exportCols = [
@@ -67,15 +70,8 @@ export default function RevenueReport({ from, to }: Props) {
 
       {/* Summary grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {summaryCards.map((c) => (
-          <div key={c.label} className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
-            <p className="text-xs text-gray-500 uppercase tracking-wide">{c.label}</p>
-            {loading ? (
-              <div className="h-6 w-20 bg-gray-100 rounded animate-pulse mt-1" />
-            ) : (
-              <p className={`text-lg font-bold mt-1 ${c.color}`}>{c.value}</p>
-            )}
-          </div>
+        {summaryCards.map((c, idx) => (
+          <StatCard key={c.label} {...c} loading={loading} index={idx} />
         ))}
       </div>
 
