@@ -25,6 +25,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { Printer } from "lucide-react";
 import clsx from "clsx";
 import { useKitchenOrders, useUpdateOrderStatus } from "@/hooks/useKitchen";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -680,6 +681,15 @@ function OrderDetailModal({
           >
             Close
           </button>
+
+          {order.status === "Delivered" && (
+            <button
+              onClick={() => window.open(`/admin/kitchen/orders/${order.id}/invoice`, "_blank")}
+              className="px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors flex items-center gap-2"
+            >
+              <Printer size={13} /> Print Invoice
+            </button>
+          )}
           {actions.map((a) => {
             if (a.requiresStaff && onAssignClick) {
               return (
@@ -1170,3 +1180,5 @@ export default function KitchenOrders() {
     </div>
   );
 }
+
+

@@ -1,10 +1,12 @@
-// src/config/nav.ts
+// src/components/sidebar/nav.config.ts
 
 import {
   LayoutDashboard, CalendarCheck, CreditCard, Users,
   type LucideIcon, BedDouble, UserRound, ChefHat, Package,
   BarChart3, ClipboardCheck, Brush, Bike, Utensils,
   ShoppingCart, Truck, MenuSquare, Tags, UsersRound, TrendingUp,
+  // New icons added for Reports children dropdown
+  DollarSign, UserPlus, Clock,
 } from "lucide-react";
 
 export type NavItem = {
@@ -30,7 +32,7 @@ export const adminNav: NavItem[] = [
     icon:  ChefHat,
     children: [
       { label: "Dashboard",            href: "/admin/kitchen/dashboard",   icon: LayoutDashboard },
-      { label: "Orders",               href: "/admin/kitchen/orders",      icon: Utensils        },
+      { label: "Orders",               href: "/admin/kitchen/orders",      icon: Utensils         },
       { label: "Menu Management",      href: "/admin/kitchen/menu",        icon: MenuSquare      },
       { label: "Categories",           href: "/admin/kitchen/categories",  icon: Tags            },
       { label: "Kitchen Staff",        href: "/admin/kitchen/staff",       icon: UsersRound      },
@@ -38,10 +40,41 @@ export const adminNav: NavItem[] = [
       { label: "Reports",              href: "/admin/kitchen/reports",     icon: TrendingUp      },
     ],
   },
-  { label: "Inventory",        href: "/admin/inventory",    icon: Package  },
+  
+  // Inventory item dropdown sub-menu ke saath update ho gaya hai
+  {
+    label: "Inventory",
+    href: "/admin/inventory",
+    icon: Package,
+    children: [
+      { label: "Dashboard",       href: "/admin/inventory",                icon: LayoutDashboard },
+      { label: "Stock Items",     href: "/admin/inventory/items",          icon: Package         },
+      { label: "Categories",      href: "/admin/inventory/categories",     icon: Tags            },
+      { label: "Vendors",         href: "/admin/inventory/vendors",        icon: Truck           },
+      { label: "Purchase Orders", href: "/admin/inventory/purchase-orders",icon: ShoppingCart    },
+      { label: "Stock Receiving", href: "/admin/inventory/stock-receiving",icon: ClipboardCheck  },
+      { label: "Wastage",         href: "/admin/inventory/wastage",        icon: Brush           },
+      { label: "Reports",         href: "/admin/inventory/reports",        icon: BarChart3       },
+    ],
+  },
+  
   { label: "House Keeping",    href: "/admin/housekeeping", icon: Brush    },
   { label: "Billing",          href: "/admin/billing",      icon: CreditCard },
-  { label: "Reports",          href: "/admin/reports",      icon: BarChart3  },
+  {
+    label: "Reports",
+    href: "/admin/reports",
+    icon: BarChart3,
+    children: [
+      { label: "KPI Dashboard",      href: "/admin/reports",                    icon: LayoutDashboard },
+      { label: "Revenue",            href: "/admin/reports/revenue",            icon: DollarSign      },
+      { label: "Occupancy",          href: "/admin/reports/occupancy",          icon: BedDouble       },
+      { label: "Staff Performance",  href: "/admin/reports/staff-performance",  icon: Users           },
+      { label: "Inventory",          href: "/admin/reports/inventory",          icon: Package         },
+      { label: "Bookings",           href: "/admin/reports/bookings",           icon: CalendarCheck   },
+      { label: "Guests",             href: "/admin/reports/guests",             icon: UserPlus        },
+      { label: "Scheduled Reports",  href: "/admin/reports/scheduled",          icon: Clock           },
+    ],
+  },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -55,13 +88,13 @@ export const staffNav: NavItem[] = [
   { label: "Attendance", href: "/staff/attendance", icon: ClipboardCheck  },
 
   // General modules
-  { label: "Booking",     href: "/staff/booking",     icon: CalendarCheck, permission: "booking"      },
-  { label: "Rooms",       href: "/staff/rooms",       icon: BedDouble,     permission: "rooms"        },
-  { label: "Customer",    href: "/staff/customer",    icon: UserRound,     permission: "customer"     },
-  { label: "Inventory",   href: "/staff/inventory",   icon: Package,       permission: "inventory"    },
-  { label: "House Keeping",href:"/staff/housekeeping",icon: Brush,         permission: "housekeeping" },
-  { label: "Billing",     href: "/staff/billing",     icon: CreditCard,    permission: "billing"      },
-  { label: "Reports",     href: "/staff/reports",     icon: BarChart3,     permission: "reports"      },
+  { label: "Booking",      href: "/staff/booking",     icon: CalendarCheck, permission: "booking"      },
+  { label: "Rooms",        href: "/staff/rooms",       icon: BedDouble,     permission: "rooms"        },
+  { label: "Customer",     href: "/staff/customer",    icon: UserRound,     permission: "customer"     },
+  { label: "Inventory",    href: "/staff/inventory",   icon: Package,       permission: "inventory"    },
+  { label: "House Keeping",href:"/staff/housekeeping", icon: Brush,         permission: "housekeeping" },
+  { label: "Billing",      href: "/staff/billing",     icon: CreditCard,    permission: "billing"      },
+  { label: "Reports",      href: "/staff/reports",     icon: BarChart3,     permission: "reports"      },
 
   // ── Kitchen module — the parent guard is KITCHEN_ACCESS ──────────────────
   // A staff sees the Kitchen menu only if they have at least KITCHEN_ACCESS.
