@@ -1,7 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession }         from "next-auth";
-import { authOptions }              from "@/lib/authOption";
-import { prisma }                   from "@/database/db";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/authOption";
+import { prisma } from "@/database/db";
+
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const orderId = parseInt((await params).id);
+    if (isNaN(orderId)) return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
+
+    const order = await prisma.foodOrder.findUnique({
+      where: { id: orderId },
+      include: {
+        items: {
+          include: { foodItem: true },
+        },
+        tasks: {
+          include: {
+            assignedStaff: {
+              include: { user: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+
+    return NextResponse.json({
+      ...order,
+      total_amount: Number(order.total_amount),
+      items: order.items.map((i: any) => ({
+        ...i,
+        price: Number(i.price),
+        subtotal: Number(i.subtotal),
+      })),
+    });
+  } catch (err) {
+    console.error("[GET /api/kitchen/orders/[id]]", err);
+    return NextResponse.json({ error: "Failed to fetch order" }, { status: 500 });
+  }
+}
 import { FoodOrderStatus }          from "@/types/kitchen";
 export async function PATCH(
   req: NextRequest,
@@ -185,3 +229,4 @@ export async function PATCH(
     return NextResponse.json({ error: "Failed to update order" }, { status: 500 });
   }
 }
+

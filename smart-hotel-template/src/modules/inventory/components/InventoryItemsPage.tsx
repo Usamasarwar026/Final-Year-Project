@@ -16,7 +16,11 @@ const EMPTY_FORM = {
 export default function InventoryItemsPage() {
   const { data: session } = useSession();
   const { items, loading, createItem, updateItem } = useInventoryItems();
-  const { categories } = useCategories();
+  
+  // Usama ki change: Sirf active categories dropdown mein lane ke liye filter apply kar diya
+  const { categories: allCategories } = useCategories();
+  const categories = allCategories.filter((c) => c.is_active !== false);
+
   const { units, createUnit } = useUnits();
   const { logUsage } = useUsageLogs();
 
@@ -114,8 +118,9 @@ export default function InventoryItemsPage() {
     }
   };
 
+  // Fixed confusing double-negative logic here
   const toggleStatus = async (item: InventoryItem) => {
-    await updateItem(item.id, { is_active: !(item.is_active !== false) });
+    await updateItem(item.id, { is_active: !item.is_active });
   };
 
   const handleLogSubmit = async () => {
@@ -195,10 +200,14 @@ export default function InventoryItemsPage() {
                       <button onClick={() => openEdit(item)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit">
                         <Pencil className="w-4 h-4" />
                       </button>
-                      <button onClick={() => toggleStatus(item)} className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition" title={item.is_active !== false ? "Deactivate" : "Activate"}>
-                        {item.is_active !== false
-                          ? <ToggleRight className="w-4 h-4 text-green-600" />
-                          : <ToggleLeft className="w-4 h-4 text-gray-400" />}
+                      
+                      {/* Staff section wala updated Toggle design */}
+                      <button onClick={() => toggleStatus(item)} className="p-1.5 rounded-lg transition" title={item.is_active !== false ? "Deactivate" : "Activate"}>
+                        {item.is_active !== false ? (
+                          <ToggleRight size={22} className="text-green-500" />
+                        ) : (
+                          <ToggleLeft size={22} className="text-gray-400/50" />
+                        )}
                       </button>
                     </div>
                   </td>
