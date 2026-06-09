@@ -59,7 +59,7 @@ function stockState(item: InventoryItem) {
 }
 
 export default function StaffInventory() {
-  const { data: session } = useSession(); // 👈 Destructured session object
+  const { data: session } = useSession(); 
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<"all" | "low_stock" | "expiring">("all");
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);

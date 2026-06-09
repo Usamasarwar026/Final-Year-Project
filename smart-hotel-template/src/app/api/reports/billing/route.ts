@@ -7,7 +7,12 @@ import { prisma } from "@/database/db";
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== "ADMIN") {
+     const isAdmin = session?.user?.role === "ADMIN";
+    const isStaffWithBillingPermission = 
+      session?.user?.role === "STAFF" && 
+      (session?.user as any)?.permissions?.includes("billing");
+    
+    if (!session || (!isAdmin && !isStaffWithBillingPermission)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

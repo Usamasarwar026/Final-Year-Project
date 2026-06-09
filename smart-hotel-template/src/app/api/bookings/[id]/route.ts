@@ -5,7 +5,7 @@ import { authOptions } from "@/lib/authOption";
 import { prisma } from "@/database/db";
 // ─── BILLING & HOUSEKEEPING IMPORTS ──────────────────────────────────────
 import { generateInvoice } from "@/services/billingService";
-import { onBookingCheckout } from "@/lib/housekeepingAutomation";
+import { onBookingCheckout } from "@/services/bookingService";
 
 type Params = { params: Promise<{ id: string }> };
 

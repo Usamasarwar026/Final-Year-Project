@@ -7,7 +7,12 @@ import { getKpiData } from "@/services/reportService";
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== "ADMIN") {
+     const isAdmin = session?.user?.role === "ADMIN";
+    const isStaffWithBillingPermission = 
+      session?.user?.role === "STAFF" && 
+      (session?.user as any)?.permissions?.includes("billing");
+    
+    if (!session || (!isAdmin && !isStaffWithBillingPermission)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const kpi = await getKpiData();

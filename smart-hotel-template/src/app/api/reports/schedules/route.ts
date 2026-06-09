@@ -8,7 +8,12 @@ import { prisma } from "@/database/db";
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== "ADMIN") {
+    const isAdmin = session?.user?.role === "ADMIN";
+    const isStaffWithBillingPermission =
+      session?.user?.role === "STAFF" &&
+      (session?.user as any)?.permissions?.includes("billing");
+
+    if (!session || (!isAdmin && !isStaffWithBillingPermission)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -20,7 +25,7 @@ export async function GET() {
     console.error("[GET /api/reports/schedules]", err);
     return NextResponse.json(
       { error: err.message || "Failed to load schedules" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -39,7 +44,7 @@ export async function POST(req: NextRequest) {
     if (!report_type || !frequency) {
       return NextResponse.json(
         { error: "report_type and frequency are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -54,7 +59,10 @@ export async function POST(req: NextRequest) {
     const validFreqs = ["Daily", "Weekly", "Monthly"];
 
     if (!validTypes.includes(report_type)) {
-      return NextResponse.json({ error: "Invalid report_type" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid report_type" },
+        { status: 400 },
+      );
     }
     if (!validFreqs.includes(frequency)) {
       return NextResponse.json({ error: "Invalid frequency" }, { status: 400 });
@@ -88,7 +96,8 @@ export async function POST(req: NextRequest) {
 
     // Trigger Notification for Admin
     try {
-      const { createNotification } = await import("@/services/notificationService");
+      const { createNotification } =
+        await import("@/services/notificationService");
       await createNotification({
         title: "Report Schedule Created",
         message: `A new scheduled "${report_type}" report (${frequency}) has been configured successfully.`,
@@ -99,7 +108,10 @@ export async function POST(req: NextRequest) {
         role_target: "ADMIN",
       });
     } catch (notifErr) {
-      console.error("[POST /api/reports/schedules] Notification trigger failed:", notifErr);
+      console.error(
+        "[POST /api/reports/schedules] Notification trigger failed:",
+        notifErr,
+      );
     }
 
     return NextResponse.json({ schedule }, { status: 201 });
@@ -107,7 +119,7 @@ export async function POST(req: NextRequest) {
     console.error("[POST /api/reports/schedules]", err);
     return NextResponse.json(
       { error: err.message || "Failed to create schedule" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

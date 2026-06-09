@@ -231,3 +231,40 @@ export async function getAvailableRooms(checkIn: string, checkOut: string) {
     orderBy: [{ floor: "asc" }, { room_number: "asc" }],
   });
 }
+
+
+export async function onBookingCheckout(bookingId: number): Promise<void> {
+  try {
+    const booking = await prisma.booking.findUnique({
+      where:   { booking_id: bookingId },
+      include: { room: true },
+    });
+
+    if (!booking) return;
+
+    const isVip = ["Presidential", "Suite"].includes(booking.room.room_type);
+
+    // Create cleaning task
+    await prisma.housekeepingTask.create({
+      data: {
+        room_id:             booking.room_id,
+        booking_id:          bookingId,
+        task_type:           "Cleaning",
+        priority:            isVip ? "VIP" : "High",
+        status:              "Pending",
+        request_description: `Post-checkout cleaning — ${booking.room.room_number}`,
+        is_billable:         false,
+      },
+    });
+
+    // Mark room dirty + keep status as Available (not blocking new bookings)
+    await prisma.room.update({
+      where: { room_id: booking.room_id },
+      data:  { cleaning_status: "Dirty" },
+    });
+
+    console.log(`[Housekeeping] Auto-task created for room ${booking.room.room_number} after checkout`);
+  } catch (err) {
+    console.error("[onBookingCheckout]", err);
+  }
+}

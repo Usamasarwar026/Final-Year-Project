@@ -100,11 +100,28 @@ export async function DELETE(
     return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
   try {
-    const deleted = await deleteRoom(id);
-    if (!deleted)
-      return NextResponse.json({ error: "Room not found" }, { status: 404 });
-    return NextResponse.json({ success: true });
+    await deleteRoom(id);
+
+    return NextResponse.json({
+      success: true,
+    });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error("DELETE ROOM ERROR =", err);
+
+    if (err.message === "Room not found") {
+      return NextResponse.json({ error: err.message }, { status: 404 });
+    }
+
+    if (
+      err.message ===
+      "This room cannot be deleted because bookings already exist for it."
+    ) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
+
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
   }
 }

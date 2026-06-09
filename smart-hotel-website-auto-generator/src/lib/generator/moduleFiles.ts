@@ -85,6 +85,8 @@ export const BASE_FILES: string[] = [
   "src/modules/dashboard/staff/StaffDashboard.tsx",
   "src/app/api/admin/dashboard/route.ts",
 
+  "src/app/api/rooms/public/route.ts",
+
   // Notifications
   "src/app/admin/notifications/page.tsx",
   "src/app/customer/notifications/page.tsx",
@@ -153,11 +155,11 @@ export const MODULE_FILES: Record<ModuleId, string[]> = {
     "src/app/api/customers/service-requests/route.ts",
     "src/app/api/customers/active-booking/route.ts",
     "src/app/api/customers/dashboard/route.ts",
-    "src/app/customers/profile/page.tsx",
+    "src/app/customer/profile/page.tsx",  //changes 
+    "src/app/customer/kitchen/page.tsx",  //changes 
     "src/hooks/useCustomerModule.ts",
     "src/hooks/useCustomers.ts",
     "src/hooks/useCustomerHousekeeping.ts",
-    "src/services/customers.service.ts",
     "src/types/customers.ts",
   ],
 
@@ -167,8 +169,8 @@ export const MODULE_FILES: Record<ModuleId, string[]> = {
     "src/app/staff/attendance/page.tsx",
     "src/app/staff/rooms/page.tsx",
     "src/app/staff/customer/page.tsx",
-    "src/app/admin/staff/dashboard/page.tsx",
-    "src/app/admin/staff/profile/page.tsx",
+    "src/app/staff/dashboard/page.tsx",
+    "src/app/staff/profile/page.tsx",
     "src/modules/staff/Staff.tsx",
     "src/modules/staff/SettingStaffTab.tsx",
     "src/modules/dashboard/staff/StaffDashboard.tsx",
@@ -179,8 +181,10 @@ export const MODULE_FILES: Record<ModuleId, string[]> = {
     "src/app/api/staff/me/route.ts",
     "src/app/api/staff/me/checkin/route.ts",
     "src/app/api/staff/departments/route.ts",
-    "src/app/api/staff/my-task/route.ts",
+    "src/app/api/staff/my-tasks/route.ts",
     "src/app/api/staff/shifts/route.ts",
+    "src/app/api/staff/inventory/route.ts",
+    "src/app/api/staff/inventory/wastage/route.ts",
     "src/app/api/staff/[id]/route.ts",
     "src/app/api/staff/[id]/activate/route.ts",
     "src/hooks/useStaff.ts",
@@ -221,7 +225,7 @@ export const MODULE_FILES: Record<ModuleId, string[]> = {
     // Customer housekeeping - requires customer module
     "src/app/customer/housekeeping/page.tsx",
     "src/modules/houseKeeping/CustomerHousekeeping.tsx",
-    "src/hooks/useCustomerHousekeeping",
+    "src/hooks/useCustomerHousekeeping.ts",
         // Staff housekeeping - requires staff module
     "src/app/staff/housekeeping/page.tsx",
     "src/modules/houseKeeping/StaffHousekeeping.tsx",
@@ -240,9 +244,7 @@ export const MODULE_FILES: Record<ModuleId, string[]> = {
     "src/app/api/inventory/categories/route.ts",
     "src/app/api/inventory/dashboard/route.ts",
     "src/app/api/inventory/items/route.ts",
-    "src/app/api/inventory/purchase-orders/route.ts",
-    "src/app/api/inventory/reports/route.ts",
-    "src/app/api/inventory/stock-receive/route.ts",
+    "src/app/api/inventory/purchase-orders/route.ts", 
     "src/app/api/inventory/units/route.ts",
     "src/app/api/inventory/usage-logs/route.ts",
     "src/app/api/inventory/vendors/route.ts",
@@ -297,7 +299,7 @@ export const MODULE_FILES: Record<ModuleId, string[]> = {
     "src/app/api/kitchen/menu/route.ts",
     "src/app/api/kitchen/orders/route.ts",
     "src/app/api/kitchen/staff/route.ts",
-    "src/app/api/kitchen/staff-by-user/route.ts",
+    "src/app/api/kitchen/staff-by-user/[userId]/route.ts",
     "src/app/api/kitchen/staff-stats/route.ts",
     "src/app/api/kitchen/stats/route.ts",
     "src/app/api/kitchen/tasks/route.ts",

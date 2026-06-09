@@ -10,8 +10,10 @@ export async function GET(req: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const isAdmin = session.user.role === "ADMIN";
-    const where   = isAdmin ? {} : { user_id: session.user.id };
+      const isAdminOrStaff = session.user.role === "ADMIN" || session.user.role === "STAFF";
+  const where = isAdminOrStaff ? {} : { user_id: session.user.id };
+
+
 
     const bookings = await prisma.booking.findMany({
       where,
