@@ -1,4 +1,31 @@
 
+ const appName = process.env.NEXT_PUBLIC_APP_NAME;
+ export const WebsiteName = appName
+
+ // ... your existing constants
+
+export const FOOTER_DATA = {
+  brand: {
+    name: "US Grand",
+    tagline: "Luxury stays, fine dining, and unforgettable hospitality.",
+  },
+  
+  exploreLinks: [
+    { name: "Rooms", href: "#rooms" },
+  ],
+  
+  contact: {
+    phone: "+92 300 0000000",
+    email: "info@usgrand.com",
+  },
+  
+  copyright: "All rights reserved.",
+};
+
+
+
+
+
 
 export const IMAGES = {
   heroImage: "/assets/hero-hotel.jpg",
@@ -98,4 +125,3 @@ export const TYPE_CONFIG: Record<RoomType, { icon: string; color: string }> = {
   Presidential: { icon: "👑",  color: "text-gold"        },
 };
 
-export const WebsiteName = "US Grand"
