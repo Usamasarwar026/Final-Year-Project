@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-");
 
-    return new NextResponse(zipBuffer, {
+    return new NextResponse(new Uint8Array(zipBuffer), {  // ✅ Fix: Buffer → Uint8Array
       status: 200,
       headers: {
         "Content-Type": "application/zip",
