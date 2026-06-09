@@ -16,7 +16,11 @@ const EMPTY_FORM = {
 export default function InventoryItemsPage() {
   const { data: session } = useSession();
   const { items, loading, createItem, updateItem } = useInventoryItems();
-  const { categories } = useCategories();
+  
+  // Usama ki batayi hui behtareen change: Filter only active categories
+  const { categories: allCategories } = useCategories();
+  const categories = allCategories.filter((c) => c.is_active !== false);
+
   const { units, createUnit } = useUnits();
   const { logUsage } = useUsageLogs();
 

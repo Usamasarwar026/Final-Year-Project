@@ -29,22 +29,6 @@ export default function Inventory() {
           <StatCard key={card.label} {...card} loading={loading} index={idx} />
         ))}
       </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: "Stock Items", href: "/admin/inventory/items" },
-          { label: "Categories", href: "/admin/inventory/categories" },
-          { label: "Vendors", href: "/admin/inventory/vendors" },
-          { label: "Purchase Orders", href: "/admin/inventory/purchase-orders" },
-          { label: "Stock Receiving", href: "/admin/inventory/stock-receiving" },
-          { label: "Wastage", href: "/admin/inventory/wastage" },
-          { label: "Reports", href: "/admin/inventory/reports" },
-        ].map((link) => (
-          <a key={link.href} href={link.href} className="block p-4 bg-white border border-gray-200 rounded-lg hover:border-blue-400 hover:shadow-sm transition text-center text-sm font-medium text-gray-700">
-            {link.label}
-          </a>
-        ))}
-      </div>
     </div>
   );
 }

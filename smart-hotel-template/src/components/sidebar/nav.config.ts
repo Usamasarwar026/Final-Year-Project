@@ -40,7 +40,21 @@ export const adminNav: NavItem[] = [
       { label: "Reports",              href: "/admin/kitchen/reports",     icon: TrendingUp      },
     ],
   },
-  { label: "Inventory",        href: "/admin/inventory",    icon: Package  },
+  {
+    label: "Inventory",
+    href: "/admin/inventory",
+    icon: Package,
+    children: [
+      { label: "Dashboard",       href: "/admin/inventory",                icon: LayoutDashboard },
+      { label: "Stock Items",     href: "/admin/inventory/items",          icon: Package         },
+      { label: "Categories",      href: "/admin/inventory/categories",     icon: Tags            },
+      { label: "Vendors",         href: "/admin/inventory/vendors",        icon: Truck           },
+      { label: "Purchase Orders", href: "/admin/inventory/purchase-orders",icon: ShoppingCart    },
+      { label: "Stock Receiving", href: "/admin/inventory/stock-receiving",icon: ClipboardCheck  },
+      { label: "Wastage",         href: "/admin/inventory/wastage",        icon: Brush           },
+      { label: "Reports",         href: "/admin/inventory/reports",        icon: BarChart3       },
+    ],
+  },
   { label: "House Keeping",    href: "/admin/housekeeping", icon: Brush    },
   { label: "Billing",          href: "/admin/billing",      icon: CreditCard },
   {
