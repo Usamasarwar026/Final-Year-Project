@@ -1,4 +1,4 @@
-// src/app/api/generate/route.ts  (GENERATOR project)
+// src/app/api/generate/route.ts  (UPDATED with tier support)
 
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
@@ -7,6 +7,8 @@ import { prisma } from "@/lib/prisma";
 import { buildProjectZip } from "@/lib/generator/buildProject";
 import type { ModuleId } from "@/lib/generator/moduleFiles";
 
+type TierId = "basic" | "intermediate" | "advanced";
+
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
@@ -14,9 +16,10 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { websiteName, modules } = body as {
+  const { websiteName, modules, tier } = body as {
     websiteName: string;
     modules: ModuleId[];
+    tier: TierId;
   };
 
   // Validate
@@ -32,6 +35,12 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
+  if (!tier || !["basic", "intermediate", "advanced"].includes(tier)) {
+    return NextResponse.json(
+      { error: "Valid tier is required" },
+      { status: 400 },
+    );
+  }
 
   const userId = (session.user as any).id as string;
 
@@ -40,16 +49,18 @@ export async function POST(req: NextRequest) {
     data: {
       name: websiteName.trim(),
       modules: modules,
+      tier: tier,  // ← ADD tier to database
       status: "GENERATING",
       userId,
     },
   });
 
   try {
-    // Build ZIP
+    // Build ZIP with tier parameter
     const zipBuffer = await buildProjectZip({
       websiteName: websiteName.trim(),
       modules,
+      tier,  // ← PASS tier to buildProjectZip
     });
 
     // Mark as DONE
@@ -64,7 +75,7 @@ export async function POST(req: NextRequest) {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-");
 
-    return new NextResponse(new Uint8Array(zipBuffer), {  // ✅ Fix: Buffer → Uint8Array
+    return new NextResponse(new Uint8Array(zipBuffer), {
       status: 200,
       headers: {
         "Content-Type": "application/zip",

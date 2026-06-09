@@ -1,11 +1,10 @@
-// src/app/api/projects/route.ts  (GENERATOR project)
+// src/app/api/projects/route.ts (with fallback)
 
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOption";
 import { prisma } from "@/lib/prisma";
 
-// GET — user k saare projects
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
@@ -21,10 +20,17 @@ export async function GET() {
       id: true,
       name: true,
       modules: true,
+      tier: true,
       status: true,
       createdAt: true,
     },
   });
 
-  return NextResponse.json(projects);
+  // Old projects ke liye fallback tier
+  const projectsWithTier = projects.map(project => ({
+    ...project,
+    tier: project.tier || "advanced", // fallback for old projects
+  }));
+
+  return NextResponse.json(projectsWithTier);
 }

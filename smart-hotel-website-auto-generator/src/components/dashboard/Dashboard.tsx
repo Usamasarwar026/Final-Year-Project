@@ -1,696 +1,144 @@
-// // src/app/dashboard/page.tsx  OR  wherever your Dashboard component lives
-// // GENERATOR project — updated dashboard with generate flow
-
-// "use client";
-
-// import { useState } from "react";
-// import { signOut, useSession } from "next-auth/react";
-// import { motion, AnimatePresence } from "framer-motion";
-// import { toast } from "sonner";
-// import axios from "axios";
-// import {
-//   Hotel, BedDouble, CalendarCheck, Utensils, Users, CreditCard,
-//   ArrowRight, ArrowLeft, Download, Check, LogOut, Globe,
-//   ShieldCheck, ClipboardList, Package, UserCog, BarChart3,
-//   Loader2, FolderOpen, Clock, CheckCircle2, XCircle,
-// } from "lucide-react";
-// import api from "@/lib/axios";
-
-// // ─── Types ───────────────────────────────────────────────────
-// type ModuleId =
-//   | "authentication" | "rooms" | "booking" | "customer"
-//   | "billing" | "housekeeping" | "inventory"
-//   | "staff" | "kitchen" | "reports";
-
-// type StepId = "modules" | "config" | "generating" | "done";
-
-// interface Module {
-//   id: ModuleId;
-//   name: string;
-//   description: string;
-//   icon: React.ElementType;
-//   required?: boolean;
-// }
-
-// type Project = {
-//   id: string;
-//   name: string;
-//   modules: string[];
-//   status: "PENDING" | "GENERATING" | "DONE" | "FAILED";
-//   createdAt: string;
-// };
-
-// // ─── Module definitions ───────────────────────────────────────
-// const MODULES: Module[] = [
-//   { id: "authentication", name: "Authentication & Authorization",
-//     description: "Login, registration, roles, permissions, profile management",
-//     icon: ShieldCheck, required: true },
-//   { id: "rooms",    name: "Room Management",
-//     description: "Rooms, categories, pricing, availability, amenities",
-//     icon: BedDouble},
-//   { id: "booking",  name: "Booking & Reservation",
-//     description: "Reservations, check-in/check-out management",
-//     icon: CalendarCheck},
-//   { id: "customer", name: "Customer Management",
-//     description: "Guest profiles, history, preferences",
-//     icon: Users },
-//   { id: "billing",  name: "Billing & Invoices",
-//     description: "Invoices, payments, billing records",
-//     icon: CreditCard },
-//   { id: "housekeeping", name: "Housekeeping",
-//     description: "Cleaning schedules, service requests",
-//     icon: ClipboardList },
-//   { id: "inventory", name: "Inventory & Stock",
-//     description: "Supplies, stock levels, purchases",
-//     icon: Package },
-//   { id: "staff",   name: "Staff Management",
-//     description: "Employees, departments, attendance",
-//     icon: UserCog },
-//   { id: "kitchen", name: "Food & Kitchen",
-//     description: "Menu, food orders, dining services",
-//     icon: Utensils },
-//   { id: "reports", name: "Reports & Analytics",
-//     description: "Insights, occupancy, revenue analytics",
-//     icon: BarChart3 },
-// ];
-
-// const STATUS_STYLES = {
-//   DONE:       "text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400",
-//   GENERATING: "text-blue-600  bg-blue-100  dark:bg-blue-900/30  dark:text-blue-400",
-//   PENDING:    "text-amber-600 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400",
-//   FAILED:     "text-red-600   bg-red-100   dark:bg-red-900/30   dark:text-red-400",
-// };
-
-// const STATUS_ICONS = {
-//   DONE:       CheckCircle2,
-//   GENERATING: Loader2,
-//   PENDING:    Clock,
-//   FAILED:     XCircle,
-// };
-
-// // ─── Step indicator ───────────────────────────────────────────
-// function StepBar({ step }: { step: StepId }) {
-//   const steps = ["modules", "config", "generating", "done"] as StepId[];
-//   const labels = ["Select Modules", "Configure", "Generate"];
-//   const idx = steps.indexOf(step);
-
-//   return (
-//     <div className="flex items-center justify-center gap-2 mb-10">
-//       {labels.map((label, i) => {
-//         const active = i <= idx;
-//         const done   = i < idx || step === "done";
-//         return (
-//           <div key={label} className="flex items-center gap-2">
-//             <div className={`w-8 h-8 rounded-full flex items-center justify-center
-//                             text-sm font-semibold transition-all duration-300
-//                             ${active
-//                               ? "bg-primary text-primary-foreground"
-//                               : "bg-secondary text-muted-foreground"}`}>
-//               {done ? <Check className="w-4 h-4" /> : i + 1}
-//             </div>
-//             <span className={`text-sm font-medium hidden sm:block
-//                               ${active ? "text-foreground" : "text-muted-foreground"}`}>
-//               {label}
-//             </span>
-//             {i < 2 && (
-//               <div className={`w-12 h-0.5 transition-colors duration-300
-//                               ${active ? "bg-primary" : "bg-border"}`} />
-//             )}
-//           </div>
-//         );
-//       })}
-//     </div>
-//   );
-// }
-
-// // ─── Past projects list ────────────────────────────────────────
-// function PastProjects({ projects }: { projects: Project[] }) {
-//   if (projects.length === 0) return null;
-//   return (
-//     <div className="mt-10 border-t border-border pt-8">
-//       <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-//         <FolderOpen className="w-4 h-4 text-muted-foreground" />
-//         Previously Generated
-//       </h3>
-//       <div className="space-y-2">
-//         {projects.map((p) => {
-//           const StatusIcon = STATUS_ICONS[p.status];
-//           return (
-//             <div key={p.id}
-//               className="flex items-center gap-3 p-3 rounded-xl
-//                          bg-muted/50 border border-border">
-//               <StatusIcon
-//                 className={`w-4 h-4 shrink-0
-//                             ${p.status === "GENERATING" ? "animate-spin" : ""}
-//                             ${p.status === "DONE" ? "text-green-600" : ""}
-//                             ${p.status === "FAILED" ? "text-red-500" : ""}
-//                             ${p.status === "PENDING" ? "text-amber-500" : ""}`}
-//               />
-//               <div className="flex-1 min-w-0">
-//                 <p className="text-sm font-medium text-foreground truncate">{p.name}</p>
-//                 <p className="text-xs text-muted-foreground">
-//                   {p.modules.length} modules ·{" "}
-//                   {new Date(p.createdAt).toLocaleDateString()}
-//                 </p>
-//               </div>
-//               <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full
-//                                ${STATUS_STYLES[p.status]}`}>
-//                 {p.status}
-//               </span>
-//             </div>
-//           );
-//         })}
-//       </div>
-//     </div>
-//   );
-// }
-
-// // ─── Main Dashboard ───────────────────────────────────────────
-// export default function Dashboard() {
-//   const { data: session } = useSession();
-//   const user = session?.user;
-
-//   const [step,            setStep]            = useState<StepId>("modules");
-//   const [selectedModules, setSelectedModules] = useState<ModuleId[]>(
-//     ["authentication"]
-//   );
-//   const [websiteName,     setWebsiteName]     = useState("");
-//   const [progress,        setProgress]        = useState(0);
-//   const [projects,        setProjects]        = useState<Project[]>([]);
-
-//   const toggleModule = (id: ModuleId) => {
-//     const mod = MODULES.find((m) => m.id === id);
-//     if (mod?.required) return;
-//     setSelectedModules((prev) =>
-//       prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id]
-//     );
-//   };
-
-//   const handleGenerate = async () => {
-//     if (!websiteName.trim()) {
-//       toast.error("Please enter a website name");
-//       return;
-//     }
-
-//     setStep("generating");
-//     setProgress(0);
-
-//     // Progress animation
-//     const timer = setInterval(() => {
-//       setProgress((p) => {
-//         if (p >= 85) { clearInterval(timer); return 85; }
-//         return p + Math.random() * 12;
-//       });
-//     }, 300);
-
-//     try {
-//       // Call API — returns ZIP binary
-//       const res = await api.post(
-//         "/generate",
-//         { websiteName: websiteName.trim(), modules: selectedModules },
-//         { responseType: "blob" }
-//       );
-
-//       clearInterval(timer);
-//       setProgress(100);
-
-//       // Trigger browser download
-//       const slug = websiteName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
-//       const url  = URL.createObjectURL(new Blob([res.data], { type: "application/zip" }));
-//       const a    = document.createElement("a");
-//       a.href     = url;
-//       a.download = `${slug}.zip`;
-//       a.click();
-//       URL.revokeObjectURL(url);
-
-//       // Refresh projects list
-//       const { data } = await api.get("/projects");
-//       setProjects(data);
-
-//       setStep("done");
-//       toast.success("Website generated and downloading!");
-//     } catch (err: any) {
-//       clearInterval(timer);
-//       toast.error(err?.response?.data?.error ?? "Generation failed");
-//       setStep("config");
-//     }
-//   };
-
-//   const reset = () => {
-//     setStep("modules");
-//     setProgress(0);
-//     setWebsiteName("");
-//     setSelectedModules(["authentication"]);
-//   };
-
-//   return (
-//     <div className="min-h-screen bg-background">
-//       {/* Header */}
-//       <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
-//         <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-3">
-//           <div className="flex items-center gap-2.5">
-//             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-//               <Hotel className="w-4 h-4 text-primary-foreground" />
-//             </div>
-//             <span className="font-semibold text-foreground">HotelGen</span>
-//           </div>
-
-//           <div className="flex items-center gap-3">
-//             <span className="text-sm text-muted-foreground hidden sm:block">
-//               {user?.name ?? user?.email}
-//             </span>
-//             <button
-//               onClick={() => signOut({ callbackUrl: "/" })}
-//               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm
-//                          border border-border text-foreground
-//                          hover:bg-secondary transition-colors"
-//             >
-//               <LogOut className="w-3.5 h-3.5" />
-//               Sign Out
-//             </button>
-//           </div>
-//         </div>
-//       </header>
-
-//       <main className="max-w-5xl mx-auto px-6 py-10">
-//         <StepBar step={step} />
-
-//         <AnimatePresence mode="wait">
-//           {/* ── Step 1: Modules ── */}
-//           {step === "modules" && (
-//             <motion.div key="modules"
-//               initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-//               exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.25 }}>
-//               <h2 className="text-2xl font-bold text-foreground mb-1">Select Modules</h2>
-//               <p className="text-muted-foreground text-sm mb-6">
-//                 Choose which features to include in your hotel website.
-//                 Required modules are always included.
-//               </p>
-
-//               <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
-//                 {MODULES.map((mod) => {
-//                   const selected = selectedModules.includes(mod.id);
-//                   return (
-//                     <motion.button key={mod.id}
-//                       whileHover={{ scale: mod.required ? 1 : 1.02 }}
-//                       whileTap={{ scale: mod.required ? 1 : 0.98 }}
-//                       onClick={() => toggleModule(mod.id)}
-//                       className={`relative text-left p-4 rounded-xl border transition-all
-//                                   ${selected
-//                                     ? "border-accent bg-accent/5"
-//                                     : "border-border bg-card hover:border-muted-foreground/40"}
-//                                   ${mod.required ? "cursor-default" : "cursor-pointer"}`}
-//                     >
-//                       {mod.required && (
-//                         <span className="absolute top-2 right-2 text-[9px] font-bold
-//                                          px-1.5 py-0.5 rounded-full
-//                                          bg-primary/10 text-primary uppercase tracking-wide">
-//                           Required
-//                         </span>
-//                       )}
-//                       <mod.icon className={`w-5 h-5 mb-3
-//                                             ${selected ? "text-accent" : "text-muted-foreground"}`} />
-//                       <h3 className="font-semibold text-foreground text-sm mb-1 leading-tight">
-//                         {mod.name}
-//                       </h3>
-//                       <p className="text-xs text-muted-foreground leading-relaxed">
-//                         {mod.description}
-//                       </p>
-//                       {selected && !mod.required && (
-//                         <div className="absolute top-2 left-2 w-4 h-4 rounded-full
-//                                         bg-accent flex items-center justify-center">
-//                           <Check className="w-2.5 h-2.5 text-white" />
-//                         </div>
-//                       )}
-//                     </motion.button>
-//                   );
-//                 })}
-//               </div>
-
-//               <div className="flex items-center justify-between">
-//                 <p className="text-sm text-muted-foreground">
-//                   {selectedModules.length} module{selectedModules.length !== 1 ? "s" : ""} selected
-//                 </p>
-//                 <button
-//                   onClick={() => setStep("config")}
-//                   className="flex items-center gap-2 px-5 py-2.5 rounded-xl
-//                              bg-primary text-primary-foreground text-sm font-semibold
-//                              hover:opacity-90 transition-opacity"
-//                 >
-//                   Continue <ArrowRight className="w-4 h-4" />
-//                 </button>
-//               </div>
-
-//               <PastProjects projects={projects} />
-//             </motion.div>
-//           )}
-
-//           {/* ── Step 2: Config ── */}
-//           {step === "config" && (
-//             <motion.div key="config"
-//               initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-//               exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.25 }}
-//               className="max-w-md mx-auto">
-//               <h2 className="text-2xl font-bold text-foreground mb-1">Configure</h2>
-//               <p className="text-muted-foreground text-sm mb-6">
-//                 Name your website. You'll get a <code className="text-xs bg-muted px-1 py-0.5 rounded">.env.template</code> file
-//                 with all required environment variables to fill in.
-//               </p>
-
-//               {/* Selected modules summary */}
-//               <div className="mb-5 p-4 rounded-xl bg-muted/50 border border-border">
-//                 <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
-//                   Selected Modules
-//                 </p>
-//                 <div className="flex flex-wrap gap-1.5">
-//                   {selectedModules.map((id) => {
-//                     const mod = MODULES.find((m) => m.id === id);
-//                     return (
-//                       <span key={id}
-//                         className="inline-flex items-center gap-1 px-2.5 py-1
-//                                    rounded-full text-xs font-medium
-//                                    bg-primary/10 text-primary">
-//                         {mod && <mod.icon className="w-3 h-3" />}
-//                         {mod?.name.split(" ")[0]}
-//                       </span>
-//                     );
-//                   })}
-//                 </div>
-//               </div>
-
-//               {/* Website name */}
-//               <div className="mb-6 space-y-1.5">
-//                 <label className="text-sm font-medium text-foreground flex items-center gap-2">
-//                   <Globe className="w-4 h-4 text-muted-foreground" />
-//                   Website / Hotel Name
-//                 </label>
-//                 <input
-//                   type="text"
-//                   placeholder="e.g. Grand Palace Hotel"
-//                   value={websiteName}
-//                   onChange={(e) => setWebsiteName(e.target.value)}
-//                   onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
-//                   className="w-full px-3.5 py-2.5 rounded-xl text-sm
-//                              bg-muted border border-border text-foreground
-//                              placeholder:text-muted-foreground
-//                              outline-none focus:border-accent focus:ring-2 focus:ring-accent/15
-//                              transition-all duration-150"
-//                 />
-//                 <p className="text-xs text-muted-foreground">
-//                   This will be used as the project folder name and in the app.
-//                 </p>
-//               </div>
-
-//               {/* What's included note */}
-//               <div className="mb-6 p-4 rounded-xl border border-border bg-background space-y-1.5">
-//                 <p className="text-xs font-semibold text-foreground">What you'll get:</p>
-//                 <ul className="text-xs text-muted-foreground space-y-1">
-//                   <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-green-500" />Complete Next.js 15 project</li>
-//                   <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-green-500" />Prisma schema for selected modules</li>
-//                   <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-green-500" />.env.template with all required vars</li>
-//                   <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-green-500" />Sidebar + Topbar already configured</li>
-//                   <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-green-500" />Role-based auth (Admin/Staff/Customer)</li>
-//                 </ul>
-//               </div>
-
-//               <div className="flex justify-between">
-//                 <button onClick={() => setStep("modules")}
-//                   className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm
-//                              border border-border text-foreground
-//                              hover:bg-muted transition-colors">
-//                   <ArrowLeft className="w-4 h-4" /> Back
-//                 </button>
-//                 <button onClick={handleGenerate}
-//                   disabled={!websiteName.trim()}
-//                   className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm
-//                              font-semibold bg-primary text-primary-foreground
-//                              hover:opacity-90 transition-opacity
-//                              disabled:opacity-50 disabled:cursor-not-allowed">
-//                   Generate <Download className="w-4 h-4" />
-//                 </button>
-//               </div>
-//             </motion.div>
-//           )}
-
-//           {/* ── Step 3: Generating ── */}
-//           {step === "generating" && (
-//             <motion.div key="generating"
-//               initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-//               className="text-center py-20">
-//               <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center
-//                               justify-center mx-auto mb-6">
-//                 <Loader2 className="w-8 h-8 text-primary animate-spin" />
-//               </div>
-//               <h2 className="text-2xl font-bold text-foreground mb-2">
-//                 Building Your Project...
-//               </h2>
-//               <p className="text-muted-foreground text-sm mb-8">
-//                 Assembling files, configuring modules, zipping everything up
-//               </p>
-//               <div className="max-w-xs mx-auto">
-//                 <div className="bg-secondary rounded-full h-2 overflow-hidden mb-2">
-//                   <motion.div
-//                     className="h-full bg-primary rounded-full"
-//                     animate={{ width: `${progress}%` }}
-//                     transition={{ duration: 0.3 }}
-//                   />
-//                 </div>
-//                 <p className="text-xs text-muted-foreground">{Math.round(progress)}%</p>
-//               </div>
-//             </motion.div>
-//           )}
-
-//           {/* ── Step 4: Done ── */}
-//           {step === "done" && (
-//             <motion.div key="done"
-//               initial={{ opacity: 0, scale: 0.95 }}
-//               animate={{ opacity: 1, scale: 1 }}
-//               className="text-center py-16 max-w-md mx-auto">
-//               <motion.div
-//                 initial={{ scale: 0 }} animate={{ scale: 1 }}
-//                 transition={{ type: "spring", delay: 0.1 }}
-//                 className="w-16 h-16 rounded-2xl bg-green-100 dark:bg-green-900/30
-//                            flex items-center justify-center mx-auto mb-6">
-//                 <Check className="w-8 h-8 text-green-600 dark:text-green-400" />
-//               </motion.div>
-
-//               <h2 className="text-2xl font-bold text-foreground mb-2">
-//                 Project Generated!
-//               </h2>
-//               <p className="text-muted-foreground text-sm mb-2">
-//                 <strong className="text-foreground">{websiteName}</strong> has been
-//                 downloaded to your computer.
-//               </p>
-//               <p className="text-muted-foreground text-xs mb-8">
-//                 Extract the ZIP, fill in <code className="bg-muted px-1 py-0.5 rounded">.env.template</code>,
-//                 rename it to <code className="bg-muted px-1 py-0.5 rounded">.env.local</code>,
-//                 then run <code className="bg-muted px-1 py-0.5 rounded">npm install</code>.
-//               </p>
-
-//               {/* Quick start steps */}
-//               <div className="text-left bg-muted/50 border border-border rounded-xl
-//                               p-4 mb-6 space-y-2">
-//                 <p className="text-xs font-semibold text-foreground mb-3">Quick Start</p>
-//                 {[
-//                   "Extract the ZIP file",
-//                   "Copy .env.template → .env.local",
-//                   "Fill in DATABASE_URL and NEXTAUTH_SECRET",
-//                   "npm install",
-//                   "npx prisma migrate dev --name init",
-//                   "npm run dev",
-//                 ].map((step, i) => (
-//                   <div key={i} className="flex items-center gap-2.5 text-xs text-muted-foreground">
-//                     <span className="w-5 h-5 rounded-full bg-primary/10 text-primary
-//                                      flex items-center justify-center font-semibold shrink-0 text-[10px]">
-//                       {i + 1}
-//                     </span>
-//                     {step}
-//                   </div>
-//                 ))}
-//               </div>
-
-//               <button onClick={reset}
-//                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl mx-auto
-//                            bg-primary text-primary-foreground text-sm font-semibold
-//                            hover:opacity-90 transition-opacity">
-//                 Generate Another <ArrowRight className="w-4 h-4" />
-//               </button>
-//             </motion.div>
-//           )}
-//         </AnimatePresence>
-//       </main>
-//     </div>
-//   );
-// }
-
-
-
-
-
-
+// app/dashboard/page.tsx (Updated)
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
-  Hotel, BedDouble, CalendarCheck, Utensils, Users, CreditCard,
-  ArrowRight, ArrowLeft, Download, Check, LogOut, Globe,
-  ShieldCheck, ClipboardList, Package, UserCog, BarChart3,
-  Loader2, FolderOpen, Clock, CheckCircle2, XCircle, Link2, AlertCircle,
+  Hotel, LogOut, User, Download, Loader2, Lock,
+  LogIn, BedDouble, CalendarCheck, UserRound, Users,
+  CreditCard, Brush, ChefHat, Package, BarChart3,
+  Info, ChevronRight, ChevronLeft, CheckCircle2,
+  Circle, Check, ArrowRight, Zap, Layers, Crown,
+  AlertCircle,
 } from "lucide-react";
+import clsx from "clsx";
 import api from "@/lib/axios";
+import type { ModuleId } from "@/lib/generator/moduleFiles";
 import {
-  MODULE_DEPENDENCIES,
   resolveDependencies,
-  getRequiredBy,
+  getDependencyDescription,
+  canToggleOff,
+  getLockedModules,
+  getDependentModules,
+  getDirectDependencies,
 } from "@/lib/generator/moduleDependencies";
 
-// ─── Types ───────────────────────────────────────────────────
-type ModuleId =
-  | "authentication" | "rooms" | "booking" | "customer"
-  | "billing" | "housekeeping" | "inventory"
-  | "staff" | "kitchen" | "reports";
+// ─── Types ────────────────────────────────────────────────────
+type TierId = "basic" | "intermediate" | "advanced";
+type Step = 1 | 2 | 3 | 4;
 
-type StepId = "modules" | "config" | "generating" | "done";
-
-interface Module {
-  id: ModuleId;
-  name: string;
-  description: string;
-  icon: React.ElementType;
-  required?: boolean;
-}
-
-type Project = {
-  id: string;
-  name: string;
-  modules: string[];
-  status: "PENDING" | "GENERATING" | "DONE" | "FAILED";
-  createdAt: string;
+// ─── Tier Presets (Available modules in each tier - including authentication) ─────
+const TIER_AVAILABLE_MODULES: Record<TierId, ModuleId[]> = {
+  // Basic: Authentication + core modules
+  basic: ["authentication", "rooms", "booking", "customer"],
+  
+  // Intermediate: Authentication + extended modules
+  intermediate: ["authentication", "rooms", "booking", "customer", "staff", "billing", "housekeeping"],
+  
+  // Advanced: Authentication + full suite
+  advanced: ["authentication", "rooms", "booking", "customer", "staff", "billing", "housekeeping", "kitchen", "inventory", "reports"],
 };
 
-// ─── Module definitions ───────────────────────────────────────
-const MODULES: Module[] = [
-  { id: "authentication", name: "Authentication",
-    description: "Login, signup, roles, password reset, profile",
-    icon: ShieldCheck, required: true },
-  { id: "rooms", name: "Room Management",
-    description: "Rooms, categories, pricing, availability",
-    icon: BedDouble },
-  { id: "booking", name: "Booking & Reservation",
-    description: "Reservations, check-in/check-out — requires Rooms + Customer",
-    icon: CalendarCheck },
-  { id: "customer", name: "Customer Management",
-    description: "Guest profiles, history, preferences",
-    icon: Users },
-  { id: "billing", name: "Billing & Invoices",
-    description: "Invoices, payments — requires Booking",
-    icon: CreditCard },
-  { id: "housekeeping", name: "Housekeeping",
-    description: "Cleaning tasks, laundry, service requests — requires Rooms",
-    icon: ClipboardList },
-  { id: "inventory", name: "Inventory & Stock",
-    description: "Supplies, purchase orders, stock alerts",
-    icon: Package },
-  { id: "staff", name: "Staff Management",
-    description: "Employees, departments, attendance, shifts",
-    icon: UserCog },
-  { id: "kitchen", name: "Food & Kitchen",
-    description: "Menu, orders, delivery management",
-    icon: Utensils },
-  { id: "reports", name: "Reports & Analytics",
-    description: "Revenue, occupancy, KPI dashboards",
-    icon: BarChart3 },
+// Which modules are required (cannot be deselected)
+const REQUIRED_MODULES: Set<ModuleId> = new Set(["authentication"]);
+
+// Tier configurations
+const TIERS: {
+  id: TierId;
+  label: string;
+  tagline: string;
+  icon: React.ElementType;
+  badge?: string;
+  description: string;
+  schemaType: "simple" | "standard" | "full";
+}[] = [
+  {
+    id: "basic",
+    label: "Basic",
+    tagline: "Core Modules",
+    icon: Zap,
+    description: "Core hotel operations — authentication, rooms, bookings & guest management.",
+    schemaType: "simple",
+  },
+  {
+    id: "intermediate",
+    label: "Intermediate",
+    tagline: "+ Staff & Operations",
+    icon: Layers,
+    badge: "Popular",
+    description: "Basic + staff management, billing & housekeeping workflow.",
+    schemaType: "standard",
+  },
+  {
+    id: "advanced",
+    label: "Advanced",
+    tagline: "Full Suite",
+    icon: Crown,
+    description: "Full suite — kitchen, inventory & analytics reports included.",
+    schemaType: "full",
+  },
 ];
 
-const STATUS_STYLES = {
-  DONE:       "text-green-600 bg-green-100",
-  GENERATING: "text-blue-600  bg-blue-100",
-  PENDING:    "text-amber-600 bg-amber-100",
-  FAILED:     "text-red-600   bg-red-100",
+// ─── Module Meta ──────────────────────────────────────────────
+const MODULE_META: Record<ModuleId, {
+  label: string;
+  icon: React.ElementType;
+  description: string;
+  available: boolean;
+}> = {
+  authentication: { label: "Authentication", icon: LogIn, description: "Login, signup, password reset (Required)", available: true },
+  rooms: { label: "Rooms", icon: BedDouble, description: "Room listing, photos, management", available: true },
+  booking: { label: "Booking", icon: CalendarCheck, description: "Reservations, check-in / check-out", available: true },
+  customer: { label: "Customer", icon: UserRound, description: "Guest profiles & self-service portal", available: true },
+  staff: { label: "Staff", icon: Users, description: "Staff management & attendance", available: true },
+  billing: { label: "Billing", icon: CreditCard, description: "Invoices & payment tracking", available: true },
+  housekeeping: { label: "Housekeeping", icon: Brush, description: "Tasks, laundry & service requests", available: true },
+  kitchen: { label: "Kitchen", icon: ChefHat, description: "Food orders & menu management", available: true },
+  inventory: { label: "Inventory", icon: Package, description: "Stock, vendors & purchase orders", available: true },
+  reports: { label: "Reports", icon: BarChart3, description: "Analytics & scheduled reports", available: true },
 };
 
-const STATUS_ICONS = {
-  DONE: CheckCircle2,
-  GENERATING: Loader2,
-  PENDING: Clock,
-  FAILED: XCircle,
-};
+// ─── Progress Steps ───────────────────────────────────────────
+const STEP_LABELS = ["Choose Tier", "Modules", "Project Name", "Generate"];
 
-// Dependency display labels
-const DEP_LABELS: Partial<Record<ModuleId, string>> = {
-  booking: "Rooms + Customer",
-  billing: "Booking",
-  housekeeping: "Rooms",
-  reports: "Booking",
-};
-
-// ─── Step indicator ───────────────────────────────────────────
-function StepBar({ step }: { step: StepId }) {
-  const steps = ["modules", "config", "generating", "done"] as StepId[];
-  const labels = ["Select Modules", "Configure", "Generate"];
-  const idx = steps.indexOf(step);
-
+function ProgressBar({ step }: { step: Step }) {
   return (
-    <div className="flex items-center justify-center gap-2 mb-10">
-      {labels.map((label, i) => {
-        const active = i <= idx;
-        const done = i < idx || step === "done";
-        return (
-          <div key={label} className="flex items-center gap-2">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center
-                            text-sm font-semibold transition-all duration-300
-                            ${active ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}>
-              {done ? <Check className="w-4 h-4" /> : i + 1}
-            </div>
-            <span className={`text-sm font-medium hidden sm:block
-                              ${active ? "text-foreground" : "text-muted-foreground"}`}>
-              {label}
-            </span>
-            {i < 2 && (
-              <div className={`w-12 h-0.5 transition-colors duration-300
-                              ${active ? "bg-primary" : "bg-border"}`} />
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function PastProjects({ projects }: { projects: Project[] }) {
-  if (projects.length === 0) return null;
-  return (
-    <div className="mt-10 border-t border-border pt-8">
-      <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-        <FolderOpen className="w-4 h-4 text-muted-foreground" />
-        Previously Generated
-      </h3>
-      <div className="space-y-2">
-        {projects.map((p) => {
-          const StatusIcon = STATUS_ICONS[p.status];
+    <div className="max-w-lg mx-auto mb-8">
+      <div className="flex items-center">
+        {STEP_LABELS.map((label, i) => {
+          const s = (i + 1) as Step;
+          const done = step > s;
+          const active = step === s;
+          const last = i === STEP_LABELS.length - 1;
           return (
-            <div key={p.id}
-              className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 border border-border">
-              <StatusIcon
-                className={`w-4 h-4 shrink-0
-                  ${p.status === "GENERATING" ? "animate-spin" : ""}
-                  ${p.status === "DONE" ? "text-green-600" : ""}
-                  ${p.status === "FAILED" ? "text-red-500" : ""}
-                  ${p.status === "PENDING" ? "text-amber-500" : ""}`}
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{p.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {p.modules.length} modules · {new Date(p.createdAt).toLocaleDateString()}
-                </p>
+            <div key={label} className="flex items-center flex-1 last:flex-none">
+              <div className="flex flex-col items-center gap-1">
+                <div className={clsx(
+                  "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-300",
+                  done ? "bg-gradient-brand border-transparent text-white"
+                    : active ? "border-primary text-primary bg-transparent"
+                      : "border-border text-muted-foreground bg-transparent",
+                )}>
+                  {done ? <Check size={14} /> : s}
+                </div>
+                <span className={clsx(
+                  "text-[10px] font-medium whitespace-nowrap hidden sm:block",
+                  active ? "text-primary" : done ? "text-foreground/70" : "text-muted-foreground",
+                )}>
+                  {label}
+                </span>
               </div>
-              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_STYLES[p.status]}`}>
-                {p.status}
-              </span>
+              {!last && (
+                <div className="flex-1 h-px mx-2 mb-5 bg-border">
+                  <div
+                    className="h-full bg-gradient-brand transition-all duration-500"
+                    style={{ width: done ? "100%" : "0%" }}
+                  />
+                </div>
+              )}
             </div>
           );
         })}
@@ -699,87 +147,589 @@ function PastProjects({ projects }: { projects: Project[] }) {
   );
 }
 
+// ─── STEP 1: Tier Selection ────────────────────────────────────
+function StepTier({ onSelect }: { onSelect: (t: TierId) => void }) {
+  return (
+    <motion.div
+      key="step1"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.22 }}
+    >
+      <div className="text-center mb-6">
+        <h2 className="text-xl font-bold text-foreground">Choose Your Tier</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Select a tier based on your hotel size and requirements
+        </p>
+        <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/10 text-green-600 text-xs">
+          <Check size={12} />
+          <span>Authentication is included in all tiers</span>
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-4 max-w-3xl mx-auto">
+        {TIERS.map((tier, i) => {
+          const Icon = tier.icon;
+          const availableModules = TIER_AVAILABLE_MODULES[tier.id];
+          const moduleCount = availableModules.length;
+
+          return (
+            <motion.button
+              key={tier.id}
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.08 }}
+              onClick={() => onSelect(tier.id)}
+              className={clsx(
+                "relative group text-left p-4 rounded-xl border border-border",
+                "bg-card hover:border-primary/50 hover:shadow-lg hover:-translate-y-0.5",
+                "transition-all duration-200 cursor-pointer",
+              )}
+            >
+              {tier.badge && (
+                <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-gradient-brand text-white text-[10px] font-bold uppercase tracking-wider">
+                  {tier.badge}
+                </span>
+              )}
+
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-brand/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                  <Icon size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-foreground text-base">{tier.label}</h3>
+                  <p className="text-xs text-primary font-semibold">{tier.tagline}</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+                {tier.description}
+              </p>
+
+              <div className="space-y-1.5 mb-3">
+                <p className="text-[10px] text-muted-foreground font-semibold mb-1">Includes:</p>
+                {availableModules.map((m) => {
+                  const meta = MODULE_META[m];
+                  const MIcon = meta.icon;
+                  return (
+                    <div key={m} className="flex items-center gap-2">
+                      <MIcon size={11} className={m === "authentication" ? "text-green-500" : "text-primary"} />
+                      <span className="text-[11px] text-foreground/80">
+                        {meta.label}
+                        {m === "authentication" && (
+                          <span className="ml-1 text-[9px] text-green-500">(Required)</span>
+                        )}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex items-center justify-between pt-3 border-t border-border">
+                <span className="text-[11px] text-muted-foreground">
+                  {moduleCount} modules total
+                </span>
+                <ArrowRight size={14} className="text-primary transition-transform duration-200 group-hover:translate-x-1" />
+              </div>
+            </motion.button>
+          );
+        })}
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── STEP 2: Module Customization ─────────
+function StepModules({
+  availableModules,
+  selected,
+  onToggle,
+  onBack,
+  onNext,
+}: {
+  availableModules: ModuleId[];
+  selected: ModuleId[];
+  onToggle: (id: ModuleId, isAdding: boolean) => void;
+  onBack: () => void;
+  onNext: () => void;
+}) {
+  // Get modules that are locked (dependencies of selected modules)
+  const lockedModules = getLockedModules(selected);
+  
+  // All modules to display (from availableModules)
+  const allDisplayModules = availableModules.map(id => ({ id, isRequired: REQUIRED_MODULES.has(id) }));
+
+  const handleToggle = (moduleId: ModuleId, isRequired: boolean) => {
+    if (isRequired) {
+      toast.info("Authentication is required and cannot be removed");
+      return;
+    }
+    
+    const isSelected = selected.includes(moduleId);
+    
+    if (!isSelected && lockedModules.has(moduleId)) {
+      toast.info(`${MODULE_META[moduleId]?.label} is already locked as a dependency`);
+      return;
+    }
+    
+    onToggle(moduleId, !isSelected);
+  };
+
+  return (
+    <motion.div
+      key="step2"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.22 }}
+      className="max-w-2xl mx-auto"
+    >
+      <div className="text-center mb-5">
+        <h2 className="text-xl font-bold text-foreground">Select Modules</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Choose which modules to include in your project
+        </p>
+        <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-blue-500/10 text-blue-600 text-xs">
+          <Info size={12} />
+          <span>Selecting a module may automatically add dependencies</span>
+        </div>
+      </div>
+
+      <div className="mb-4 p-3 rounded-lg bg-gradient-brand/5 border border-primary/20">
+        <p className="text-xs font-medium text-foreground">📋 How it works:</p>
+        <ul className="text-[11px] text-muted-foreground mt-1 space-y-0.5">
+          <li>• ✅ Required modules (Authentication) are always selected</li>
+          <li>• Click on any module to select/deselect it</li>
+          <li>• 🔒 Locked modules are dependencies and cannot be removed</li>
+          <li>• When you deselect a module, its locked dependencies will also be removed</li>
+        </ul>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-2.5 mb-4">
+        {allDisplayModules.map(({ id, isRequired }) => {
+          const meta = MODULE_META[id];
+          if (!meta) return null;
+          
+          const Icon = meta.icon;
+          const isSelected = selected.includes(id) || isRequired;
+          const isLocked = lockedModules.has(id) && !isRequired;
+          const depDesc = getDependencyDescription(id);
+          const dependents = getDependentModules(id, selected);
+          
+          let lockReason = "";
+          if (isLocked && dependents.length > 0) {
+            lockReason = `Required by: ${dependents.map(d => MODULE_META[d]?.label).join(", ")}`;
+          }
+          
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => handleToggle(id, isRequired)}
+              className={clsx(
+                "text-left p-3 rounded-lg border transition-all duration-150 relative",
+                isRequired
+                  ? "bg-gradient-brand/10 border-primary/40 cursor-default"
+                  : isLocked && !isSelected
+                    ? "opacity-50 cursor-not-allowed bg-muted/30 border-border"
+                    : isSelected
+                      ? "bg-gradient-brand/5 border-primary/40 shadow-sm hover:border-primary/60"
+                      : "bg-card border-border hover:border-primary/30",
+              )}
+            >
+              {(isLocked || isRequired) && isSelected && (
+                <div className="absolute top-2 right-2">
+                  <Lock size={12} className="text-muted-foreground" />
+                </div>
+              )}
+              
+              <div className="flex items-start gap-2.5">
+                <div className="mt-0.5 shrink-0">
+                  {isSelected
+                    ? <CheckCircle2 size={14} className={isRequired ? "text-green-500" : "text-primary"} />
+                    : <Circle size={14} className="text-muted-foreground/25" />
+                  }
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center flex-wrap gap-1.5 mb-0.5">
+                    <Icon size={12} className={isSelected ? (isRequired ? "text-green-500" : "text-primary") : "text-muted-foreground"} />
+                    <span className={clsx(
+                      "text-sm font-semibold",
+                      isSelected ? "text-foreground" : "text-foreground/60",
+                    )}>
+                      {meta.label}
+                    </span>
+                    {isRequired && (
+                      <span className="text-[9px] bg-green-500 text-white px-1.5 py-0.5 rounded font-bold">
+                        Required
+                      </span>
+                    )}
+                    {isLocked && !isRequired && (
+                      <span className="text-[9px] bg-orange-500/20 text-orange-600 px-1.5 py-0.5 rounded font-medium">
+                        Locked
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">{meta.description}</p>
+                  {depDesc && !isSelected && !isLocked && !isRequired && (
+                    <p className="flex items-center gap-1 text-[10px] text-muted-foreground/60 mt-0.5">
+                      <Info size={9} />
+                      {depDesc}
+                    </p>
+                  )}
+                  {lockReason && (
+                    <p className="flex items-center gap-1 text-[10px] text-orange-500/70 mt-0.5">
+                      <Lock size={9} />
+                      {lockReason}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Summary */}
+      <div className="p-3 rounded-lg bg-gradient-brand/5 border border-primary/20 mb-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-foreground">
+              {selected.length} module{selected.length !== 1 ? "s" : ""} selected
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              Authentication is always included
+            </p>
+          </div>
+          <div className="flex items-center gap-1">
+            {selected.slice(0, 3).map((m) => {
+              const MIcon = MODULE_META[m]?.icon;
+              if (!MIcon) return null;
+              return (
+                <div key={m} className="w-6 h-6 rounded-lg bg-gradient-brand/10 border border-primary/20 flex items-center justify-center">
+                  <MIcon size={11} className="text-primary" />
+                </div>
+              );
+            })}
+            {selected.length > 3 && (
+              <div className="w-6 h-6 rounded-lg bg-gradient-brand/10 border border-primary/20 flex items-center justify-center text-[10px] font-semibold text-primary">
+                +{selected.length - 3}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex gap-3">
+        <button onClick={onBack} className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-secondary transition-colors">
+          <ChevronLeft size={15} /> Back
+        </button>
+        <button 
+          onClick={onNext} 
+          className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-brand text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+        >
+          Continue <ChevronRight size={15} />
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── STEP 3: Project Name ─────────────────────────────────────
+function StepName({
+  initialName,
+  onBack,
+  onNext,
+}: {
+  initialName: string;
+  onBack: () => void;
+  onNext: (name: string) => void;
+}) {
+  const [name, setName] = useState(initialName);
+  const [error, setError] = useState("");
+
+  const slug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+  const handleNext = () => {
+    const t = name.trim();
+    if (!t) { setError("Please enter a name"); return; }
+    if (t.length < 3) { setError("At least 3 characters"); return; }
+    setError("");
+    onNext(t);
+  };
+
+  return (
+    <motion.div
+      key="step3"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.22 }}
+      className="max-w-md mx-auto"
+    >
+      <div className="text-center mb-6">
+        <h2 className="text-xl font-bold text-foreground">Name Your Project</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          This becomes your folder name, app title, and package name.
+        </p>
+      </div>
+
+      <div className="space-y-1.5 mb-5">
+        <label className="text-xs font-semibold text-foreground uppercase tracking-wide">
+          Hotel / Website Name
+        </label>
+        <input
+          autoFocus
+          value={name}
+          onChange={(e) => { setName(e.target.value); setError(""); }}
+          onKeyDown={(e) => e.key === "Enter" && handleNext()}
+          placeholder="e.g. Grand Palace Hotel"
+          className={clsx(
+            "w-full px-4 py-2.5 rounded-lg border-2 bg-card text-foreground text-base outline-none transition-colors placeholder:text-muted-foreground/40",
+            error ? "border-destructive" : "border-border focus:border-primary/60",
+          )}
+        />
+        {error && <p className="text-xs text-destructive">{error}</p>}
+        {slug && !error && (
+          <p className="text-[10px] text-muted-foreground">
+            Folder: <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-foreground">{slug}/</code>
+          </p>
+        )}
+      </div>
+
+      <div className="p-3 rounded-lg bg-gradient-brand/5 border border-primary/20 mb-5 space-y-1.5">
+        <p className="text-[10px] font-semibold text-primary uppercase tracking-wide">This name will appear in</p>
+        {[
+          "ZIP folder name & project directory",
+          "package.json → name field",
+          "Browser tab title & meta tags",
+        ].map((item) => (
+          <div key={item} className="flex items-center gap-2 text-xs text-foreground/70">
+            <Check size={10} className="text-primary shrink-0" />
+            {item}
+          </div>
+        ))}
+      </div>
+
+      <div className="flex gap-3">
+        <button onClick={onBack} className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-secondary transition-colors">
+          <ChevronLeft size={15} /> Back
+        </button>
+        <button onClick={handleNext} disabled={!name.trim()} className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-brand text-white text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity">
+          Continue <ChevronRight size={15} />
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── STEP 4: Review + Generate ────────────────────────────────
+function StepGenerate({
+  websiteName,
+  selectedModules,
+  selectedTier,
+  onBack,
+  onGenerate,
+  generating,
+}: {
+  websiteName: string;
+  selectedModules: ModuleId[];
+  selectedTier: TierId;
+  onBack: () => void;
+  onGenerate: () => void;
+  generating: boolean;
+}) {
+  const tier = TIERS.find(t => t.id === selectedTier)!;
+  const TierIcon = tier.icon;
+  
+  // Final modules - authentication is already included in selectedModules
+  const allModules = resolveDependencies(selectedModules);
+  const slug = websiteName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+
+  return (
+    <motion.div
+      key="step4"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.22 }}
+      className="max-w-lg mx-auto"
+    >
+      <div className="text-center mb-5">
+        <h2 className="text-xl font-bold text-foreground">Review & Generate</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Everything looks good? Hit generate to download your project.
+        </p>
+      </div>
+
+      <div className="p-4 rounded-xl bg-gradient-brand/5 border border-primary/20 mb-4">
+        <div className="flex items-start justify-between gap-3 mb-3 pb-3 border-b border-primary/20">
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-0.5">Project</p>
+            <p className="text-base font-bold text-foreground">{websiteName}</p>
+            <code className="text-[10px] text-primary font-mono">{slug}.zip</code>
+          </div>
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-gradient-brand/10 border border-primary/20 text-primary">
+            <TierIcon size={14} />
+            <span className="text-xs font-bold">{tier.label}</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          {[
+            { label: "Framework", value: "Next.js 15 + TS" },
+            { label: "Auth", value: "NextAuth.js" },
+            { label: "Schema Type", value: tier.schemaType },
+          ].map(({ label, value }) => (
+            <div key={label} className="bg-background border border-border rounded-lg px-2 py-1.5">
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold">{label}</p>
+              <p className="text-[11px] font-semibold text-foreground mt-0.5">{value}</p>
+            </div>
+          ))}
+        </div>
+
+        <div>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-1.5">
+            Modules ({allModules.length})
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {allModules.map((m) => {
+              const MIcon = MODULE_META[m]?.icon;
+              if (!MIcon) return null;
+              return (
+                <span key={m} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-gradient-brand/10 border border-primary/20 text-primary font-medium">
+                  <MIcon size={9} />
+                  {MODULE_META[m]?.label}
+                  {m === "authentication" && (
+                    <span className="text-[8px] text-green-500 ml-0.5">✓</span>
+                  )}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex gap-3">
+        <button
+          onClick={onBack}
+          disabled={generating}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-secondary disabled:opacity-50 transition-colors"
+        >
+          <ChevronLeft size={15} /> Back
+        </button>
+        <button
+          onClick={onGenerate}
+          disabled={generating}
+          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-gradient-brand text-white text-sm font-bold hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
+        >
+          {generating ? (
+            <><Loader2 size={15} className="animate-spin" /> Generating…</>
+          ) : (
+            <><Download size={15} /> Generate & Download</>
+          )}
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
 // ─── Main Dashboard ───────────────────────────────────────────
 export default function Dashboard() {
   const { data: session } = useSession();
   const user = session?.user;
 
-  const [step, setStep] = useState<StepId>("modules");
-  const [selectedModules, setSelectedModules] = useState<ModuleId[]>(["authentication"]);
-  const [websiteName, setWebsiteName] = useState("");
-  const [progress, setProgress] = useState(0);
-  const [projects, setProjects] = useState<Project[]>([]);
-  // Track which modules were auto-added (to show tooltip)
-  // const [autoAdded, setAutoAdded] = useState<Set<ModuleId>>(new Set());
+  const [step, setStep] = useState<Step>(1);
+  const [tier, setTier] = useState<TierId | null>(null);
+  const [selectedModules, setSelectedModules] = useState<ModuleId[]>([]);
+  const [name, setName] = useState("");
+  const [generating, setGenerating] = useState(false);
 
-  // Resolved = selected + their dependencies
-  const resolvedModules = useMemo(
-    () => resolveDependencies(selectedModules),
-    [selectedModules],
-  );
-  const resolvedSet = new Set<ModuleId>(resolvedModules);
-  const autoAddedModules = resolvedModules.filter((m) => !selectedModules.includes(m));
+  const handleTierSelect = (t: TierId) => {
+    setTier(t);
+    // Get available modules for this tier
+    const availableModules = TIER_AVAILABLE_MODULES[t];
+    // Authentication is always selected by default (as it's required)
+    // But we don't add it to selectedModules array? Actually we do, but it will be required
+    setSelectedModules(availableModules.filter(m => m === "authentication"));
+    setStep(2);
+  };
 
-  const toggleModule = (id: ModuleId) => {
-    const mod = MODULES.find((m) => m.id === id);
-    if (mod?.required) return; // authentication = always on
-
-    // Check if this module is required by another selected module
-    const requiredBy = getRequiredBy(id, selectedModules);
-    if (requiredBy.length > 0) {
-      toast.error(
-        `Cannot deselect — required by: ${requiredBy.join(", ")}`,
-        { description: `First deselect ${requiredBy.join(", ")} to remove this module.` }
-      );
-      return;
-    }
-
-    setSelectedModules((prev) => {
-      if (prev.includes(id)) {
-        // Removing: also remove any modules that ONLY exist because of this one
-        return prev.filter((m) => m !== id);
-      } else {
-        // Adding: show which deps will be auto-added
-        const deps = (MODULE_DEPENDENCIES[id] ?? []).filter((d) => !prev.includes(d));
-        if (deps.length > 0) {
-          toast.info(
-            `Auto-including: ${deps.join(", ")}`,
-            { description: `${id} requires these modules` }
-          );
-        }
-        return [...prev, id];
+  const handleToggle = (moduleId: ModuleId, isAdding: boolean) => {
+    if (isAdding) {
+      // Adding module
+      const newSelection = [...selectedModules, moduleId];
+      const resolved = resolveDependencies(newSelection);
+      
+      // Check what was auto-added (excluding authentication)
+      const autoAdded = resolved.filter(m => !selectedModules.includes(m) && m !== moduleId && m !== "authentication");
+      if (autoAdded.length > 0) {
+        toast.success(`✨ Auto-added: ${autoAdded.map(m => MODULE_META[m]?.label).join(", ")}`);
       }
-    });
+      
+      setSelectedModules(resolved);
+    } else {
+      // Removing module
+      const newSelection = selectedModules.filter(m => m !== moduleId);
+      
+      // Find orphaned dependencies (modules that are no longer needed)
+      const orphaned: ModuleId[] = [];
+      for (const dep of selectedModules) {
+        if (dep === moduleId || dep === "authentication") continue;
+        
+        // Check if this module is a dependency of any remaining module
+        let isStillNeeded = false;
+        for (const remaining of newSelection) {
+          const deps = getDirectDependencies(remaining);
+          if (deps.includes(dep)) {
+            isStillNeeded = true;
+            break;
+          }
+        }
+        
+        if (!isStillNeeded && newSelection.includes(dep)) {
+          orphaned.push(dep);
+        }
+      }
+      
+      // Remove orphaned modules
+      let finalSelection = newSelection;
+      if (orphaned.length > 0) {
+        finalSelection = newSelection.filter(m => !orphaned.includes(m));
+        toast.info(`🗑️ Removed dependencies: ${orphaned.map(m => MODULE_META[m]?.label).join(", ")}`);
+      }
+      
+      setSelectedModules(finalSelection);
+    }
+  };
+
+  const getAvailableModules = () => {
+    if (!tier) return [];
+    return TIER_AVAILABLE_MODULES[tier];
   };
 
   const handleGenerate = async () => {
-    if (!websiteName.trim()) {
-      toast.error("Please enter a website name");
+    const finalModules = resolveDependencies(selectedModules);
+    
+    if (!name.trim()) {
+      toast.error("Please enter a project name");
       return;
     }
 
-    setStep("generating");
-    setProgress(0);
-
-    const timer = setInterval(() => {
-      setProgress((p) => {
-        if (p >= 85) { clearInterval(timer); return 85; }
-        return p + Math.random() * 12;
-      });
-    }, 300);
-
+    setGenerating(true);
     try {
-      // Send user-selected modules — server will resolve deps
       const res = await api.post(
         "/generate",
-        { websiteName: websiteName.trim(), modules: selectedModules },
+        { 
+          websiteName: name.trim(), 
+          modules: finalModules,
+          tier: tier,
+        },
         { responseType: "blob" }
       );
 
-      clearInterval(timer);
-      setProgress(100);
-
-      const slug = websiteName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      const slug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
       const url = URL.createObjectURL(new Blob([res.data], { type: "application/zip" }));
       const a = document.createElement("a");
       a.href = url;
@@ -787,349 +737,85 @@ export default function Dashboard() {
       a.click();
       URL.revokeObjectURL(url);
 
-      const { data } = await api.get("/projects");
-      setProjects(data);
-      setStep("done");
-      toast.success("Project generated and downloading!");
+      toast.success("✅ Project generated and downloading!");
+      
+      setStep(1);
+      setTier(null);
+      setSelectedModules([]);
+      setName("");
     } catch (err: any) {
-      clearInterval(timer);
       toast.error(err?.response?.data?.error ?? "Generation failed");
-      setStep("config");
+    } finally {
+      setGenerating(false);
     }
-  };
-
-  const reset = () => {
-    setStep("modules");
-    setProgress(0);
-    setWebsiteName("");
-    setSelectedModules(["authentication"]);
   };
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-3">
+        <div className="max-w-7xl mx-auto flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <Hotel className="w-4 h-4 text-primary-foreground" />
+            <div className="w-8 h-8 rounded-lg bg-gradient-brand flex items-center justify-center">
+              <Hotel className="w-4 h-4 text-white" />
             </div>
             <span className="font-semibold text-foreground">HotelGen</span>
           </div>
+
           <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground hidden sm:block">
-              {user?.name ?? user?.email}
-            </span>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-gradient-brand/10 flex items-center justify-center border border-primary/20">
+                <User className="w-4 h-4 text-primary" />
+              </div>
+              <span className="text-sm text-muted-foreground hidden sm:block">
+                {user?.name ?? user?.email?.split("@")[0] ?? "User"}
+              </span>
+            </div>
             <button
               onClick={() => signOut({ callbackUrl: "/" })}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm
-                         border border-border text-foreground hover:bg-secondary transition-colors"
+                         border border-border text-foreground
+                         hover:bg-secondary transition-colors"
             >
               <LogOut className="w-3.5 h-3.5" />
-              Sign Out
+              <span className="hidden sm:inline">Sign Out</span>
             </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-10">
-        <StepBar step={step} />
+      <main className="max-w-4xl mx-auto px-4 py-6">
+        <ProgressBar step={step} />
 
         <AnimatePresence mode="wait">
-          {/* ── Step 1: Modules ── */}
-          {step === "modules" && (
-            <motion.div key="modules"
-              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.25 }}>
-              <h2 className="text-2xl font-bold text-foreground mb-1">Select Modules</h2>
-              <p className="text-muted-foreground text-sm mb-6">
-                Choose features for your hotel website. Some modules automatically include dependencies.
-              </p>
-
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-                {MODULES.map((mod) => {
-                  const isSelected = selectedModules.includes(mod.id);
-                  const isAutoAdded = autoAddedModules.includes(mod.id);
-                  const isResolved = resolvedSet.has(mod.id);
-                  const depLabel = DEP_LABELS[mod.id];
-                  const requiredBy = getRequiredBy(mod.id, selectedModules);
-                  const isLocked = mod.required || requiredBy.length > 0;
-
-                  return (
-                    <motion.button key={mod.id}
-                      whileHover={{ scale: isLocked ? 1 : 1.02 }}
-                      whileTap={{ scale: isLocked ? 1 : 0.98 }}
-                      onClick={() => toggleModule(mod.id)}
-                      className={`relative text-left p-4 rounded-xl border transition-all
-                        ${isAutoAdded
-                          ? "border-blue-400 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-600"
-                          : isSelected
-                            ? "border-accent bg-accent/5"
-                            : "border-border bg-card hover:border-muted-foreground/40"}
-                        ${isLocked ? "cursor-default" : "cursor-pointer"}`}
-                    >
-                      {/* Badges */}
-                      {mod.required && (
-                        <span className="absolute top-2 right-2 text-[9px] font-bold
-                                         px-1.5 py-0.5 rounded-full bg-primary/10 text-primary uppercase tracking-wide">
-                          Required
-                        </span>
-                      )}
-                      {isAutoAdded && (
-                        <span className="absolute top-2 right-2 text-[9px] font-bold
-                                         px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700
-                                         dark:bg-blue-900/40 dark:text-blue-300 uppercase tracking-wide
-                                         flex items-center gap-0.5">
-                          <Link2 className="w-2.5 h-2.5" />
-                          Auto
-                        </span>
-                      )}
-                      {requiredBy.length > 0 && !mod.required && (
-                        <span className="absolute top-2 right-2 text-[9px] font-bold
-                                         px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 uppercase tracking-wide">
-                          Locked
-                        </span>
-                      )}
-
-                      <mod.icon className={`w-5 h-5 mb-3
-                        ${isAutoAdded ? "text-blue-500" : isSelected ? "text-accent" : "text-muted-foreground"}`}
-                      />
-                      <h3 className="font-semibold text-foreground text-sm mb-1 leading-tight">
-                        {mod.name}
-                      </h3>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        {mod.description}
-                      </p>
-
-                      {/* Dependency note */}
-                      {depLabel && !isSelected && !isAutoAdded && (
-                        <p className="mt-2 text-[10px] text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                          <AlertCircle className="w-2.5 h-2.5" />
-                          Needs: {depLabel}
-                        </p>
-                      )}
-
-                      {/* Check mark */}
-                      {(isSelected || isAutoAdded) && !mod.required && (
-                        <div className={`absolute top-2 left-2 w-4 h-4 rounded-full flex items-center justify-center
-                          ${isAutoAdded ? "bg-blue-500" : "bg-accent"}`}>
-                          <Check className="w-2.5 h-2.5 text-white" />
-                        </div>
-                      )}
-                    </motion.button>
-                  );
-                })}
-              </div>
-
-              {/* Auto-included notice */}
-              {autoAddedModules.length > 0 && (
-                <div className="mb-6 flex items-start gap-2 p-3 rounded-xl
-                                bg-blue-50 border border-blue-200
-                                dark:bg-blue-900/20 dark:border-blue-700">
-                  <Link2 className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                  <p className="text-xs text-blue-700 dark:text-blue-300">
-                    <strong>Auto-included:</strong>{" "}
-                    {autoAddedModules.join(", ")} — required by your selected modules.
-                  </p>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  {resolvedModules.length} module{resolvedModules.length !== 1 ? "s" : ""} total
-                  {autoAddedModules.length > 0
-                    ? ` (${selectedModules.length} selected + ${autoAddedModules.length} auto)`
-                    : ""}
-                </p>
-                <button
-                  onClick={() => setStep("config")}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl
-                             bg-primary text-primary-foreground text-sm font-semibold
-                             hover:opacity-90 transition-opacity"
-                >
-                  Continue <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-
-              <PastProjects projects={projects} />
-            </motion.div>
+          {step === 1 && <StepTier key="s1" onSelect={handleTierSelect} />}
+          {step === 2 && tier && (
+            <StepModules
+              key="s2"
+              availableModules={getAvailableModules()}
+              selected={selectedModules}
+              onToggle={handleToggle}
+              onBack={() => setStep(1)}
+              onNext={() => setStep(3)}
+            />
           )}
-
-          {/* ── Step 2: Config ── */}
-          {step === "config" && (
-            <motion.div key="config"
-              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.25 }}
-              className="max-w-md mx-auto">
-              <h2 className="text-2xl font-bold text-foreground mb-1">Configure</h2>
-              <p className="text-muted-foreground text-sm mb-6">
-                Name your project. A complete Next.js 15 project will be generated.
-              </p>
-
-              {/* Module summary */}
-              <div className="mb-5 p-4 rounded-xl bg-muted/50 border border-border">
-                <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
-                  Modules ({resolvedModules.length} total)
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {resolvedModules.map((id) => {
-                    const mod = MODULES.find((m) => m.id === id);
-                    const isAuto = autoAddedModules.includes(id);
-                    return (
-                      <span key={id}
-                        className={`inline-flex items-center gap-1 px-2.5 py-1
-                                   rounded-full text-xs font-medium
-                                   ${isAuto
-                                     ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                                     : "bg-primary/10 text-primary"}`}
-                      >
-                        {mod && <mod.icon className="w-3 h-3" />}
-                        {mod?.name.split(" ")[0]}
-                        {isAuto && <Link2 className="w-2.5 h-2.5 opacity-60" />}
-                      </span>
-                    );
-                  })}
-                </div>
-                {autoAddedModules.length > 0 && (
-                  <p className="mt-2 text-[10px] text-muted-foreground flex items-center gap-1">
-                    <Link2 className="w-3 h-3" />
-                    Blue = auto-included dependencies
-                  </p>
-                )}
-              </div>
-
-              {/* Website name */}
-              <div className="mb-6 space-y-1.5">
-                <label className="text-sm font-medium text-foreground flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-muted-foreground" />
-                  Website / Hotel Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Grand Palace Hotel"
-                  value={websiteName}
-                  onChange={(e) => setWebsiteName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
-                  className="w-full px-3.5 py-2.5 rounded-xl text-sm
-                             bg-muted border border-border text-foreground
-                             placeholder:text-muted-foreground
-                             outline-none focus:border-accent focus:ring-2 focus:ring-accent/15
-                             transition-all duration-150"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Used as project folder name and in the app config.
-                </p>
-              </div>
-
-              {/* What's included */}
-              <div className="mb-6 p-4 rounded-xl border border-border bg-background space-y-1.5">
-                <p className="text-xs font-semibold text-foreground">What you'll get:</p>
-                <ul className="text-xs text-muted-foreground space-y-1">
-                  <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-green-500" />Complete Next.js 15 + TypeScript project</li>
-                  <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-green-500" />Prisma schema — only selected module models</li>
-                  <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-green-500" />.env template with all required variables</li>
-                  <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-green-500" />Role-based nav (Admin/Staff/Customer) pre-configured</li>
-                  <li className="flex items-center gap-1.5"><Check className="w-3 h-3 text-green-500" />Only role-specific pages (no dead code)</li>
-                </ul>
-              </div>
-
-              <div className="flex justify-between">
-                <button onClick={() => setStep("modules")}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm
-                             border border-border text-foreground hover:bg-muted transition-colors">
-                  <ArrowLeft className="w-4 h-4" /> Back
-                </button>
-                <button onClick={handleGenerate}
-                  disabled={!websiteName.trim()}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm
-                             font-semibold bg-primary text-primary-foreground
-                             hover:opacity-90 transition-opacity
-                             disabled:opacity-50 disabled:cursor-not-allowed">
-                  Generate <Download className="w-4 h-4" />
-                </button>
-              </div>
-            </motion.div>
+          {step === 3 && (
+            <StepName
+              key="s3"
+              initialName={name}
+              onBack={() => setStep(2)}
+              onNext={(n) => { setName(n); setStep(4); }}
+            />
           )}
-
-          {/* ── Step 3: Generating ── */}
-          {step === "generating" && (
-            <motion.div key="generating"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-              className="text-center py-20">
-              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center
-                              justify-center mx-auto mb-6">
-                <Loader2 className="w-8 h-8 text-primary animate-spin" />
-              </div>
-              <h2 className="text-2xl font-bold text-foreground mb-2">
-                Building Your Project...
-              </h2>
-              <p className="text-muted-foreground text-sm mb-8">
-                Assembling files, building schema, configuring {resolvedModules.length} modules
-              </p>
-              <div className="max-w-xs mx-auto">
-                <div className="bg-secondary rounded-full h-2 overflow-hidden mb-2">
-                  <motion.div
-                    className="h-full bg-primary rounded-full"
-                    animate={{ width: `${progress}%` }}
-                    transition={{ duration: 0.3 }}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">{Math.round(progress)}%</p>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ── Step 4: Done ── */}
-          {step === "done" && (
-            <motion.div key="done"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="text-center py-16 max-w-md mx-auto">
-              <motion.div
-                initial={{ scale: 0 }} animate={{ scale: 1 }}
-                transition={{ type: "spring", delay: 0.1 }}
-                className="w-16 h-16 rounded-2xl bg-green-100 dark:bg-green-900/30
-                           flex items-center justify-center mx-auto mb-6">
-                <Check className="w-8 h-8 text-green-600 dark:text-green-400" />
-              </motion.div>
-
-              <h2 className="text-2xl font-bold text-foreground mb-2">
-                Project Generated!
-              </h2>
-              <p className="text-muted-foreground text-sm mb-2">
-                <strong className="text-foreground">{websiteName}</strong> has been
-                downloaded to your computer.
-              </p>
-
-              <div className="text-left bg-muted/50 border border-border rounded-xl
-                              p-4 mb-6 space-y-2">
-                <p className="text-xs font-semibold text-foreground mb-3">Quick Start</p>
-                {[
-                  "Extract the ZIP file",
-                  "Copy .env → .env.local",
-                  "Fill in DATABASE_URL and NEXTAUTH_SECRET",
-                  "npm install",
-                  "npx prisma generate",
-                  "npx prisma migrate dev --name init",
-                  "npm run dev",
-                ].map((s, i) => (
-                  <div key={i} className="flex items-center gap-2.5 text-xs text-muted-foreground">
-                    <span className="w-5 h-5 rounded-full bg-primary/10 text-primary
-                                     flex items-center justify-center font-semibold shrink-0 text-[10px]">
-                      {i + 1}
-                    </span>
-                    {s}
-                  </div>
-                ))}
-              </div>
-
-              <button onClick={reset}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl mx-auto
-                           bg-primary text-primary-foreground text-sm font-semibold
-                           hover:opacity-90 transition-opacity">
-                Generate Another <ArrowRight className="w-4 h-4" />
-              </button>
-            </motion.div>
+          {step === 4 && tier && (
+            <StepGenerate
+              key="s4"
+              websiteName={name}
+              selectedModules={selectedModules}
+              selectedTier={tier}
+              onBack={() => setStep(3)}
+              onGenerate={handleGenerate}
+              generating={generating}
+            />
           )}
         </AnimatePresence>
       </main>
