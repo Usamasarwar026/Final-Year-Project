@@ -5,6 +5,8 @@ import {
   type LucideIcon, BedDouble, UserRound, ChefHat, Package,
   BarChart3, ClipboardCheck, Brush, Bike, Utensils,
   ShoppingCart, Truck, MenuSquare, Tags, UsersRound, TrendingUp,
+  // Naye icons jo Reports dropdown ke liye chahiye:
+  DollarSign, UserPlus, Clock,
 } from "lucide-react";
 
 export type NavItem = {
@@ -30,7 +32,7 @@ export const adminNav: NavItem[] = [
     icon:  ChefHat,
     children: [
       { label: "Dashboard",            href: "/admin/kitchen/dashboard",   icon: LayoutDashboard },
-      { label: "Orders",               href: "/admin/kitchen/orders",      icon: Utensils        },
+      { label: "Orders",               href: "/admin/kitchen/orders",      icon: Utensils         },
       { label: "Menu Management",      href: "/admin/kitchen/menu",        icon: MenuSquare      },
       { label: "Categories",           href: "/admin/kitchen/categories",  icon: Tags            },
       { label: "Kitchen Staff",        href: "/admin/kitchen/staff",       icon: UsersRound      },
@@ -41,7 +43,21 @@ export const adminNav: NavItem[] = [
   { label: "Inventory",        href: "/admin/inventory",    icon: Package  },
   { label: "House Keeping",    href: "/admin/housekeeping", icon: Brush    },
   { label: "Billing",          href: "/admin/billing",      icon: CreditCard },
-  { label: "Reports",          href: "/admin/reports",      icon: BarChart3  },
+  {
+    label: "Reports",
+    href: "/admin/reports",
+    icon: BarChart3,
+    children: [
+      { label: "KPI Dashboard",      href: "/admin/reports",                    icon: LayoutDashboard },
+      { label: "Revenue",            href: "/admin/reports/revenue",            icon: DollarSign      },
+      { label: "Occupancy",          href: "/admin/reports/occupancy",          icon: BedDouble       },
+      { label: "Staff Performance",  href: "/admin/reports/staff-performance",  icon: Users           },
+      { label: "Inventory",          href: "/admin/reports/inventory",          icon: Package         },
+      { label: "Bookings",           href: "/admin/reports/bookings",           icon: CalendarCheck   },
+      { label: "Guests",             href: "/admin/reports/guests",             icon: UserPlus        },
+      { label: "Scheduled Reports",  href: "/admin/reports/scheduled",          icon: Clock           },
+    ],
+  },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -55,13 +71,13 @@ export const staffNav: NavItem[] = [
   { label: "Attendance", href: "/staff/attendance", icon: ClipboardCheck  },
 
   // General modules
-  { label: "Booking",     href: "/staff/booking",     icon: CalendarCheck, permission: "booking"      },
-  { label: "Rooms",       href: "/staff/rooms",       icon: BedDouble,     permission: "rooms"        },
-  { label: "Customer",    href: "/staff/customer",    icon: UserRound,     permission: "customer"     },
-  { label: "Inventory",   href: "/staff/inventory",   icon: Package,       permission: "inventory"    },
+  { label: "Booking",      href: "/staff/booking",     icon: CalendarCheck, permission: "booking"      },
+  { label: "Rooms",        href: "/staff/rooms",       icon: BedDouble,     permission: "rooms"        },
+  { label: "Customer",     href: "/staff/customer",    icon: UserRound,     permission: "customer"     },
+  { label: "Inventory",    href: "/staff/inventory",   icon: Package,       permission: "inventory"    },
   { label: "House Keeping",href:"/staff/housekeeping",icon: Brush,         permission: "housekeeping" },
-  { label: "Billing",     href: "/staff/billing",     icon: CreditCard,    permission: "billing"      },
-  { label: "Reports",     href: "/staff/reports",     icon: BarChart3,     permission: "reports"      },
+  { label: "Billing",      href: "/staff/billing",     icon: CreditCard,    permission: "billing"      },
+  { label: "Reports",      href: "/staff/reports",     icon: BarChart3,     permission: "reports"      },
 
   // ── Kitchen module — the parent guard is KITCHEN_ACCESS ──────────────────
   // A staff sees the Kitchen menu only if they have at least KITCHEN_ACCESS.
