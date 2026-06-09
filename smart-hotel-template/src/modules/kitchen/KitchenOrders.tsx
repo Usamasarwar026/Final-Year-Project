@@ -1,7 +1,7 @@
 // src/modules/kitchen/KitchenOrders.tsx
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Utensils,
@@ -10,20 +10,12 @@ import {
   Eye,
   RefreshCw,
   Loader2,
-  Clock,
-  ChefHat,
-  CheckCircle2,
   Bike,
-  AlertCircle,
-  LayoutGrid,
-  List,
   Phone,
-  MapPin,
-  Star,
-  UserPlus,
   Send,
   ChevronLeft,
   ChevronRight,
+  Printer, // Step 1: Printer Icon imported successfully
 } from "lucide-react";
 import clsx from "clsx";
 import { useKitchenOrders, useUpdateOrderStatus } from "@/hooks/useKitchen";
@@ -73,10 +65,6 @@ const fmtDate = (d?: string | null) =>
         minute: "2-digit",
       })
     : "—";
-const elapsed = (d: string) => {
-  const mins = Math.floor((Date.now() - new Date(d).getTime()) / 60_000);
-  return mins < 60 ? `${mins}m ago` : `${Math.floor(mins / 60)}h ago`;
-};
 
 // ─── Status Badge ──────────────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: FoodOrderStatus }) {
@@ -203,10 +191,10 @@ function AssignStaffModal({
 
   const filteredStaff = staffList.filter((staff) => {
     if (!staff.is_on_duty || !staff.is_active) return false;
-    const matchesSearch =
+    return (
       staff.user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      staff.designation.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
+      staff.designation.toLowerCase().includes(searchQuery.toLowerCase())
+    );
   });
 
   const handleAssign = () => {
@@ -250,7 +238,6 @@ function AssignStaffModal({
           </button>
         </div>
 
-        {/* Order Info */}
         <div className="p-5 bg-muted/10 border-b border-border">
           <p className="text-xs text-muted-foreground">Order Details</p>
           <div className="flex items-center justify-between mt-2">
@@ -273,7 +260,6 @@ function AssignStaffModal({
           </div>
         </div>
 
-        {/* Staff Selection */}
         <div className="p-5">
           <label className="block text-xs font-semibold text-foreground/70 mb-3">
             Select Delivery Staff (Active &amp; On-Duty Only)
@@ -296,14 +282,8 @@ function AssignStaffModal({
           <div className="max-h-64 overflow-y-auto space-y-2">
             {filteredStaff.length === 0 ? (
               <div className="py-8 text-center">
-                <UserPlus
-                  size={32}
-                  className="mx-auto text-muted-foreground/30 mb-2"
-                />
                 <p className="text-xs text-muted-foreground">
-                  {searchQuery
-                    ? "No matching staff found"
-                    : "No available delivery staff on duty"}
+                  {searchQuery ? "No matching staff found" : "No available delivery staff on duty"}
                 </p>
               </div>
             ) : (
@@ -348,22 +328,13 @@ function AssignStaffModal({
                     <p className="text-[10px] text-muted-foreground">
                       {staff.designation}
                     </p>
-                    {staff.user.phoneNumber && (
-                      <p className="text-[9px] text-muted-foreground flex items-center gap-1 mt-0.5">
-                        <Phone size={8} /> {staff.user.phoneNumber}
-                      </p>
-                    )}
                   </div>
-                  <span className="text-[9px] font-bold text-green-600 bg-green-50 border border-green-100 px-1.5 py-0.5 rounded-full">
-                    On Duty
-                  </span>
                 </label>
               ))
             )}
           </div>
         </div>
 
-        {/* Actions */}
         <div className="flex gap-3 px-6 py-4 border-t border-border bg-muted/20">
           <button
             onClick={onClose}
@@ -418,7 +389,6 @@ function OrderDetailModal({
     "Delivered",
   ];
   const currentIdx = steps.indexOf(order.status);
-
   const assignedStaff = order.tasks?.[0]?.assignedStaff;
 
   return (
@@ -450,17 +420,13 @@ function OrderDetailModal({
           </div>
           <div className="flex items-center gap-2">
             <StatusBadge status={order.status} />
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-xl hover:bg-muted"
-            >
+            <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-muted">
               <X size={15} />
             </button>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {/* Assigned Staff Info */}
           {assignedStaff && (
             <div className="mx-5 mt-4 p-3 rounded-xl bg-purple-50 border border-purple-200">
               <p className="text-[10px] font-semibold text-purple-700 uppercase tracking-wide">
@@ -480,28 +446,16 @@ function OrderDetailModal({
                     {assignedStaff.designation}
                   </p>
                 </div>
-                {assignedStaff.user?.phoneNumber && (
-                  <a
-                    href={`tel:${assignedStaff.user.phoneNumber}`}
-                    className="ml-auto p-2 rounded-lg bg-purple-100 text-purple-700"
-                  >
-                    <Phone size={14} />
-                  </a>
-                )}
               </div>
             </div>
           )}
 
-          {/* Delivery info */}
           <div className="grid grid-cols-3 gap-2 p-5">
             {[
               { label: "Type", value: tc?.label },
               {
                 label: order.order_type === "RoomService" ? "Room" : "Table",
-                value:
-                  order.order_type === "RoomService"
-                    ? order.room_number
-                    : order.table_number,
+                value: order.order_type === "RoomService" ? order.room_number : order.table_number,
               },
               { label: "Customer", value: order.customer_name },
             ].map(({ label, value }) => (
@@ -516,7 +470,6 @@ function OrderDetailModal({
             ))}
           </div>
 
-          {/* Timeline Progress */}
           <div className="px-5 pb-4">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
               Order Progress
@@ -527,17 +480,13 @@ function OrderDetailModal({
                 className="absolute left-4 top-4 h-0.5 bg-green-500 -z-10"
                 initial={{ width: 0 }}
                 animate={{
-                  width:
-                    order.status === "Cancelled"
-                      ? 0
-                      : `${(currentIdx / (steps.length - 1)) * 88}%`,
+                  width: order.status === "Cancelled" ? 0 : `${(currentIdx / (steps.length - 1)) * 88}%`,
                 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
               />
               {steps.map((step, idx) => {
                 const done = idx < currentIdx;
-                const active =
-                  idx === currentIdx && order.status !== "Cancelled";
+                const active = idx === currentIdx && order.status !== "Cancelled";
                 const sc = ORDER_STATUS_CONFIG[step];
                 return (
                   <div key={step} className="flex flex-col items-center z-10">
@@ -567,17 +516,13 @@ function OrderDetailModal({
             </div>
           </div>
 
-          {/* Items */}
           <div className="px-5 pb-4">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
               Items
             </p>
             <div className="space-y-1.5">
               {order.items.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-start justify-between p-2.5 bg-muted/40 rounded-xl"
-                >
+                <div key={item.id} className="flex items-start justify-between p-2.5 bg-muted/40 rounded-xl">
                   <div className="min-w-0">
                     <p className="text-xs font-semibold text-foreground">
                       {item.foodItem?.name ?? `Item #${item.food_item_id}`}
@@ -605,7 +550,6 @@ function OrderDetailModal({
             </div>
           </div>
 
-          {/* Special instructions */}
           {order.special_instructions && (
             <div className="mx-5 mb-4 p-3 bg-amber-50 border border-amber-100 rounded-xl">
               <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide">
@@ -617,7 +561,6 @@ function OrderDetailModal({
             </div>
           )}
 
-          {/* Timeline log */}
           {order.timelines && order.timelines.length > 0 && (
             <div className="px-5 pb-4">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
@@ -627,30 +570,13 @@ function OrderDetailModal({
                 {order.timelines.map((t) => {
                   const sc = ORDER_STATUS_CONFIG[t.status];
                   return (
-                    <div
-                      key={t.id}
-                      className="flex items-center gap-2 text-[10px]"
-                    >
-                      <span
-                        className={clsx(
-                          "w-2 h-2 rounded-full shrink-0",
-                          sc?.dot ?? "bg-muted-foreground",
-                        )}
-                      />
-                      <span
-                        className={clsx(
-                          "font-semibold",
-                          sc?.color ?? "text-muted-foreground",
-                        )}
-                      >
+                    <div key={t.id} className="flex items-center gap-2 text-[10px]">
+                      <span className={clsx("w-2 h-2 rounded-full shrink-0", sc?.dot ?? "bg-muted-foreground")} />
+                      <span className={clsx("font-semibold", sc?.color ?? "text-muted-foreground")}>
                         {sc?.label ?? t.status}
                       </span>
-                      <span className="text-muted-foreground flex-1 truncate">
-                        {t.notes}
-                      </span>
-                      <span className="text-muted-foreground/60 shrink-0">
-                        {fmtTime(t.created_at)}
-                      </span>
+                      <span className="text-muted-foreground flex-1 truncate">{t.notes}</span>
+                      <span className="text-muted-foreground/60 shrink-0">{fmtTime(t.created_at)}</span>
                     </div>
                   );
                 })}
@@ -659,7 +585,7 @@ function OrderDetailModal({
           )}
         </div>
 
-        {/* Footer Actions */}
+        {/* Step 2 & 3: Footer Actions updated with Print Invoice Button */}
         <div className="flex gap-2.5 px-5 py-4 border-t border-border shrink-0 flex-wrap">
           {CANCEL_ALLOWED.includes(order.status) && (
             <button
@@ -674,12 +600,23 @@ function OrderDetailModal({
             </button>
           )}
           <div className="flex-1" />
+          
           <button
             onClick={onClose}
             className="px-4 py-2.5 rounded-xl border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors"
           >
             Close
           </button>
+
+          {order.status === "Delivered" && (
+            <button
+              onClick={() => window.open(`/admin/kitchen/orders/${order.id}/invoice`, "_blank")}
+              className="px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors flex items-center gap-2"
+            >
+              <Printer size={13} /> Print Invoice
+            </button>
+          )}
+
           {actions.map((a) => {
             if (a.requiresStaff && onAssignClick) {
               return (
@@ -703,9 +640,7 @@ function OrderDetailModal({
                   a.color,
                 )}
               >
-                {isLoading ? (
-                  <Loader2 size={13} className="animate-spin" />
-                ) : null}
+                {isLoading ? <Loader2 size={13} className="animate-spin" /> : null}
                 {a.label}
               </button>
             );
@@ -716,7 +651,6 @@ function OrderDetailModal({
   );
 }
 
-
 // ─── Main Orders Page ─────────────────────────────────────────────────────────
 export default function KitchenOrders() {
   const [statusFilter, setStatusFilter] = useState("");
@@ -725,30 +659,22 @@ export default function KitchenOrders() {
   const [viewOrder, setViewOrder] = useState<FoodOrder | null>(null);
   const [orderToAssign, setOrderToAssign] = useState<FoodOrder | null>(null);
   const [page, setPage] = useState(1);
-  // Track which order is currently being mutated for per-row loading
   const [loadingOrderId, setLoadingOrderId] = useState<number | null>(null);
 
   const queryClient = useQueryClient();
 
-  const {
-    data: orders = [],
-    isLoading,
-    refetch,
-  } = useKitchenOrders({
+  const { data: orders = [], isLoading, refetch } = useKitchenOrders({
     status: statusFilter || undefined,
     order_type: typeFilter || undefined,
     q: search || undefined,
   });
 
-  // Fetch delivery staff — only active & on duty
   const { data: staff = [] } = useQuery({
     queryKey: ["delivery-staff"],
     queryFn: async () => {
       try {
         const { data } = await api.get("/kitchen/delivery");
-        return (data.staff || []).filter(
-          (s: DeliveryStaff) => s.is_active && s.is_on_duty,
-        );
+        return (data.staff || []).filter((s: DeliveryStaff) => s.is_active && s.is_on_duty);
       } catch (error) {
         console.error("Failed to fetch staff:", error);
         return [];
@@ -758,8 +684,6 @@ export default function KitchenOrders() {
 
   const updateStatus = useUpdateOrderStatus();
 
-  // FIX: No inline onSuccess toast — the hook already fires one.
-  // We only add side-effects here: refetch + invalidate delivery-staff cache.
   const handleStatusChange = (id: number, status: string, staffId?: number) => {
     const payload: { status: string; assigned_to?: number } = { status };
     if (staffId) payload.assigned_to = staffId;
@@ -782,7 +706,6 @@ export default function KitchenOrders() {
     setOrderToAssign(null);
   };
 
-
   const filteredOrders = useMemo(() => {
     let filtered = orders;
     if (search) {
@@ -795,21 +718,14 @@ export default function KitchenOrders() {
           (o.customer_name ?? "").toLowerCase().includes(q),
       );
     }
-    if (statusFilter)
-      filtered = filtered.filter((o) => o.status === statusFilter);
-    if (typeFilter)
-      filtered = filtered.filter((o) => o.order_type === typeFilter);
+    if (statusFilter) filtered = filtered.filter((o) => o.status === statusFilter);
+    if (typeFilter) filtered = filtered.filter((o) => o.order_type === typeFilter);
     return filtered;
   }, [orders, search, statusFilter, typeFilter]);
 
-  // Pagination (table view only)
   const totalPages = Math.max(1, Math.ceil(filteredOrders.length / PAGE_SIZE));
-  const paginatedOrders = filteredOrders.slice(
-    (page - 1) * PAGE_SIZE,
-    page * PAGE_SIZE,
-  );
+  const paginatedOrders = filteredOrders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  // Reset page when filters change
   const handleFilterChange = (cb: () => void) => {
     cb();
     setPage(1);
@@ -817,53 +733,36 @@ export default function KitchenOrders() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
-      {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Utensils size={22} className="text-primary" /> Kitchen Orders
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Manage and track all food orders
-          </p>
+          <p className="text-sm text-muted-foreground mt-0.5">Manage and track all food orders</p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => refetch()}
             className="p-2.5 rounded-xl border border-border hover:bg-muted transition-colors"
           >
-            <RefreshCw
-              size={15}
-              className={clsx(
-                "text-muted-foreground",
-                isLoading && "animate-spin",
-              )}
-            />
+            <RefreshCw size={15} className={clsx("text-muted-foreground", isLoading && "animate-spin")} />
           </button>
         </div>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap gap-2 items-center">
         <div className="relative flex-1 min-w-[160px] max-w-xs">
-          <Search
-            size={13}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-          />
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             value={search}
-            onChange={(e) =>
-              handleFilterChange(() => setSearch(e.target.value))
-            }
+            onChange={(e) => handleFilterChange(() => setSearch(e.target.value))}
             placeholder="Search #ID, room, table…"
             className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:border-primary/50"
           />
         </div>
         <select
           value={statusFilter}
-          onChange={(e) =>
-            handleFilterChange(() => setStatusFilter(e.target.value))
-          }
+          onChange={(e) => handleFilterChange(() => setStatusFilter(e.target.value))}
           className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none"
         >
           <option value="">All Status</option>
@@ -875,9 +774,7 @@ export default function KitchenOrders() {
         </select>
         <select
           value={typeFilter}
-          onChange={(e) =>
-            handleFilterChange(() => setTypeFilter(e.target.value))
-          }
+          onChange={(e) => handleFilterChange(() => setTypeFilter(e.target.value))}
           className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none"
         >
           <option value="">All Types</option>
@@ -898,9 +795,7 @@ export default function KitchenOrders() {
             <X size={12} /> Clear
           </button>
         )}
-        <span className="ml-auto text-xs text-muted-foreground">
-          {filteredOrders.length} orders
-        </span>
+        <span className="ml-auto text-xs text-muted-foreground">{filteredOrders.length} orders</span>
       </div>
 
       <div className="bg-background border border-border rounded-2xl overflow-hidden">
@@ -908,17 +803,7 @@ export default function KitchenOrders() {
           <table className="w-full text-sm min-w-[860px]">
             <thead className="border-b border-border bg-muted/40">
               <tr>
-                {[
-                  "#",
-                  "Type",
-                  "Customer",
-                  "Location",
-                  "Items",
-                  "Total",
-                  "Status",
-                  "Placed",
-                  "Actions",
-                ].map((h) => (
+                {["#", "Type", "Customer", "Location", "Items", "Total", "Status", "Placed", "Actions"].map((h) => (
                   <th
                     key={h}
                     className="px-4 py-3.5 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap"
@@ -934,13 +819,8 @@ export default function KitchenOrders() {
               ) : filteredOrders.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="py-16 text-center">
-                    <Utensils
-                      size={28}
-                      className="mx-auto mb-2.5 text-muted-foreground/20"
-                    />
-                    <p className="text-sm text-muted-foreground">
-                      No orders found
-                    </p>
+                    <Utensils size={28} className="mx-auto mb-2.5 text-muted-foreground/20" />
+                    <p className="text-sm text-muted-foreground">No orders found</p>
                   </td>
                 </tr>
               ) : (
@@ -958,46 +838,28 @@ export default function KitchenOrders() {
                       transition={{ delay: i * 0.02 }}
                       className={clsx(
                         "border-t border-border transition-colors",
-                        isRowLoading
-                          ? "bg-primary/3 opacity-75"
-                          : "hover:bg-muted/20",
+                        isRowLoading ? "bg-primary/3 opacity-75" : "hover:bg-muted/20",
                       )}
                     >
-                      <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">
-                        #{order.id}
-                      </td>
+                      <td className="px-4 py-3.5 font-mono text-xs text-muted-foreground">#{order.id}</td>
                       <td className="px-4 py-3.5">
-                        <span
-                          className={clsx(
-                            "inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full",
-                            tc?.bg,
-                            tc?.color,
-                          )}
-                        >
+                        <span className={clsx("inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full", tc?.bg, tc?.color)}>
                           {tc?.icon} {tc?.label}
                         </span>
                       </td>
                       <td className="px-4 py-3.5">
-                        <p className="text-xs font-medium text-foreground">
-                          {order.customer_name || "Guest"}
-                        </p>
+                        <p className="text-xs font-medium text-foreground">{order.customer_name || "Guest"}</p>
                         {assignedStaff && order.status !== "Delivered" && (
-                          <p className="text-[9px] text-purple-600 mt-0.5">
-                            Staff: {assignedStaff.user?.name}
-                          </p>
+                          <p className="text-[9px] text-purple-600 mt-0.5">Staff: {assignedStaff.user?.name}</p>
                         )}
                       </td>
                       <td className="px-4 py-3.5">
                         <p className="text-xs text-foreground">
-                          {order.order_type === "RoomService"
-                            ? `Room ${order.room_number}`
-                            : `Table ${order.table_number}`}
+                          {order.order_type === "RoomService" ? `Room ${order.room_number}` : `Table ${order.table_number}`}
                         </p>
                       </td>
                       <td className="px-4 py-3.5">
-                        <p className="text-xs text-foreground">
-                          {order.items.length} items
-                        </p>
+                        <p className="text-xs text-foreground">{order.items.length} items</p>
                       </td>
                       <td className="px-4 py-3.5 font-semibold text-foreground text-xs">
                         PKR {Number(order.total_amount).toLocaleString()}
@@ -1026,10 +888,7 @@ export default function KitchenOrders() {
                                   className="px-2 py-1.5 rounded-lg text-[10px] font-bold bg-purple-600 text-white hover:bg-purple-700 flex items-center gap-1 disabled:opacity-50"
                                 >
                                   {isRowLoading ? (
-                                    <Loader2
-                                      size={10}
-                                      className="animate-spin"
-                                    />
+                                    <Loader2 size={10} className="animate-spin" />
                                   ) : (
                                     <Bike size={10} />
                                   )}
@@ -1040,18 +899,14 @@ export default function KitchenOrders() {
                             return (
                               <button
                                 key={a.next}
-                                onClick={() =>
-                                  handleStatusChange(order.id, a.next)
-                                }
+                                onClick={() => handleStatusChange(order.id, a.next)}
                                 disabled={isRowLoading}
                                 className={clsx(
                                   "px-2 py-1.5 rounded-lg text-[10px] font-bold transition-opacity hover:opacity-80 flex items-center gap-1 disabled:opacity-50",
                                   a.color,
                                 )}
                               >
-                                {isRowLoading ? (
-                                  <Loader2 size={10} className="animate-spin" />
-                                ) : null}
+                                {isRowLoading ? <Loader2 size={10} className="animate-spin" /> : null}
                                 {a.label}
                               </button>
                             );
@@ -1066,19 +921,11 @@ export default function KitchenOrders() {
           </table>
         </div>
 
-        {/* Table Footer: Summary + Pagination */}
         {!isLoading && filteredOrders.length > 0 && (
           <div className="px-4 py-3 border-t border-border bg-muted/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <span className="text-xs text-muted-foreground">
-              Showing{" "}
-              {Math.min((page - 1) * PAGE_SIZE + 1, filteredOrders.length)}–
-              {Math.min(page * PAGE_SIZE, filteredOrders.length)} of{" "}
-              {filteredOrders.length} orders &nbsp;·&nbsp;
-              {orders.filter((o) => o.status === "Pending").length} pending
-              &nbsp;·&nbsp;
-              {orders.filter((o) => o.status === "Preparing").length} preparing
-              &nbsp;·&nbsp;
-              {orders.filter((o) => o.status === "Ready").length} ready
+              Showing {Math.min((page - 1) * PAGE_SIZE + 1, filteredOrders.length)}–
+              {Math.min(page * PAGE_SIZE, filteredOrders.length)} of {filteredOrders.length} orders
             </span>
             {totalPages > 1 && (
               <div className="flex items-center gap-1.5">
@@ -1089,45 +936,18 @@ export default function KitchenOrders() {
                 >
                   <ChevronLeft size={14} />
                 </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter(
-                    (p) =>
-                      p === 1 || p === totalPages || Math.abs(p - page) <= 1,
-                  )
-                  .reduce<(number | "…")[]>((acc, p, idx, arr) => {
-                    if (
-                      idx > 0 &&
-                      typeof arr[idx - 1] === "number" &&
-                      (p as number) - (arr[idx - 1] as number) > 1
-                    ) {
-                      acc.push("…");
-                    }
-                    acc.push(p);
-                    return acc;
-                  }, [])
-                  .map((p, idx) =>
-                    p === "…" ? (
-                      <span
-                        key={`ellipsis-${idx}`}
-                        className="px-1 text-xs text-muted-foreground"
-                      >
-                        …
-                      </span>
-                    ) : (
-                      <button
-                        key={p}
-                        onClick={() => setPage(p as number)}
-                        className={clsx(
-                          "min-w-[28px] h-7 rounded-lg text-xs font-semibold transition-colors",
-                          page === p
-                            ? "bg-primary text-white"
-                            : "border border-border hover:bg-muted text-foreground",
-                        )}
-                      >
-                        {p}
-                      </button>
-                    ),
-                  )}
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className={clsx(
+                      "min-w-[28px] h-7 rounded-lg text-xs font-semibold transition-colors",
+                      page === p ? "bg-primary text-white" : "border border-border hover:bg-muted text-foreground",
+                    )}
+                  >
+                    {p}
+                  </button>
+                ))}
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
@@ -1141,7 +961,6 @@ export default function KitchenOrders() {
         )}
       </div>
 
-      {/* Detail Modal */}
       <AnimatePresence>
         {viewOrder && (
           <OrderDetailModal
@@ -1154,7 +973,6 @@ export default function KitchenOrders() {
         )}
       </AnimatePresence>
 
-      {/* Assign Staff Modal */}
       <AnimatePresence>
         {orderToAssign && (
           <AssignStaffModal
