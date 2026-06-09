@@ -1,4 +1,4 @@
-import { WebsiteName } from "@/constant/constant";
+import { FOOTER_DATA, WebsiteName } from "@/constant/constant";
 
 export const Footer = () => {
   return (
@@ -6,9 +6,9 @@ export const Footer = () => {
       <div className="max-w-7xl mx-auto px-6 py-12 grid md:grid-cols-4 gap-10">
         {/* Brand */}
         <div>
-          <h2 className="font-serif text-2xl text-gold">US Grand</h2>
+          <h2 className="font-serif text-2xl text-gold"> {WebsiteName}</h2>
           <p className="mt-3 text-sm text-white/70">
-            Luxury stays, fine dining, and unforgettable hospitality.
+            {FOOTER_DATA.brand.tagline}
           </p>
         </div>
 
@@ -16,24 +16,15 @@ export const Footer = () => {
         <div>
           <h3 className="text-sm font-semibold text-gold mb-3">Explore</h3>
           <ul className="space-y-2 text-sm text-white/70">
-            <li>
-              <a href="#rooms" className="hover:text-white">
-                Rooms
-              </a>
-            </li>
-            <li>
-              <a href="#dining" className="hover:text-white">
-                Dining
-              </a>
-            </li>
-            <li>
-              <a href="#about" className="hover:text-white">
-                About
-              </a>
-            </li>
+            {FOOTER_DATA.exploreLinks.map((link, index) => (
+              <li key={index}>
+                <a href={link.href} className="hover:text-white">
+                  {link.name}
+                </a>
+              </li>
+            ))}
           </ul>
         </div>
-
         {/* Support */}
         <div>
           <h3 className="text-sm font-semibold text-gold mb-3">Support</h3>
@@ -57,9 +48,9 @@ export const Footer = () => {
           <p className="text-sm text-white/70">
             {WebsiteName}
             <br />
-            +92 300 0000000
+            {FOOTER_DATA.contact.phone}
             <br />
-            info@usgrand.com
+            {FOOTER_DATA.contact.email}
           </p>
         </div>
       </div>

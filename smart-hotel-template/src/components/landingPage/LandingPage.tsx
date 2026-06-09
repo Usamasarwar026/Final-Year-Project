@@ -5,45 +5,55 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useSession, signIn } from "next-auth/react";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Footer } from "../footer/Footer";
 import { Button } from "../button/Button";
-import { WebsiteName, IMAGES, STATUS_CONFIG, type Room } from "@/constant/constant";
+import {
+  WebsiteName,
+  IMAGES,
+  STATUS_CONFIG,
+  type Room,
+} from "@/constant/constant";
 import { clsx } from "clsx";
+import api from "@/lib/axios";
 
+// ── fetcher ──────────────────────────────────────────────
+async function fetchPublicRooms(): Promise<Room[]> {
+  const { data } = await api.get<{ rooms: Room[] }>("/rooms/public");
+  return data.rooms ?? [];
+}
+
+// ── component ────────────────────────────────────────────
 export default function LandingPage() {
   const router = useRouter();
   const { data: session } = useSession();
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [loading, setLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(9);
 
-  // Fetch rooms from public API
-  useEffect(() => {
-    async function fetchRooms() {
-      try {
-        const res = await fetch("/api/rooms/public");
-        const data = await res.json();
-        setRooms(data.rooms || []);
-      } catch (err) {
-        console.error("Failed to fetch rooms:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchRooms();
-  }, []);
+  // TanStack Query — replaces useEffect + useState(loading/rooms)
+  const {
+    data: rooms = [],
+    isLoading: loading,
+    isError,
+  } = useQuery({
+    queryKey: ["publicRooms"],
+    queryFn: fetchPublicRooms,
+    staleTime: 5 * 60 * 1000, // 5 min cache
+  });
 
+  // Show sonner toast on error
+  if (isError) {
+    toast.error("Rooms load nahi ho sakay. Dobara try karein.");
+  }
+
+  // ── handlers ──────────────────────────────────────────
   const handleBookNow = async () => {
-    const res = await signIn("credentials", {
-      redirect: false,
-    });
-
+    const res = await signIn("credentials", { redirect: false });
     if (!res?.ok) {
       router.push("/login");
       return;
     }
-
     router.push("/customer/booking");
   };
 
@@ -55,16 +65,12 @@ export default function LandingPage() {
     router.push("/customer/booking");
   };
 
-  const handleShowMore = () => {
-    setVisibleCount((prev) => prev + 6);
-  };
-
-  const handleShowLess = () => {
-    setVisibleCount(9);
-  };
+  const handleShowMore = () => setVisibleCount((prev) => prev + 6);
+  const handleShowLess = () => setVisibleCount(9);
 
   const visibleRooms = rooms.slice(0, visibleCount);
 
+  // ── render ────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-background">
       {/* Sticky Navbar */}
@@ -77,17 +83,10 @@ export default function LandingPage() {
           <Link href="/" className="font-serif text-xl text-gold">
             {WebsiteName}
           </Link>
-
-          <div className="flex gap-6 text-sm">
-            <Link href="#rooms">Rooms</Link>
-            <Link href="#dining">Dining</Link>
-            <Link href="#about">About</Link>
-          </div>
-
           <div className="flex gap-2">
             <Link
               href="/login"
-              className="border border-white px-6 py-1 rounded-md text-sm hover:bg-gold hover:text-black "
+              className="border border-white px-6 py-1 rounded-md text-sm hover:bg-gold hover:text-black"
             >
               Login
             </Link>
@@ -131,7 +130,6 @@ export default function LandingPage() {
           <p className="mt-4 text-white/80 max-w-xl mx-auto">
             Book rooms, dine, and manage your stay in one seamless experience.
           </p>
-
           <div className="mt-6 flex justify-center gap-4">
             <button
               onClick={handleBookNow}
@@ -139,7 +137,6 @@ export default function LandingPage() {
             >
               Book Now
             </button>
-
             <Link
               href="#rooms"
               className="border border-white px-6 py-3 rounded-lg"
@@ -190,13 +187,13 @@ export default function LandingPage() {
                           className={clsx(
                             "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold",
                             statusConfig.bg,
-                            statusConfig.text
+                            statusConfig.text,
                           )}
                         >
                           <span
                             className={clsx(
                               "w-1.5 h-1.5 rounded-full",
-                              statusConfig.dot
+                              statusConfig.dot,
                             )}
                           />
                           {statusConfig.label}
@@ -205,10 +202,14 @@ export default function LandingPage() {
                     </div>
 
                     <div className="p-4 flex flex-col flex-1">
-                      <h3 className="font-serif text-xl">Room {room.room_number}</h3>
-                      <p className="text-sm text-muted-foreground">{room.room_type}</p>
+                      <h3 className="font-serif text-xl">
+                        Room {room.room_number}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {room.room_type}
+                      </p>
                       <p className="text-lg font-bold text-primary mt-2">
-                        PKR ${Number(room.price_per_night).toFixed(0)}/night
+                        PKR {Number(room.price_per_night).toFixed(0)}/night
                       </p>
                       <button
                         onClick={handleRoomBook}
@@ -245,6 +246,8 @@ export default function LandingPage() {
           </>
         )}
       </section>
+
+      {/* CTA SECTION */}
       <section className="bg-hero text-primary-foreground py-24">
         <div className="mx-auto max-w-4xl px-6 text-center">
           <span className="text-xs tracking-[0.3em] uppercase text-gold">
@@ -276,6 +279,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
       <Footer />
     </div>
   );

@@ -131,7 +131,7 @@ export const SignupForm = () => {
               {loading ? "Creating..." : "Create account"}
             </Button>
           </form>
-          
+
           <p className="mt-6 text-sm text-center text-muted-foreground">
             Already have an account?{" "}
             <Link href="/login" className="text-accent hover:underline">
