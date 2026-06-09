@@ -1,11 +1,11 @@
-// src/config/nav.ts
+// src/components/sidebar/nav.config.ts
 
 import {
   LayoutDashboard, CalendarCheck, CreditCard, Users,
   type LucideIcon, BedDouble, UserRound, ChefHat, Package,
   BarChart3, ClipboardCheck, Brush, Bike, Utensils,
   ShoppingCart, Truck, MenuSquare, Tags, UsersRound, TrendingUp,
-  // Naye icons jo Reports dropdown ke liye chahiye:
+  // New icons added for Reports children dropdown
   DollarSign, UserPlus, Clock,
 } from "lucide-react";
 
@@ -40,6 +40,8 @@ export const adminNav: NavItem[] = [
       { label: "Reports",              href: "/admin/kitchen/reports",     icon: TrendingUp      },
     ],
   },
+  
+  // Inventory item dropdown sub-menu ke saath update ho gaya hai
   {
     label: "Inventory",
     href: "/admin/inventory",
@@ -55,6 +57,7 @@ export const adminNav: NavItem[] = [
       { label: "Reports",         href: "/admin/inventory/reports",        icon: BarChart3       },
     ],
   },
+  
   { label: "House Keeping",    href: "/admin/housekeeping", icon: Brush    },
   { label: "Billing",          href: "/admin/billing",      icon: CreditCard },
   {
@@ -89,7 +92,7 @@ export const staffNav: NavItem[] = [
   { label: "Rooms",        href: "/staff/rooms",       icon: BedDouble,     permission: "rooms"        },
   { label: "Customer",     href: "/staff/customer",    icon: UserRound,     permission: "customer"     },
   { label: "Inventory",    href: "/staff/inventory",   icon: Package,       permission: "inventory"    },
-  { label: "House Keeping",href:"/staff/housekeeping",icon: Brush,         permission: "housekeeping" },
+  { label: "House Keeping",href:"/staff/housekeeping", icon: Brush,         permission: "housekeeping" },
   { label: "Billing",      href: "/staff/billing",     icon: CreditCard,    permission: "billing"      },
   { label: "Reports",      href: "/staff/reports",     icon: BarChart3,     permission: "reports"      },
 

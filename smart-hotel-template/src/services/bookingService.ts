@@ -2,6 +2,7 @@
 import { prisma } from "@/database/db";
 import type { Booking, CreateBookingPayload, UpdateBookingPayload } from "@/types/bookings";
 import { Prisma } from "@/generated/prisma/client";
+import { createNotification } from "./notificationService";
 
 // ── Serializer ────────────────────────────────────────────────
 function toBooking(row: any): Booking {
@@ -139,6 +140,28 @@ export async function createBooking(
     include: INCLUDE,
   });
 
+  // Notify Customer (Booking Created)
+  await createNotification({
+    title: "New Booking Created",
+    message: "Your booking for Room " + room.room_number + " (" + room.room_type + ") has been created successfully. Status: Pending.",
+    type: "booking",
+    priority: "Medium",
+    module: "booking",
+    referenceId: String(row.booking_id),
+    recipientUserId: userId,
+  });
+
+  // Notify Admin (Booking Created)
+  await createNotification({
+    title: "New Booking Received",
+    message: "A new booking for Room " + room.room_number + " has been received.",
+    type: "booking",
+    priority: "High",
+    module: "booking",
+    referenceId: String(row.booking_id),
+    roleTarget: "ADMIN",
+  });
+
 
   return { booking: toBooking(row) };
 }
@@ -153,13 +176,24 @@ export async function updateBookingStatus(
     updateData.status = data.status;
 
     // Handle room status side-effects
-    const booking = await prisma.booking.findUnique({ where: { booking_id: id } });
+    const booking = await prisma.booking.findUnique({ where: { booking_id: id }, include: { room: true, user: true } });
     if (booking) {
       if (data.status === "CheckedIn") {
         updateData.actual_check_in = new Date();
         await prisma.room.update({
           where: { room_id: booking.room_id },
           data:  { status: "Occupied" as any },
+        });
+
+        // Notify Customer: Check-In Completed
+        await createNotification({
+          title: "Check-In Completed",
+          message: "You have checked in to Room " + booking.room.room_number + ". Enjoy your stay!",
+          type: "booking",
+          priority: "Medium",
+          module: "booking",
+          referenceId: String(id),
+          recipientUserId: booking.user_id,
         });
       }
       if (data.status === "CheckedOut") {
@@ -168,11 +202,59 @@ export async function updateBookingStatus(
           where: { room_id: booking.room_id },
           data:  { status: "Available" as any },
         });
+
+        // Notify Customer: Check-Out Completed
+        await createNotification({
+          title: "Check-Out Completed",
+          message: "You have checked out of Room " + booking.room.room_number + ". Thank you for staying with us!",
+          type: "booking",
+          priority: "Medium",
+          module: "booking",
+          referenceId: String(id),
+          recipientUserId: booking.user_id,
+        });
+
+        // Call onBookingCheckout to create cleaning task
+        await onBookingCheckout(id);
       }
       if (data.status === "Cancelled") {
         await prisma.room.update({
           where: { room_id: booking.room_id },
           data:  { status: "Available" as any },
+        });
+
+        // Notify Customer: Booking Cancelled
+        await createNotification({
+          title: "Booking Cancelled",
+          message: "Your booking for Room " + booking.room.room_number + " has been cancelled.",
+          type: "booking",
+          priority: "High",
+          module: "booking",
+          referenceId: String(id),
+          recipientUserId: booking.user_id,
+        });
+
+        // Notify Admin: Booking Cancelled
+        await createNotification({
+          title: "Booking Cancelled",
+          message: "The booking for Room " + booking.room.room_number + " has been cancelled.",
+          type: "booking",
+          priority: "Medium",
+          module: "booking",
+          referenceId: String(id),
+          roleTarget: "ADMIN",
+        });
+      }
+      if (data.status === "Confirmed") {
+        // Notify Customer: Booking Confirmed
+        await createNotification({
+          title: "Booking Confirmed",
+          message: "Your booking for Room " + booking.room.room_number + " has been confirmed!",
+          type: "booking",
+          priority: "High",
+          module: "booking",
+          referenceId: String(id),
+          recipientUserId: booking.user_id,
         });
       }
     }
@@ -252,7 +334,7 @@ export async function onBookingCheckout(bookingId: number): Promise<void> {
         task_type:           "Cleaning",
         priority:            isVip ? "VIP" : "High",
         status:              "Pending",
-        request_description: `Post-checkout cleaning — ${booking.room.room_number}`,
+        request_description: "Post-checkout cleaning — " + booking.room.room_number,
         is_billable:         false,
       },
     });
@@ -263,7 +345,7 @@ export async function onBookingCheckout(bookingId: number): Promise<void> {
       data:  { cleaning_status: "Dirty" },
     });
 
-    console.log(`[Housekeeping] Auto-task created for room ${booking.room.room_number} after checkout`);
+    console.log("[Housekeeping] Auto-task created for room " + booking.room.room_number + " after checkout");
   } catch (err) {
     console.error("[onBookingCheckout]", err);
   }

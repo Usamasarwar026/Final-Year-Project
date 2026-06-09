@@ -10,6 +10,7 @@ export default function Inventory() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Header Section */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Inventory Management</h1>
@@ -17,6 +18,7 @@ export default function Inventory() {
         </div>
       </div>
 
+      {/* Stats Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[
           { label: "Total Items", value: loading ? "..." : stats?.totalItems ?? 0, icon: Package, iconBg: "bg-slate-600", iconColor: "text-white", cardBg: "border-slate-100 bg-slate-50" },
