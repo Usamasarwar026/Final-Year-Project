@@ -59,7 +59,7 @@ export async function createRoom(
   // Trigger Notification for Admin & Staff
   try {
     const { createNotification } =
-      await import("../services/notificationService");
+      await import("./notificationService");
     await createNotification({
       title: "New Room Added",
       message: `Room ${data.room_number} (${data.room_type}) has been added to floor ${data.floor}.`,
@@ -109,7 +109,7 @@ export async function updateRoom(
   if (data.status !== undefined) {
     try {
       const { createNotification } =
-        await import("../services/notificationService");
+        await import("./notificationService");
       const isMaintenance = data.status === "Maintenance";
 
       await createNotification({
@@ -162,7 +162,7 @@ export async function deleteRoom(id: number): Promise<boolean> {
     // Trigger Notification for Admin
     try {
       const { createNotification } =
-        await import("../services/notificationService");
+        await import("./notificationService");
       await createNotification({
         title: "Room Deleted",
         message: `Room ${room.room_number} has been deleted.`,

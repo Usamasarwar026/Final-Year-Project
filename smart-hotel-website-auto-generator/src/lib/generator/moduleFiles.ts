@@ -218,23 +218,23 @@ export const BASE_FILES: Record<TierId, string[]> = {
 };
 
 // ─── TIER-SPECIFIC FILE MAPPING ─────────────────────────────────────────────
-export const TIER_SPECIFIC_FILES: Record<string, Record<TierId, string>> = {
-  "src/modules/dashboard/admin/AdminDashboard.tsx": {
-    basic: "tiers/basic/src/modules/dashboard/admin/AdminDashboard.tsx",
-    intermediate: "src/modules/dashboard/admin/AdminDashboard.tsx",
-    advanced: "src/modules/dashboard/admin/AdminDashboard.tsx",
-  },
-  "src/modules/dashboard/customer/CustomerDashboard.tsx": {
-    basic: "tiers/basic/src/modules/dashboard/customer/CustomerDashboard.tsx",
-    intermediate: "src/modules/dashboard/customer/CustomerDashboard.tsx",
-    advanced: "src/modules/dashboard/customer/CustomerDashboard.tsx",
-  },
-  "src/components/sidebar/SidebarInner.tsx": {
-    basic: "tiers/basic/src/components/sidebar/SidebarInner.tsx",
-    intermediate: "src/components/sidebar/SidebarInner.tsx",
-    advanced: "src/components/sidebar/SidebarInner.tsx",
-  },
-};
+// export const TIER_SPECIFIC_FILES: Record<string, Record<TierId, string>> = {
+//   "src/modules/dashboard/admin/AdminDashboard.tsx": {
+//     basic: "src/modules/dashboard/admin/AdminDashboard.tsx",
+//     intermediate: "src/modules/dashboard/admin/AdminDashboard.tsx",
+//     advanced: "src/modules/dashboard/admin/AdminDashboard.tsx",
+//   },
+//   "src/modules/dashboard/customer/CustomerDashboard.tsx": {
+//     basic: "src/modules/dashboard/customer/CustomerDashboard.tsx",
+//     intermediate: "src/modules/dashboard/customer/CustomerDashboard.tsx",
+//     advanced: "src/modules/dashboard/customer/CustomerDashboard.tsx",
+//   },
+//   "src/components/sidebar/SidebarInner.tsx": {
+//     basic: "src/components/sidebar/SidebarInner.tsx",
+//     intermediate: "src/components/sidebar/SidebarInner.tsx",
+//     advanced: "src/components/sidebar/SidebarInner.tsx",
+//   },
+// };
 
 // ─── MODULE FILES (tier-specific) ──────────────────────────────────────────
 
@@ -625,6 +625,13 @@ export const MODULE_FILES: Record<ModuleId, Record<TierId, string[]>> = {
     intermediate: [],
     advanced: [
       "src/app/admin/reports/page.tsx",
+      "src/app/admin/reports/bookings/page.tsx",
+      "src/app/admin/reports/guests/page.tsx",
+      "src/app/admin/reports/inventory/page.tsx",
+      "src/app/admin/reports/occupancy/page.tsx",
+      "src/app/admin/reports/revenue/page.tsx",
+      "src/app/admin/reports/scheduled/page.tsx",
+      "src/app/admin/reports/self-performance/page.tsx",
       "src/app/api/reports/billing/route.ts",
       "src/app/api/reports/bookings/route.ts",
       "src/app/api/reports/guests/route.ts",
@@ -667,10 +674,10 @@ export function getBaseFilesForTierFunc(tier: TierId): string[] {
   return BASE_FILES[tier] ?? BASE_FILES.advanced;
 }
 
-export function getTierSpecificFilePath(filePath: string, tier: TierId): string {
-  const mapping = TIER_SPECIFIC_FILES[filePath];
-  if (mapping && mapping[tier]) {
-    return mapping[tier];
-  }
-  return filePath;
-}
+// export function getTierSpecificFilePath(filePath: string, tier: TierId): string {
+//   const mapping = TIER_SPECIFIC_FILES[filePath];
+//   if (mapping && mapping[tier]) {
+//     return mapping[tier];
+//   }
+//   return filePath;
+// }
