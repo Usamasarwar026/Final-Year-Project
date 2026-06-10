@@ -3,6 +3,8 @@
 
 import { ModuleId } from "./moduleFiles";
 
+type TierId = "basic" | "intermediate" | "advanced";
+
 // ─── PRISMA HEADER ────────────────────────────────────────────
 const SCHEMA_HEADER = `generator client {
   provider = "prisma-client"
@@ -15,13 +17,32 @@ datasource db {
 `;
 
 // ─── BASE ENUMS (always) ───────────────────────────────────────
-const BASE_ENUMS = `
+// const BASE_ENUMS = `
+// enum Role {
+//   ADMIN
+//   STAFF
+//   CUSTOMER
+// }
+// `;
+
+function getBaseEnums(tier: TierId): string {
+  if (tier === "basic") {
+    return `
+enum Role {
+  ADMIN
+}
+`;
+  }
+  
+  return `
 enum Role {
   ADMIN
   STAFF
   CUSTOMER
 }
 `;
+}
+
 
 // ─── NOTIFICATION (always included) ────────────────────────────
 const NOTIFICATION_MODEL = `
@@ -47,12 +68,38 @@ model Notification {
 `;
 
 // ─── BASE: User model ──────────────────────────────────────────
-function buildUserModel(modules: Set<ModuleId>): string {
-  const hasStaff = modules.has("staff");
+function buildUserModel(modules: Set<ModuleId>, tier: TierId): string {
+  const hasStaff = modules.has("staff") && tier !== "basic";
   const hasBooking = modules.has("booking");
-  const hasKitchen = modules.has("kitchen");
+  const hasKitchen = modules.has("kitchen") && tier !== "basic";
   const hasBilling = modules.has("billing");
 
+  if (tier === "basic") {
+    return `
+    model User {
+  id             String          @id @default(cuid())
+  email          String          @unique
+  phoneNumber    String?
+  password       String
+  profileImage   String?
+  address        String?
+  city           String?
+  country        String?
+  role           Role            
+  isVerified     Boolean         @default(false)
+  isActive       Boolean         @default(true)
+  lastLogin      DateTime?
+  resetToken     String?
+  resetTokenExp  DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  name           String
+  cnic           String?
+  dateOfBirth    DateTime?
+  ${hasBooking ? "bookings       Booking[]" : ""}
+}
+`;
+  }
   return `
 model User {
   id             String          @id @default(cuid())
@@ -89,7 +136,8 @@ model User {
 }
 
 // ─── STAFF MODELS ──────────────────────────────────────────────
-function buildStaffModels(modules: Set<ModuleId>): string {
+function buildStaffModels(modules: Set<ModuleId>, tier: TierId): string {
+   if (tier === "basic") return "";
   const hasHousekeeping = modules.has("housekeeping");
   const hasKitchen = modules.has("kitchen");
 
@@ -182,10 +230,11 @@ enum AttendanceStatus {
 }
 
 // ─── ROOMS MODELS ──────────────────────────────────────────────
-function buildRoomsModels(modules: Set<ModuleId>): string {
-  const hasHousekeeping = modules.has("housekeeping");
+function buildRoomsModels(modules: Set<ModuleId>, tier: TierId): string {
+  const hasHousekeeping = modules.has("housekeeping") && tier !== "basic";
   const hasBooking = modules.has("booking");
 
+   
   return `
 model Room {
   room_id                Int                @id @default(autoincrement())
@@ -247,10 +296,53 @@ enum CleaningStatus {
 }
 
 // ─── BOOKING MODELS ────────────────────────────────────────────
-function buildBookingModels(modules: Set<ModuleId>): string {
+function buildBookingModels(modules: Set<ModuleId>, tier: TierId): string {
   const hasHousekeeping = modules.has("housekeeping");
-  const hasKitchen = modules.has("kitchen");
+  const hasKitchen = modules.has("kitchen") && tier !== "basic";
   const hasBilling = modules.has("billing");
+
+  if (tier === "basic") {
+    return `
+model Booking {
+  booking_id                Int                @id @default(autoincrement())
+  user_id           String
+  room_id           Int
+  check_in_date     DateTime           @db.Date
+  check_out_date    DateTime           @db.Date
+  actual_check_in   DateTime?
+  actual_check_out  DateTime?
+  status            BookingStatus      @default(Pending)
+  total_nights      Int
+  total_amount      Decimal            @db.Decimal(10, 2)
+  special_requests  String?
+  confirmation_sent Boolean            @default(false)
+  created_at        DateTime           @default(now())
+  updated_at        DateTime           @updatedAt
+  source            BookingSource      @default(ADMIN)
+  room              Room               @relation(fields: [room_id], references: [room_id])
+  user              User               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([room_id])
+  @@index([status])
+  @@index([check_in_date])
+  @@map("booking_reservation")
+}
+
+enum BookingStatus {
+  Pending
+  Confirmed
+  CheckedIn
+  CheckedOut
+  Cancelled
+}
+
+enum BookingSource {
+  ADMIN
+}
+`;
+  }
+
 
   return `
 model Booking {
@@ -300,8 +392,9 @@ enum BookingSource {
 }
 
 // ─── HOUSEKEEPING MODELS ───────────────────────────────────────
-function buildHousekeepingModels(modules: Set<ModuleId>): string {
-  const hasStaff = modules.has("staff");
+function buildHousekeepingModels(modules: Set<ModuleId>, tier: TierId): string {
+  if (tier === "basic") return "";
+   const hasStaff = modules.has("staff");
   const hasBooking = modules.has("booking");
   const hasRooms = modules.has("rooms");
 
@@ -401,7 +494,8 @@ enum LaundryStatus {
 }
 
 // ─── KITCHEN MODELS ────────────────────────────────────────────
-function buildKitchenModels(modules: Set<ModuleId>): string {
+function buildKitchenModels(modules: Set<ModuleId>, tier: TierId): string {
+  if (tier === "basic") return "";
   const hasBooking = modules.has("booking");
   const hasStaff = modules.has("staff");
 
@@ -498,7 +592,9 @@ model FoodOrderTimeline {
   @@map("food_order_timelines")
 }
 
-${hasStaff ? `
+${
+  hasStaff
+    ? `
 model KitchenTask {
   id            Int @id @default(autoincrement())
   order_id      Int
@@ -519,7 +615,9 @@ enum KitchenTaskStatus {
   InProgress
   Completed
 }
-` : ""}
+`
+    : ""
+}
 
 enum FoodOrderStatus {
   Pending
@@ -829,44 +927,47 @@ model ReportSchedule {
 }
 
 // ─── MAIN BUILDER ──────────────────────────────────────────────
-export function buildSchema(modules: ModuleId[]): string {
+export function buildSchema(modules: ModuleId[], tier: TierId): string {
   const set = new Set<ModuleId>(modules);
   const parts: string[] = [];
 
   parts.push(SCHEMA_HEADER);
-  parts.push(buildUserModel(set));
-  parts.push(BASE_ENUMS);
+  parts.push(buildUserModel(set, tier));
+  parts.push(getBaseEnums(tier));
   parts.push(NOTIFICATION_MODEL);
 
-  if (set.has("staff")) {
-    parts.push(buildStaffModels(set));
-  }
-
+  const staffModels = buildStaffModels(set, tier)
+  if (staffModels) parts.push(staffModels);
   if (set.has("rooms")) {
-    parts.push(buildRoomsModels(set));
+    parts.push(buildRoomsModels(set, tier));
   }
 
   if (set.has("booking")) {
-    parts.push(buildBookingModels(set));
+    parts.push(buildBookingModels(set, tier));
   }
 
-  if (set.has("housekeeping")) {
-    parts.push(buildHousekeepingModels(set));
+  // Housekeeping (only for intermediate/advanced)
+  if (set.has("housekeeping") && tier !== "basic") {
+    parts.push(buildHousekeepingModels(set, tier));
   }
 
-  if (set.has("kitchen")) {
-    parts.push(buildKitchenModels(set));
+  // Kitchen (only for intermediate/advanced)
+  if (set.has("kitchen") && tier !== "basic") {
+    parts.push(buildKitchenModels(set, tier));
   }
 
-  if (set.has("billing")) {
+  // Billing (only for intermediate/advanced)
+  if (set.has("billing") && tier !== "basic") {
     parts.push(buildBillingModels());
   }
 
-  if (set.has("inventory")) {
+  // Inventory (only for advanced)
+  if (set.has("inventory") && tier === "advanced") {
     parts.push(buildInventoryModels());
   }
 
-  if (set.has("reports")) {
+  // Reports (only for advanced)
+  if (set.has("reports") && tier === "advanced") {
     parts.push(buildReportsModels());
   }
 

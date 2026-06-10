@@ -8,7 +8,7 @@ export default function DashboardShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-screen bg-background overflow-hidden " >
+    <div className="flex h-screen bg-background overflow-hidden ">
       <Sidebar />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -17,7 +17,7 @@ export default function DashboardShell({
           pt-16 on mobile so content clears the fixed hamburger button.
           lg:pt-0 removes it on desktop where hamburger is hidden.
         */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-6" >
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-6">
           {children}
         </main>
       </div>
