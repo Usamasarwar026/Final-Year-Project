@@ -94,7 +94,7 @@ export const staffNav: NavItem[] = [
   { label: "Inventory",    href: "/staff/inventory",   icon: Package,       permission: "inventory"    },
   { label: "House Keeping",href:"/staff/housekeeping", icon: Brush,         permission: "housekeeping" },
   { label: "Billing",      href: "/staff/billing",     icon: CreditCard,    permission: "billing"      },
-  { label: "Reports",      href: "/staff/reports",     icon: BarChart3,     permission: "reports"      },
+  // { label: "Reports",      href: "/staff/reports",     icon: BarChart3,     permission: "reports"      },
 
   // ── Kitchen module — the parent guard is KITCHEN_ACCESS ──────────────────
   // A staff sees the Kitchen menu only if they have at least KITCHEN_ACCESS.
@@ -153,6 +153,21 @@ export const staffNav: NavItem[] = [
         icon:       TrendingUp,
         permission: "KITCHEN_REPORTS",
       },
+    ],
+  },
+   {
+    label: "Reports",
+    href: "/admin/reports",
+    icon: BarChart3,
+    children: [
+      { label: "KPI Dashboard",      href: "/staff/reports",                    icon: LayoutDashboard },
+      { label: "Revenue",            href: "/staff/reports/revenue",            icon: DollarSign      },
+      { label: "Occupancy",          href: "/staff/reports/occupancy",          icon: BedDouble       },
+      { label: "Staff Performance",  href: "/staff/reports/staff-performance",  icon: Users           },
+      { label: "Inventory",          href: "/staff/reports/inventory",          icon: Package         },
+      { label: "Bookings",           href: "/staff/reports/bookings",           icon: CalendarCheck   },
+      { label: "Guests",             href: "/staff/reports/guests",             icon: UserPlus        },
+      { label: "Scheduled Reports",  href: "/staff/reports/scheduled",          icon: Clock           },
     ],
   },
 ];

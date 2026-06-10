@@ -318,6 +318,8 @@ model KitchenTask {
   order_id      Int
   assigned_to   Int?
   status        KitchenTaskStatus @default(Assigned)
+  started_at    DateTime?         // ← ADD
+  completed_at  DateTime?         // ← ADD
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
   order         FoodOrder @relation(fields:[order_id], references:[id], onDelete: Cascade)

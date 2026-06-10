@@ -11,6 +11,10 @@ export async function GET(
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+     // Allow both ADMIN and STAFF
+    if (session.user.role !== "ADMIN" && session.user.role !== "STAFF") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     const orderId = parseInt((await params).id);
     if (isNaN(orderId)) return NextResponse.json({ error: "Invalid order ID" }, { status: 400 });
 

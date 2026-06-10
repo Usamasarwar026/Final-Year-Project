@@ -38,6 +38,7 @@ import {
 } from "@/types/kitchen";
 import api from "@/lib/axios";
 import { toast } from "sonner";
+import { useSession } from "next-auth/react";
 
 // Types for delivery staff
 interface DeliveryStaff {
@@ -408,6 +409,9 @@ function OrderDetailModal({
   const tc = ORDER_TYPE_CONFIG[order.order_type];
   const actions = STATUS_TRANSITIONS[order.status] ?? [];
   const isLoading = loadingOrderId === order.id;
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "ADMIN";
+  const isStaff = session?.user?.role === "STAFF";
 
   const steps: FoodOrderStatus[] = [
     "Pending",
@@ -684,7 +688,12 @@ function OrderDetailModal({
 
           {order.status === "Delivered" && (
             <button
-              onClick={() => window.open(`/admin/kitchen/orders/${order.id}/invoice`, "_blank")}
+              onClick={() => {
+                const invoiceUrl = isAdmin
+                  ? `/admin/kitchen/orders/${order.id}/invoice`
+                  : `/staff/kitchen/orders/${order.id}/invoice`;
+                window.open(invoiceUrl, "_blank");
+              }}
               className="px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors flex items-center gap-2"
             >
               <Printer size={13} /> Print Invoice
@@ -726,7 +735,6 @@ function OrderDetailModal({
   );
 }
 
-
 // ─── Main Orders Page ─────────────────────────────────────────────────────────
 export default function KitchenOrders() {
   const [statusFilter, setStatusFilter] = useState("");
@@ -739,6 +747,7 @@ export default function KitchenOrders() {
   const [loadingOrderId, setLoadingOrderId] = useState<number | null>(null);
 
   const queryClient = useQueryClient();
+  
 
   const {
     data: orders = [],
@@ -791,7 +800,6 @@ export default function KitchenOrders() {
     handleStatusChange(orderId, "Assigned", staffId);
     setOrderToAssign(null);
   };
-
 
   const filteredOrders = useMemo(() => {
     let filtered = orders;
@@ -1180,5 +1188,3 @@ export default function KitchenOrders() {
     </div>
   );
 }
-
-
