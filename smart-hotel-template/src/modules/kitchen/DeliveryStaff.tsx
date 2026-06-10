@@ -387,28 +387,28 @@ export default function DeliveryStaff() {
   const queryClient = useQueryClient();
 
   // Fetch delivery tasks for this staff member
-  const { data: tasks = [], isLoading, refetch } = useQuery({
-    queryKey: ["delivery-tasks", session?.user?.id],
-    queryFn: async () => {
-      if (!session?.user?.id) return [];
-      try {
-        // First get staff profile
-        const staffRes = await api.get(`/staff/user/${session.user.id}`);
-        const staffProfile = staffRes.data.staff;
-        
-        if (!staffProfile) return [];
-        
-        // Then get tasks for this staff
-        const { data } = await api.get(`/kitchen/tasks?staff_id=${staffProfile.staff_id}`);
-        return data.tasks || [];
-      } catch (error) {
-        console.error("Failed to fetch tasks:", error);
-        return [];
-      }
-    },
-    enabled: !!session?.user?.id,
-    refetchInterval: 10000, // Refresh every 10 seconds
-  });
+ const { data: tasks = [], isLoading, refetch } = useQuery({
+  queryKey: ["delivery-tasks", session?.user?.id],
+  queryFn: async () => {
+    if (!session?.user?.id) return [];
+    try {
+      // ✅ staff-by-user endpoint use karo jo Staff profile return karta hai
+      const staffRes = await api.get(`/kitchen/staff-by-user/${session.user.id}`);
+      const staffProfile = staffRes.data.staff;
+      
+      if (!staffProfile?.staff_id) return [];
+      
+      // ✅ staff_id query param se filter karo
+      const { data } = await api.get(`/kitchen/tasks?staff_id=${staffProfile.staff_id}`);
+      return data.tasks || [];
+    } catch (error) {
+      console.error("Failed to fetch tasks:", error);
+      return [];
+    }
+  },
+  enabled: !!session?.user?.id,
+  refetchInterval: 10000,
+});
 
   const updateTaskStatus = useMutation({
     mutationFn: async ({ taskId, status }: { taskId: number; status: string }) => {
@@ -426,6 +426,7 @@ export default function DeliveryStaff() {
       refetch();
     },
     onError: (error: any) => {
+      console.log("Full error:", error?.response?.data);
       toast.error(error?.response?.data?.error || "Failed to update task status");
     },
   });

@@ -14,7 +14,7 @@ const STAFF_PROFILE_INCLUDE = {
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session || (session.user.role !== "STAFF" && session.user.role !== "ADMIN")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

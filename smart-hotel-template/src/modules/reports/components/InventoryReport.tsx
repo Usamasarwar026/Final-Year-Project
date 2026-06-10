@@ -62,19 +62,6 @@ export default function InventoryReport({ from, to }: Props) {
               }}
             />
           )}
-          {report?.low_stock_items && (
-            <ExportButton
-              disabled={loading}
-              config={{
-                title: "Low Stock Alert Report",
-                subtitle: "Items currently below reorder threshold",
-                columns: lowStockCols,
-                rows: report.low_stock_items,
-                from,
-                to,
-              }}
-            />
-          )}
         </div>
       </div>
 

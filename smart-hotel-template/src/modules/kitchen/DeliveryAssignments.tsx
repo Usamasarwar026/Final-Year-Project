@@ -550,19 +550,19 @@ export default function DeliveryAssignments() {
   // Fetch all orders to show assigned ones
   const { data: allOrders = [], refetch: refetchAll } = useKitchenOrders();
 
-  // Fetch delivery staff
   const { data: staff = [], refetch: refetchStaff } = useQuery({
-    queryKey: ["delivery-staff"],
-    queryFn: async () => {
-      try {
-        const { data } = await api.get("/kitchen/delivery");
-        return data.staff || [];
-      } catch (error) {
-        console.error("Failed to fetch staff:", error);
-        return [];
-      }
-    },
-  });
+  queryKey: ["delivery-staff"],
+  queryFn: async () => {
+    try {
+      // ✅ delivery-staff endpoint use karo, delivery nahi
+      const { data } = await api.get("/kitchen/delivery-staff");
+      return data.staff || [];
+    } catch (error) {
+      console.error("Failed to fetch staff:", error);
+      return [];
+    }
+  },
+});
 
   const updateOrderStatus = useUpdateOrderStatus();
 

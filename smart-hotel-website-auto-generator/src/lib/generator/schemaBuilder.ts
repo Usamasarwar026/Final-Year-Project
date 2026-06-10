@@ -72,7 +72,7 @@ function buildUserModel(modules: Set<ModuleId>, tier: TierId): string {
   const hasStaff = modules.has("staff") && tier !== "basic";
   const hasBooking = modules.has("booking");
   const hasKitchen = modules.has("kitchen") && tier !== "basic";
-  const hasBilling = modules.has("billing");
+  const hasBilling = modules.has("billing") && tier !== "basic";
 
   if (tier === "basic") {
     return `
@@ -83,6 +83,9 @@ function buildUserModel(modules: Set<ModuleId>, tier: TierId): string {
   password       String
   profileImage   String?
   address        String?
+  name           String
+  cnic           String?
+  dateOfBirth    DateTime?
   city           String?
   country        String?
   role           Role            
@@ -93,9 +96,7 @@ function buildUserModel(modules: Set<ModuleId>, tier: TierId): string {
   resetTokenExp  DateTime?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
-  name           String
-  cnic           String?
-  dateOfBirth    DateTime?
+
   ${hasBooking ? "bookings       Booking[]" : ""}
 }
 `;
@@ -600,6 +601,8 @@ model KitchenTask {
   order_id      Int
   assigned_to   Int?
   status        KitchenTaskStatus @default(Assigned)
+  started_at    DateTime?         
+  completed_at  DateTime?         
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
   order         FoodOrder @relation(fields:[order_id], references:[id], onDelete: Cascade)
