@@ -25,10 +25,12 @@ export async function GET(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    // Security check: Only Admin or the Guest who owns the booking can view it
+    
     const isAdmin = session.user.role === "ADMIN";
+    const isStaff = session.user.role === "STAFF";
     const isOwner = session.user.id === invoice.guest_id;
-    if (!isAdmin && !isOwner) {
+
+    if (!isAdmin && !isStaff && !isOwner) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

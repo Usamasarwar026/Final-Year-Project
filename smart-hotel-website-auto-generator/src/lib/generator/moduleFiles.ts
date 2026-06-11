@@ -67,13 +67,8 @@ export const BASE_FILES: Record<TierId, string[]> = {
     "src/app/admin/layout.tsx",
     "src/app/admin/dashboard/page.tsx",
     "src/app/api/admin/dashboard/route.ts",
-    // "src/app/customer/layout.tsx",
-    // "src/app/customer/dashboard/page.tsx",
     "src/modules/dashboard/admin/AdminDashboard.tsx",
-    // "src/modules/dashboard/customer/CustomerDashboard.tsx",
-    // "tiers/basic/src/modules/dashboard/SimpleDashboard.tsx",
     "src/app/admin/notifications/page.tsx",
-    // "src/app/customer/notifications/page.tsx",
     "src/modules/notifications/NotificationsPage.tsx",
     "src/hooks/useNotifications.ts",
     "src/services/notificationService.ts",
@@ -211,31 +206,10 @@ export const BASE_FILES: Record<TierId, string[]> = {
     "src/app/api/admin/dashboard/route.ts",
     "src/app/api/rooms/public/route.ts",
     "src/app/api/debug/notifications/route.ts",
-    // Advanced specific files
-    // "src/app/api/kitchen/route.ts",
-    // "src/app/api/inventory/route.ts",
-    // "src/app/api/reports/route.ts",
+    
   ],
 };
 
-// ─── TIER-SPECIFIC FILE MAPPING ─────────────────────────────────────────────
-// export const TIER_SPECIFIC_FILES: Record<string, Record<TierId, string>> = {
-//   "src/modules/dashboard/admin/AdminDashboard.tsx": {
-//     basic: "src/modules/dashboard/admin/AdminDashboard.tsx",
-//     intermediate: "src/modules/dashboard/admin/AdminDashboard.tsx",
-//     advanced: "src/modules/dashboard/admin/AdminDashboard.tsx",
-//   },
-//   "src/modules/dashboard/customer/CustomerDashboard.tsx": {
-//     basic: "src/modules/dashboard/customer/CustomerDashboard.tsx",
-//     intermediate: "src/modules/dashboard/customer/CustomerDashboard.tsx",
-//     advanced: "src/modules/dashboard/customer/CustomerDashboard.tsx",
-//   },
-//   "src/components/sidebar/SidebarInner.tsx": {
-//     basic: "src/components/sidebar/SidebarInner.tsx",
-//     intermediate: "src/components/sidebar/SidebarInner.tsx",
-//     advanced: "src/components/sidebar/SidebarInner.tsx",
-//   },
-// };
 
 // ─── MODULE FILES (tier-specific) ──────────────────────────────────────────
 
@@ -335,8 +309,7 @@ export const MODULE_FILES: Record<ModuleId, Record<TierId, string[]>> = {
       "src/hooks/useBookings.ts",
       "src/types/bookings.ts",
       "src/services/bookingService.ts",
-      // "tiers/basic/src/app/customer/booking/page.tsx",
-      // "tiers/basic/src/modules/bookings/CustomerBookings.tsx",
+      
     ],
     intermediate: [
       "src/app/admin/booking/page.tsx",
@@ -470,6 +443,7 @@ export const MODULE_FILES: Record<ModuleId, Record<TierId, string[]>> = {
       "src/modules/billing/InvoiceDetails.tsx",
       "src/services/billingService.ts",
       "src/app/customer/billing/page.tsx",
+      "src/app/customer/billing/[id]/page.tsx",
       "src/app/staff/billing/page.tsx",
     ],
     advanced: [
@@ -484,7 +458,10 @@ export const MODULE_FILES: Record<ModuleId, Record<TierId, string[]>> = {
       "src/modules/billing/InvoiceDetails.tsx",
       "src/services/billingService.ts",
       "src/app/customer/billing/page.tsx",
+      "src/app/customer/billing/[id]/page.tsx",
       "src/app/staff/billing/page.tsx",
+      "src/app/staff/billing/[id]/page.tsx",
+      
     ],
   },
   housekeeping: {
@@ -564,7 +541,8 @@ export const MODULE_FILES: Record<ModuleId, Record<TierId, string[]>> = {
       "src/app/staff/kitchen/deliverystaff/page.tsx",
       "src/app/staff/kitchen/menu/page.tsx",
       "src/app/staff/kitchen/orders/page.tsx",
-      "src/app/admin/kitchen/orders/[id]/invoice/page.tsx",
+      "src/app/staff/kitchen/orders/[id]/invoice/page.tsx",
+      
       "src/app/staff/kitchen/reports/page.tsx",
       "src/app/staff/kitchen/staff/page.tsx",
       "src/context/CartContext.tsx",
@@ -678,7 +656,10 @@ export const MODULE_FILES: Record<ModuleId, Record<TierId, string[]>> = {
 
 // ⚠️ HELPER FUNCTIONS - SABSE NICHE
 
-export function getModuleFilesForTier(moduleId: ModuleId, tier: TierId): string[] {
+export function getModuleFilesForTier(
+  moduleId: ModuleId,
+  tier: TierId,
+): string[] {
   return MODULE_FILES[moduleId]?.[tier] ?? [];
 }
 

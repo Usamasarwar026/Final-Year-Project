@@ -29,8 +29,10 @@ export async function GET(req: NextRequest, { params }: Params) {
     }
 
     const isAdmin = session.user.role === "ADMIN";
+    const isStaff = session.user.role === "STAFF";
     const isOwner = session.user.id === invoice.guest_id;
-    if (!isAdmin && !isOwner) {
+
+    if (!isAdmin && !isStaff && !isOwner) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

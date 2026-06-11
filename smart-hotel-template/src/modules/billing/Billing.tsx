@@ -11,6 +11,7 @@ import {
 import clsx from "clsx";
 import { toast } from "sonner";
 import api from "@/lib/axios";
+import { useSession } from "next-auth/react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmtDate = (d: string) =>
@@ -360,6 +361,8 @@ export default function Billing() {
   // Modals state
   const [activePaymentInvoice, setActivePaymentInvoice] = useState<any | null>(null);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
+   const { data: session } = useSession();
+    const basePath = session?.user?.role === "STAFF" ? "/staff" : "/admin";
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
@@ -642,7 +645,7 @@ export default function Billing() {
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-2">
                           <Link
-                            href={`/admin/billing/${inv.invoice_id}`}
+                            href={`${basePath}/billing/${inv.invoice_id}`}
                             className="p-2 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:text-zinc-400 dark:hover:text-indigo-400 dark:hover:bg-indigo-950/20 transition-all"
                             title="View Invoice Details"
                           >
@@ -658,7 +661,7 @@ export default function Billing() {
                             </button>
                           )}
                           <Link
-                            href={`/admin/billing/${inv.invoice_id}/print`}
+                            href={`${basePath}/billing/${inv.invoice_id}/print`}
                             target="_blank"
                             className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-zinc-400 dark:hover:text-zinc-100 dark:hover:bg-zinc-800 transition-all"
                             title="Print Invoice"
