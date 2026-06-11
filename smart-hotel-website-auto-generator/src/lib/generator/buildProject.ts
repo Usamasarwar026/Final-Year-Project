@@ -168,7 +168,7 @@ export async function buildProjectZip({
   root.file(".env", buildEnvTemplate(websiteName, modules, tier));
 
   // ── 6. package.json (dynamic from BASE_PACKAGES, MODULE_PACKAGES, DEV_PACKAGES) ──
-  root.file("package.json", buildPackageJson(slug, modules, tier));
+  root.file("package.json", buildPackageJson(slug, modules));
 
   // ── 7. README ──────────────────────────────────────────────────
   root.file(
@@ -305,7 +305,7 @@ NEXT_PUBLIC_APP_NAME="${websiteName}"
 function buildPackageJson(
   slug: string,
   modules: ModuleId[],
-  tier: TierId,
+  // tier: TierId,
 ): string {
   const deps: Record<string, string> = {};
   const devDeps: Record<string, string> = {};
@@ -387,18 +387,6 @@ function buildPackageJson(
       devDeps[pkg] = "latest";
     }
   });
-
-  // Remove tier-specific packages for basic tier
-  if (tier === "basic") {
-    delete deps["radix-ui"];
-    delete deps["recharts"];
-    delete devDeps["@types/recharts"];
-  }
-
-  // Remove intermediate packages that are not needed
-  if (tier === "intermediate") {
-    delete deps["@prisma/adapter-neon"];
-  }
 
   return JSON.stringify(
     {

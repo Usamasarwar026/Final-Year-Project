@@ -33,7 +33,7 @@ enum Role {
 }
 `;
   }
-  
+
   return `
 enum Role {
   ADMIN
@@ -42,7 +42,6 @@ enum Role {
 }
 `;
 }
-
 
 // ─── NOTIFICATION (always included) ────────────────────────────
 const NOTIFICATION_MODEL = `
@@ -96,8 +95,6 @@ function buildUserModel(modules: Set<ModuleId>, tier: TierId): string {
   resetTokenExp  DateTime?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
-
-  ${hasBooking ? "bookings       Booking[]" : ""}
 }
 `;
   }
@@ -136,9 +133,41 @@ model User {
 `;
 }
 
+function buildCustomerModel(): string {
+  return `
+model Customer {
+  customer_id       Int       @id @default(autoincrement())
+  name              String
+  email             String?   @unique
+  phone_number      String    @unique
+  cnic              String?   @unique
+  gender            Gender?
+  date_of_birth     DateTime?
+  city              String?
+  country           String?
+  emergency_contact String?
+  notes             String?
+  is_active         Boolean   @default(true)
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+  bookings          Booking[]
+
+  @@index([phone_number])
+  @@index([email])
+  @@map("customers")
+}
+
+enum Gender {
+  Male
+  Female
+  Other
+}
+`;
+}
+
 // ─── STAFF MODELS ──────────────────────────────────────────────
 function buildStaffModels(modules: Set<ModuleId>, tier: TierId): string {
-   if (tier === "basic") return "";
+  if (tier === "basic") return "";
   const hasHousekeeping = modules.has("housekeeping");
   const hasKitchen = modules.has("kitchen");
 
@@ -235,7 +264,6 @@ function buildRoomsModels(modules: Set<ModuleId>, tier: TierId): string {
   const hasHousekeeping = modules.has("housekeeping") && tier !== "basic";
   const hasBooking = modules.has("booking");
 
-   
   return `
 model Room {
   room_id                Int                @id @default(autoincrement())
@@ -305,8 +333,8 @@ function buildBookingModels(modules: Set<ModuleId>, tier: TierId): string {
   if (tier === "basic") {
     return `
 model Booking {
-  booking_id                Int                @id @default(autoincrement())
-  user_id           String
+  booking_id        Int                @id @default(autoincrement())
+  customer_id       Int
   room_id           Int
   check_in_date     DateTime           @db.Date
   check_out_date    DateTime           @db.Date
@@ -321,9 +349,9 @@ model Booking {
   updated_at        DateTime           @updatedAt
   source            BookingSource      @default(ADMIN)
   room              Room               @relation(fields: [room_id], references: [room_id])
-  user              User               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  customer          Customer           @relation(fields: [customer_id], references: [customer_id], onDelete: Cascade)
 
-  @@index([user_id])
+  @@index([customer_id])
   @@index([room_id])
   @@index([status])
   @@index([check_in_date])
@@ -333,8 +361,8 @@ model Booking {
 enum BookingStatus {
   Pending
   Confirmed
-  CheckedIn
-  CheckedOut
+  CheckedIn  @map("Checked-In")
+  CheckedOut @map("Checked-Out")
   Cancelled
 }
 
@@ -343,7 +371,6 @@ enum BookingSource {
 }
 `;
   }
-
 
   return `
 model Booking {
@@ -395,7 +422,7 @@ enum BookingSource {
 // ─── HOUSEKEEPING MODELS ───────────────────────────────────────
 function buildHousekeepingModels(modules: Set<ModuleId>, tier: TierId): string {
   if (tier === "basic") return "";
-   const hasStaff = modules.has("staff");
+  const hasStaff = modules.has("staff");
   const hasBooking = modules.has("booking");
   const hasRooms = modules.has("rooms");
 
@@ -939,15 +966,21 @@ export function buildSchema(modules: ModuleId[], tier: TierId): string {
   parts.push(getBaseEnums(tier));
   parts.push(NOTIFICATION_MODEL);
 
-  const staffModels = buildStaffModels(set, tier)
+  const staffModels = buildStaffModels(set, tier);
   if (staffModels) parts.push(staffModels);
   if (set.has("rooms")) {
     parts.push(buildRoomsModels(set, tier));
   }
 
+  // Basic tier ke liye Customer model add karo
+  if (tier === "basic" && set.has("booking")) {
+    parts.push(buildCustomerModel());
+  }
+
   if (set.has("booking")) {
     parts.push(buildBookingModels(set, tier));
   }
+  
 
   // Housekeeping (only for intermediate/advanced)
   if (set.has("housekeeping") && tier !== "basic") {
