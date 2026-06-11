@@ -1,0 +1,172 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id             String          @id @default(cuid())
+  email          String          @unique
+  phoneNumber    String?
+  password       String
+  profileImage   String?
+  address        String?
+  name           String
+  cnic           String?
+  dateOfBirth    DateTime?
+  city           String?
+  country        String?
+  role           Role            @default(ADMIN)
+  isVerified     Boolean         @default(false)
+  isActive       Boolean         @default(true)
+  lastLogin      DateTime?
+  resetToken     String?
+  resetTokenExp  DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model Customer {
+  customer_id       Int       @id @default(autoincrement())
+  name              String
+  email             String?   @unique
+  phone_number      String    @unique
+  cnic              String?   @unique
+  gender            Gender?
+  date_of_birth     DateTime?
+  city              String?
+  country           String?
+  emergency_contact String?
+  notes             String?
+  is_active         Boolean   @default(true)
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+  bookings          Booking[]
+  @@index([phone_number])
+  @@index([email])
+  @@map("customers")
+}
+
+enum Gender {
+  Male
+  Female
+  Other
+}
+
+model Room {
+  room_id           Int                @id @default(autoincrement())
+  room_number       String             @unique @db.VarChar(10)
+  floor             Int
+  room_type         RoomType           @default(Single)
+  status            RoomStatus         @default(Available)
+  price_per_night   Decimal            @db.Decimal(10, 2)
+  capacity          Int                @default(2)
+  bed_type          BedType            @default(Double)
+  size_sqft         Int?
+  amenities         Json?
+  photos            Json?
+  description       String?
+  is_active         Boolean            @default(true)
+  created_at        DateTime           @default(now())
+  updated_at        DateTime           @updatedAt
+  cleaning_status   CleaningStatus     @default(Clean)
+  bookings          Booking[]
+  @@index([status])
+  @@index([room_type])
+  @@index([is_active])
+  @@map("rooms")
+}
+
+model Booking {
+  booking_id        Int                @id @default(autoincrement())
+  room_id           Int
+  customer_id       Int
+  check_in_date     DateTime           @db.Date
+  check_out_date    DateTime           @db.Date
+  actual_check_in   DateTime?
+  actual_check_out  DateTime?
+  status            BookingStatus      @default(Pending)
+  total_nights      Int
+  total_amount      Decimal            @db.Decimal(10, 2)
+  special_requests  String?
+  confirmation_sent Boolean            @default(false)
+  created_at        DateTime           @default(now())
+  updated_at        DateTime           @updatedAt
+  source            BookingSource      @default(ADMIN)
+  room              Room               @relation(fields: [room_id], references: [room_id])
+  customer          Customer           @relation(fields: [customer_id], references: [customer_id], onDelete: Cascade)
+  @@index([room_id])
+  @@index([customer_id])
+  @@index([status])
+  @@index([check_in_date])
+  @@map("booking_reservation")
+}
+
+enum Role {
+  ADMIN
+}
+
+enum RoomType {
+  Single
+  Double
+  Suite
+  Deluxe
+  Presidential
+}
+
+enum RoomStatus {
+  Available
+  Reserved
+  Occupied
+  Maintenance
+}
+
+enum BedType {
+  Single
+  Double
+  Queen
+  King
+  Twin
+}
+
+enum CleaningStatus {
+  Clean
+  Dirty
+  InProgress
+}
+
+enum BookingSource {
+  ADMIN
+}
+
+enum BookingStatus {
+  Pending
+  Confirmed
+  CheckedIn  @map("Checked-In")
+  CheckedOut @map("Checked-Out")
+  Cancelled
+}
+
+model Notification {
+  notification_id   Int      @id @default(autoincrement())
+  title             String
+  message           String   @db.Text
+  type              String   // booking, room, customer, staff, housekeeping, laundry, kitchen, inventory, billing, reports, maintenance, system
+  priority          String   @default("Medium") // High, Medium, Low
+  module            String   // Source module name for navigation
+  reference_id      String?  // ID of the related record for deep-link navigation
+  recipient_user_id String   // Target user
+  sender_user_id    String?  // User who triggered the notification (null for system)
+  role_target       String?  // ADMIN, STAFF, CUSTOMER — for role-based filtering
+  is_read           Boolean  @default(false)
+  created_at        DateTime @default(now())
+
+  @@index([recipient_user_id])
+  @@index([is_read])
+  @@index([type])
+  @@index([created_at])
+  @@map("notifications")
+}
