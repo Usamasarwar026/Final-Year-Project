@@ -53,12 +53,11 @@ export async function generateInvoice(
   const pricePerNight = Number(room.price_per_night);
   const roomCharges = totalNights * pricePerNight;
 
-  {{#if housekeeping}}
-  // ──────────────────────────────────────────────────────────
-  // HOUSEKEEPING MODULE: Service charges (Housekeeping + Laundry)
-  // ──────────────────────────────────────────────────────────
+  // Initialize service charges
+  let serviceCharges = 0;
   
-  // Fetch all additional service charges (Housekeeping tasks that are billable)
+  {{#if housekeeping}}
+  // Housekeeping module: Fetch service charges
   const housekeepingTasks = await prisma.housekeepingTask.findMany({
     where: {
       booking_id: bookingId,
@@ -70,7 +69,6 @@ export async function generateInvoice(
     0
   );
 
-  // Laundry records
   const laundryRecords = await prisma.laundryRecord.findMany({
     where: {
       booking_id: bookingId,
@@ -81,18 +79,14 @@ export async function generateInvoice(
     0
   );
 
-  const serviceCharges = housekeepingSum + laundrySum;
-  {{else}}
-  // No housekeeping module - service charges are zero
-  const serviceCharges = 0;
+  serviceCharges = housekeepingSum + laundrySum;
   {{/if}}
 
-  {{#if kitchen}}
-  // ──────────────────────────────────────────────────────────
-  // KITCHEN MODULE: Food charges
-  // ──────────────────────────────────────────────────────────
+  // Initialize food charges
+  let foodCharges = 0;
   
-  // Fetch all food charges (Food orders)
+  {{#if kitchen}}
+  // Kitchen module: Fetch food charges
   const foodOrders = await prisma.foodOrder.findMany({
     where: {
       booking_id: bookingId,
@@ -102,13 +96,10 @@ export async function generateInvoice(
       total_amount: true,
     },
   });
-  const foodCharges = foodOrders.reduce(
+  foodCharges = foodOrders.reduce(
     (sum, order) => sum + Number(order.total_amount || 0),
     0
   );
-  {{else}}
-  // No kitchen module - food charges are zero
-  const foodCharges = 0;
   {{/if}}
 
   // Calculate subtotal
@@ -174,7 +165,6 @@ export async function generateInvoice(
   // Trigger Notification for Guest & Billing Admins
   try {
     const { createNotification } = await import("./notificationService");
-    // Notify guest
     await createNotification({
       title: "Invoice Generated",
       message: `Invoice ${invoiceNumber} for your booking (ID: ${bookingId}) has been generated. Total Amount: $${totalAmount.toFixed(2)}.`,
@@ -184,7 +174,6 @@ export async function generateInvoice(
       reference_id: String(invoice.invoice_id),
       recipient_user_id: guest.id,
     });
-    // Notify Admin
     await createNotification({
       title: "New Invoice Created",
       message: `Invoice ${invoiceNumber} has been generated for Guest ${guest.name}. Total: $${totalAmount.toFixed(2)}.`,
@@ -236,9 +225,7 @@ export async function recordPayment(
     newStatus = "Partial";
   }
 
-  // Run in a transaction
   const result = await prisma.$transaction(async (tx) => {
-    // 1. Create payment record
     const payment = await tx.invoicePayment.create({
       data: {
         invoice_id: invoiceId,
@@ -248,7 +235,6 @@ export async function recordPayment(
       },
     });
 
-    // 2. Update invoice status & balance due
     const updatedInvoice = await tx.billingInvoice.update({
       where: { invoice_id: invoiceId },
       data: {
@@ -261,13 +247,11 @@ export async function recordPayment(
     return { payment, invoice: updatedInvoice };
   });
 
-  // Trigger Notification for Payment Receipt
   try {
     const { createNotification } = await import("./notificationService");
     const formattedAmount = amount.toFixed(2);
     const formattedBalance = newBalance.toFixed(2);
 
-    // Notify guest
     await createNotification({
       title: "Payment Received",
       message: `A payment of $${formattedAmount} has been received for Invoice ${invoice.invoice_number}. Remaining Balance: $${formattedBalance}. Status: ${newStatus}.`,
@@ -278,7 +262,6 @@ export async function recordPayment(
       recipient_user_id: invoice.guest_id,
     });
 
-    // Notify Admin
     await createNotification({
       title: "Payment Recorded",
       message: `Payment of $${formattedAmount} received for Invoice ${invoice.invoice_number}. New Status: ${newStatus}.`,
@@ -295,7 +278,7 @@ export async function recordPayment(
   return result;
 }
 
-// Service to fetch invoice lists with parameters (with pagination)
+// Service to fetch invoice lists with parameters
 export async function getInvoices(params: {
   search?: string;
   payment_status?: string;
@@ -341,7 +324,6 @@ export async function getInvoices(params: {
     }
   }
 
-  // Pagination
   const page = params.page || 1;
   const limit = params.limit || 10;
   const skip = (page - 1) * limit;
@@ -377,61 +359,68 @@ export async function getInvoices(params: {
   };
 }
 
+// src/services/billingService.ts - Fix getInvoiceById function
+
 // Fetch complete detail for invoice breakdown
 export async function getInvoiceById(id: number) {
-  const includeObj: any = {
+  const baseInclude: any = {
     guest: { select: { id: true, name: true, email: true, phoneNumber: true } },
+    payments: {
+      orderBy: { recorded_at: "desc" },
+    },
     booking: {
       include: {
         room: true,
-        payments: {
-          orderBy: { recorded_at: "desc" },
-        },
-        {{#if kitchen}}
-        foodOrders: {
-          select: {
-            id: true,
-            total_amount: true,
-            order_type: true,
-            placed_at: true,
-            items: {
-              select: {
-                id: true,
-                quantity: true,
-                price: true,
-                subtotal: true,
-                foodItem: {
-                  select: {
-                    name: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-        {{/if}}
-        {{#if housekeeping}}
-        laundryRecords: true,
-        housekeepingTasks: {
-          where: { is_billable: true },
-        },
-        {{/if}}
+        // Remove payments from here - it doesn't exist on Booking model
       },
     },
   };
 
+  {{#if kitchen}}
+  // Add food orders only if kitchen module is enabled
+  baseInclude.booking.include.foodOrders = {
+    select: {
+      id: true,
+      total_amount: true,
+      order_type: true,
+      placed_at: true,
+      items: {
+        select: {
+          id: true,
+          quantity: true,
+          price: true,
+          subtotal: true,
+          foodItem: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      },
+    },
+  };
+  {{/if}}
+
+  {{#if housekeeping}}
+  // Add laundry and housekeeping only if housekeeping module is enabled
+  baseInclude.booking.include.laundryRecords = true;
+  baseInclude.booking.include.housekeepingTasks = {
+    where: { is_billable: true },
+  };
+  {{/if}}
+
   const invoice = await prisma.billingInvoice.findUnique({
     where: { invoice_id: id },
-    include: includeObj,
+    include: baseInclude,
   });
 
   if (!invoice) return null;
 
   {{#if kitchen}}
-  // Map foodOrders id to order_id and foodItem to menu_items so we don't break frontend expectations
+  // Map food orders only if kitchen module is enabled
   if (invoice.booking && invoice.booking.foodOrders) {
-    (invoice.booking as any).foodOrders = invoice.booking.foodOrders.map((fo) => {
-      const orderItems = (fo.items || []).map((item) => ({
+    (invoice.booking as any).foodOrders = invoice.booking.foodOrders.map((fo: any) => {
+      const orderItems = (fo.items || []).map((item: any) => ({
         ...item,
         unit_price: item.price,
         menu_items: item.foodItem,

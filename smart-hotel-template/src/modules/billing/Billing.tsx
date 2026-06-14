@@ -432,7 +432,7 @@ export default function Billing() {
         </div>
         <button
           onClick={() => setShowGenerateModal(true)}
-          className="flex items-center justify-center gap-2 px-4.5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity shrink-0"
+          className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity shrink-0"
         >
           <Plus size={15} /> Generate Invoice
         </button>

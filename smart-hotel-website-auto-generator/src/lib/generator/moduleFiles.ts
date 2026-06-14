@@ -437,8 +437,11 @@ export const MODULE_FILES: Record<ModuleId, Record<TierId, string[]>> = {
     intermediate: [
       "src/app/admin/billing/page.tsx",
       "src/app/admin/billing/[id]/page.tsx",
+      "src/app/admin/billing/[id]/print/page.tsx",
       "src/app/api/billing/route.ts",
       "src/app/api/billing/[id]/route.ts",
+      "src/app/api/billing/[id]/payments/route.ts",
+      "src/app/api/billing/reset/route.ts",
       "src/modules/billing/Billing.tsx",
       "src/modules/billing/InvoiceDetails.tsx",
       "src/services/billingService.ts",
@@ -668,10 +671,3 @@ export function getBaseFilesForTierFunc(tier: TierId): string[] {
   return BASE_FILES[tier] ?? BASE_FILES.advanced;
 }
 
-// export function getTierSpecificFilePath(filePath: string, tier: TierId): string {
-//   const mapping = TIER_SPECIFIC_FILES[filePath];
-//   if (mapping && mapping[tier]) {
-//     return mapping[tier];
-//   }
-//   return filePath;
-// }
