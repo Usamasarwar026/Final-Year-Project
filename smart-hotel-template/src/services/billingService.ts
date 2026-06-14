@@ -1,4 +1,5 @@
 // src/services/billingService.ts
+
 import { prisma } from "@/database/db";
 import { Prisma } from "@/generated/prisma/client";
 
@@ -15,9 +16,6 @@ export async function generateInvoice(
   options?: { tax_percent?: number; discount_percent?: number }
 ) {
   // Fetch booking details
-  // NOTE: foodOrders intentionally excluded — Kitchen module schema drift removed
-  // the `is_billed` column from food_orders. Food charges are calculated separately
-  // via prisma.foodOrder.findMany below.
   const booking = await prisma.booking.findUnique({
     where: { booking_id: bookingId },
     include: {
@@ -55,8 +53,12 @@ export async function generateInvoice(
   const pricePerNight = Number(room.price_per_night);
   const roomCharges = totalNights * pricePerNight;
 
-  // Fetch all additional service charges (Housekeeping tasks + Laundry)
-  // HousekeepingTasks that are billable
+  {{#if housekeeping}}
+  // ──────────────────────────────────────────────────────────
+  // HOUSEKEEPING MODULE: Service charges (Housekeeping + Laundry)
+  // ──────────────────────────────────────────────────────────
+  
+  // Fetch all additional service charges (Housekeeping tasks that are billable)
   const housekeepingTasks = await prisma.housekeepingTask.findMany({
     where: {
       booking_id: bookingId,
@@ -80,10 +82,17 @@ export async function generateInvoice(
   );
 
   const serviceCharges = housekeepingSum + laundrySum;
+  {{else}}
+  // No housekeeping module - service charges are zero
+  const serviceCharges = 0;
+  {{/if}}
 
+  {{#if kitchen}}
+  // ──────────────────────────────────────────────────────────
+  // KITCHEN MODULE: Food charges
+  // ──────────────────────────────────────────────────────────
+  
   // Fetch all food charges (Food orders)
-  // NOTE: Using select to avoid Kitchen module schema drift — `is_billed` and other
-  // columns no longer exist in the actual food_orders table in the DB.
   const foodOrders = await prisma.foodOrder.findMany({
     where: {
       booking_id: bookingId,
@@ -97,6 +106,10 @@ export async function generateInvoice(
     (sum, order) => sum + Number(order.total_amount || 0),
     0
   );
+  {{else}}
+  // No kitchen module - food charges are zero
+  const foodCharges = 0;
+  {{/if}}
 
   // Calculate subtotal
   const subtotal = roomCharges + serviceCharges + foodCharges;
@@ -282,13 +295,15 @@ export async function recordPayment(
   return result;
 }
 
-// Service to fetch invoice lists with parameters
+// Service to fetch invoice lists with parameters (with pagination)
 export async function getInvoices(params: {
   search?: string;
   payment_status?: string;
   startDate?: string;
   endDate?: string;
   guest_id?: string;
+  page?: number;
+  limit?: number;
 }) {
   const where: any = {};
 
@@ -316,8 +331,8 @@ export async function getInvoices(params: {
     const searchVal = params.search.trim();
     where.OR = [
       { invoice_number: { contains: searchVal, mode: "insensitive" } },
-      { guest_id: { contains: searchVal, mode: "insensitive" } },
       { guest: { name: { contains: searchVal, mode: "insensitive" } } },
+      { guest: { email: { contains: searchVal, mode: "insensitive" } } },
     ];
 
     const bookingIdNum = parseInt(searchVal);
@@ -326,66 +341,93 @@ export async function getInvoices(params: {
     }
   }
 
-  return await prisma.billingInvoice.findMany({
-    where,
-    include: {
-      guest: { select: { id: true, name: true, email: true, phoneNumber: true } },
-      booking: {
-        include: {
-          room: true,
+  // Pagination
+  const page = params.page || 1;
+  const limit = params.limit || 10;
+  const skip = (page - 1) * limit;
+
+  const [invoices, total] = await Promise.all([
+    prisma.billingInvoice.findMany({
+      where,
+      include: {
+        guest: { select: { id: true, name: true, email: true, phoneNumber: true } },
+        booking: {
+          include: {
+            room: true,
+          },
         },
       },
+      skip,
+      take: limit,
+      orderBy: { generated_at: "desc" },
+    }),
+    prisma.billingInvoice.count({ where }),
+  ]);
+
+  return {
+    invoices,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      hasNext: page * limit < total,
+      hasPrev: page > 1,
     },
-    orderBy: { generated_at: "desc" },
-  });
+  };
 }
 
 // Fetch complete detail for invoice breakdown
 export async function getInvoiceById(id: number) {
-  // NOTE: foodOrders uses select to avoid Kitchen module schema drift — `is_billed`
-  // and other Kitchen-added columns no longer exist in the actual food_orders DB table.
-  const invoice = await prisma.billingInvoice.findUnique({
-    where: { invoice_id: id },
-    include: {
-      guest: { select: { id: true, name: true, email: true, phoneNumber: true } },
-      booking: {
-        include: {
-          room: true,
-          foodOrders: {
-            select: {
-              id: true,
-              total_amount: true,
-              order_type: true,
-              placed_at: true,
-              items: {
-                select: {
-                  id: true,
-                  quantity: true,
-                  price: true,
-                  subtotal: true,
-                  foodItem: {
-                    select: {
-                      name: true,
-                    },
+  const includeObj: any = {
+    guest: { select: { id: true, name: true, email: true, phoneNumber: true } },
+    booking: {
+      include: {
+        room: true,
+        payments: {
+          orderBy: { recorded_at: "desc" },
+        },
+        {{#if kitchen}}
+        foodOrders: {
+          select: {
+            id: true,
+            total_amount: true,
+            order_type: true,
+            placed_at: true,
+            items: {
+              select: {
+                id: true,
+                quantity: true,
+                price: true,
+                subtotal: true,
+                foodItem: {
+                  select: {
+                    name: true,
                   },
                 },
               },
             },
           },
-          laundryRecords: true,
-          housekeepingTasks: {
-            where: { is_billable: true },
-          },
         },
-      },
-      payments: {
-        orderBy: { recorded_at: "desc" },
+        {{/if}}
+        {{#if housekeeping}}
+        laundryRecords: true,
+        housekeepingTasks: {
+          where: { is_billable: true },
+        },
+        {{/if}}
       },
     },
+  };
+
+  const invoice = await prisma.billingInvoice.findUnique({
+    where: { invoice_id: id },
+    include: includeObj,
   });
 
   if (!invoice) return null;
 
+  {{#if kitchen}}
   // Map foodOrders id to order_id and foodItem to menu_items so we don't break frontend expectations
   if (invoice.booking && invoice.booking.foodOrders) {
     (invoice.booking as any).foodOrders = invoice.booking.foodOrders.map((fo) => {
@@ -402,6 +444,35 @@ export async function getInvoiceById(id: number) {
       };
     });
   }
+  {{/if}}
 
   return invoice;
+}
+
+// Service to get billing summary for dashboard
+export async function getBillingSummary(guestId?: string) {
+  const where: any = {};
+  if (guestId) {
+    where.guest_id = guestId;
+  }
+
+  const [totalInvoices, paidInvoices, partialInvoices, unpaidInvoices, totalAmount, totalPaid, balanceDue] = await Promise.all([
+    prisma.billingInvoice.count({ where }),
+    prisma.billingInvoice.count({ where: { ...where, payment_status: "Paid" } }),
+    prisma.billingInvoice.count({ where: { ...where, payment_status: "Partial" } }),
+    prisma.billingInvoice.count({ where: { ...where, payment_status: "Unpaid" } }),
+    prisma.billingInvoice.aggregate({ where, _sum: { total_amount: true } }),
+    prisma.billingInvoice.aggregate({ where, _sum: { amount_paid: true } }),
+    prisma.billingInvoice.aggregate({ where, _sum: { balance_due: true } }),
+  ]);
+
+  return {
+    totalInvoices,
+    paidInvoices,
+    partialInvoices,
+    unpaidInvoices,
+    totalAmount: Number(totalAmount._sum.total_amount || 0),
+    totalPaid: Number(totalPaid._sum.amount_paid || 0),
+    balanceDue: Number(balanceDue._sum.balance_due || 0),
+  };
 }

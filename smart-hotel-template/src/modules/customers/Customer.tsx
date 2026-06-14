@@ -1,1298 +1,737 @@
-// src/modules/customers/Customers.tsx
+// src/modules/customer/CustomerDashboard.tsx
+
 "use client";
 
-import { useState, useMemo } from "react";
-import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useState, useCallback } from "react";
+import { useSession } from "next-auth/react";
+import { motion } from "framer-motion";
+import Link from "next/link";
 import {
-  Users,
-  Search,
-  X,
-  CheckCircle2,
-  XCircle,
-  Eye,
-  UserCheck,
-  UserX,
-  Edit3,
-  Save,
-  Phone,
-  Mail,
-  MapPin,
+  CalendarCheck,
   CreditCard,
-  Calendar,
-  CalendarDays,
   BedDouble,
-  Hash,
-  Clock,
-  Star,
-  Banknote,
-  UserPlus,
-  Globe,
-  Building2,
-  Loader2,
+  ChefHat,
+  Bell,
   RefreshCw,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  Loader2,
+  ArrowRight,
+  Shirt,
+  Star,
+  MapPin,
+  Moon,
+  Receipt,
+  Utensils,
 } from "lucide-react";
-import clsx from "clsx";
-import type { Customer, UpdateCustomerPayload } from "@/types/customers";
-import {
-  useCustomerModule,
-  useCustomerProfile,
-} from "@/hooks/useCustomerModule";
 
-// ── Booking status config ─────────────────────────────────────
-const STATUS_CONFIG: Record<
-  string,
-  { bg: string; text: string; dot: string; label: string }
-> = {
-  Pending: {
-    bg: "bg-amber-500/10",
-    text: "text-amber-500",
-    dot: "bg-amber-500",
-    label: "Pending",
-  },
-  Confirmed: {
-    bg: "bg-blue-500/10",
-    text: "text-blue-500",
-    dot: "bg-blue-500",
-    label: "Confirmed",
-  },
-  CheckedIn: {
-    bg: "bg-green-500/10",
-    text: "text-green-500",
-    dot: "bg-green-500",
-    label: "Checked In",
-  },
-  CheckedOut: {
-    bg: "bg-muted",
-    text: "text-muted-foreground",
-    dot: "bg-muted-foreground",
-    label: "Checked Out",
-  },
-  Cancelled: {
-    bg: "bg-red-500/10",
-    text: "text-red-500",
-    dot: "bg-red-500",
-    label: "Cancelled",
-  },
-};
+{{#if booking}}
+// Booking module imports
+{{/if}}
 
-// ── Toast ─────────────────────────────────────────────────────
-function Toast({ msg, type }: { msg: string; type: "success" | "error" }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16, x: 16 }}
-      animate={{ opacity: 1, y: 0, x: 0 }}
-      exit={{ opacity: 0, y: 16, x: 16 }}
-      className={clsx(
-        "fixed bottom-6 right-6 z-[600] flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-2xl text-sm font-medium",
-        type === "success"
-          ? "bg-emerald-500 text-white"
-          : "bg-red-500 text-white",
-      )}
-    >
-      {type === "success" ? <CheckCircle2 size={15} /> : <XCircle size={15} />}
-      {msg}
-    </motion.div>
-  );
+{{#if kitchen}}
+// Kitchen module imports
+{{/if}}
+
+{{#if billing}}
+// Billing module imports
+{{/if}}
+
+{{#if housekeeping}}
+// Housekeeping module imports
+{{/if}}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+{{#if booking}}
+interface ActiveBooking {
+  booking_id: number;
+  room_number: string;
+  room_type: string;
+  floor: number;
+  cleaning_status: string;
+  check_in_date: string;
+  check_out_date: string;
+  total_nights: number;
+  status: string;
 }
 
-// ── Avatar ────────────────────────────────────────────────────
-function Avatar({
-  name,
-  image,
-  size = "md",
-}: {
-  name: string;
-  image?: string | null;
-  size?: "sm" | "md" | "lg" | "xl";
-}) {
-  const sizes = {
-    sm: "w-8 h-8 text-xs",
-    md: "w-10 h-10 text-sm",
-    lg: "w-14 h-14 text-base",
-    xl: "w-20 h-20 text-xl",
+interface RecentBooking {
+  booking_id: number;
+  room_number: string;
+  room_type: string;
+  check_in: string;
+  check_out: string;
+  status: string;
+  total_nights: number;
+}
+{{/if}}
+
+{{#if billing}}
+interface RecentInvoice {
+  invoice_id: number;
+  invoice_number: string;
+  room_number: string;
+  room_type: string;
+  total_amount: number;
+  amount_paid: number;
+  balance_due: number;
+  payment_status: string;
+  generated_at: string;
+}
+{{/if}}
+
+{{#if kitchen}}
+interface RecentOrder {
+  id: number;
+  order_type: string;
+  status: string;
+  total_amount: number;
+  customer_name: string;
+  created_at: string;
+  items: string[];
+}
+{{/if}}
+
+interface DashboardData {
+  {{#if booking}}
+  activeBooking: ActiveBooking | null;
+  bookings: {
+    total: number;
+    confirmed: number;
+    cancelled: number;
+    recent: RecentBooking[];
   };
-  const initials = name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-  const colors = [
-    "bg-blue-500",
-    "bg-violet-500",
-    "bg-emerald-500",
-    "bg-amber-500",
-    "bg-rose-500",
-    "bg-cyan-500",
-  ];
-  const color = colors[name.charCodeAt(0) % colors.length];
-
-  if (image) {
-    return (
-      <div
-        className={clsx(
-          sizes[size],
-          "rounded-full overflow-hidden shrink-0 border border-border",
-        )}
-      >
-        <Image
-          src={image}
-          alt={name}
-          width={80}
-          height={80}
-          className="w-full h-full object-cover"
-          unoptimized
-        />
-      </div>
-    );
-  }
-  return (
-    <div
-      className={clsx(
-        sizes[size],
-        color,
-        "rounded-full flex items-center justify-center shrink-0 text-white font-bold",
-      )}
-    >
-      {initials}
-    </div>
-  );
+  {{/if}}
+  {{#if billing}}
+  billing: {
+    totalInvoices: number;
+    totalSpent: number;
+    totalPaid: number;
+    balanceDue: number;
+    recentInvoices: RecentInvoice[];
+  };
+  {{/if}}
+  {{#if kitchen}}
+  foodOrders: { recent: RecentOrder[] };
+  {{/if}}
+  alerts: {
+    unreadNotifications: number;
+    {{#if housekeeping}}
+    pendingLaundry: number;
+    {{/if}}
+  };
 }
 
-// ── Status Badge ──────────────────────────────────────────────
-function CustomerBadge({
-  isActive,
-  // isVerified,
-}: {
-  isActive: boolean;
-  // isVerified: boolean;
-}) {
-  if (!isActive)
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-500/10 text-red-500">
-        <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Suspended
-      </span>
-    );
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const fmt = (d: string) =>
+  new Date(d).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
+const fmtCurrency = (n: number) =>
+  `PKR ${new Intl.NumberFormat("en-US", { minimumFractionDigits: 0 }).format(n)}`;
+
+{{#if booking}}
+function daysUntilCheckout(checkoutDate: string): number {
+  const now = new Date();
+  const checkout = new Date(checkoutDate);
+  return Math.ceil((checkout.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function BookingStatusBadge({ status }: { status: string }) {
+  const configs: Record<string, { cls: string; label: string; icon: any }> = {
+    Pending: { cls: "bg-amber-100 text-amber-800 border-amber-200", label: "Pending", icon: Clock },
+    Confirmed: { cls: "bg-blue-100 text-blue-800 border-blue-200", label: "Confirmed", icon: CheckCircle2 },
+    CheckedIn: { cls: "bg-emerald-100 text-emerald-800 border-emerald-200", label: "Checked In", icon: CheckCircle2 },
+    "Checked-In": { cls: "bg-emerald-100 text-emerald-800 border-emerald-200", label: "Checked In", icon: CheckCircle2 },
+    CheckedOut: { cls: "bg-gray-100 text-gray-700 border-gray-200", label: "Checked Out", icon: CheckCircle2 },
+    "Checked-Out": { cls: "bg-gray-100 text-gray-700 border-gray-200", label: "Checked Out", icon: CheckCircle2 },
+    Cancelled: { cls: "bg-rose-100 text-rose-800 border-rose-200", label: "Cancelled", icon: XCircle },
+  };
+  const c = configs[status] ?? configs["Pending"];
+  const Icon = c.icon;
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-500">
-      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Active
+    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${c.cls}`}>
+      <Icon size={10} />
+      {c.label}
     </span>
   );
 }
+{{/if}}
 
-// ── Stat Card ─────────────────────────────────────────────────
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  color,
-  sub,
-}: {
-  label: string;
-  value: string | number;
-  icon: React.ElementType;
-  color: string;
-  sub?: string;
-}) {
+{{#if billing}}
+function PaymentStatusBadge({ status }: { status: string }) {
+  const configs: Record<string, string> = {
+    Paid: "bg-emerald-100 text-emerald-800 border-emerald-200",
+    Partial: "bg-amber-100 text-amber-800 border-amber-200",
+    Unpaid: "bg-rose-100 text-rose-800 border-rose-200",
+  };
   return (
-    <div className="bg-background border border-border rounded-2xl p-4 flex items-start gap-3">
-      <div
-        className={clsx(
-          "w-9 h-9 rounded-xl flex items-center justify-center shrink-0",
-          color,
-        )}
-      >
-        <Icon size={15} className="text-white" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-xl font-bold text-foreground leading-none">
-          {value}
-        </p>
-        {sub && (
-          <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>
-        )}
-        <p className="text-xs text-muted-foreground mt-1">{label}</p>
-      </div>
-    </div>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${configs[status] ?? configs["Unpaid"]}`}>
+      {status}
+    </span>
   );
 }
+{{/if}}
 
-// ── Edit Form ─────────────────────────────────────────────────
-function EditForm({
-  initial,
-  onSave,
-  onCancel,
-}: {
-  initial: Customer;
-  onSave: (data: UpdateCustomerPayload) => Promise<void>;
-  onCancel: () => void;
-}) {
-  const [form, setForm] = useState({
-    name: initial.name,
-    email: initial.email,
-    phoneNumber: initial.phoneNumber ?? "",
-    cnic: initial.cnic ?? "",
-    address: initial.address ?? "",
-    city: initial.city ?? "",
-    country: initial.country ?? "",
-    dateOfBirth: initial.dateOfBirth ? initial.dateOfBirth.split("T")[0] : "",
-  });
-  const [saving, setSaving] = useState(false);
-
-  const set =
-    (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
-      setForm((f) => ({ ...f, [k]: e.target.value }));
-
-  const handleSave = async () => {
-    setSaving(true);
-    await onSave({
-      name: form.name.trim(),
-      email: form.email.trim(),
-      phoneNumber: form.phoneNumber.trim() || undefined,
-      cnic: form.cnic.trim() || undefined,
-      address: form.address.trim() || undefined,
-      city: form.city.trim() || undefined,
-      country: form.country.trim() || undefined,
-      dateOfBirth: form.dateOfBirth || undefined,
-    });
-    setSaving(false);
+{{#if kitchen}}
+function OrderStatusBadge({ status }: { status: string }) {
+  const configs: Record<string, string> = {
+    Pending: "bg-amber-100 text-amber-800",
+    Accepted: "bg-blue-100 text-blue-800",
+    Preparing: "bg-orange-100 text-orange-800",
+    Ready: "bg-sky-100 text-sky-800",
+    Delivered: "bg-emerald-100 text-emerald-800",
+    Cancelled: "bg-rose-100 text-rose-800",
   };
-
-  const inputCls =
-    "w-full px-3 py-2 rounded-xl border border-border bg-muted/40 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 transition-colors";
-
-  const fields: {
-    key: keyof typeof form;
-    label: string;
-    icon: React.ElementType;
-    type?: string;
-    placeholder: string;
-  }[] = [
-    { key: "name", label: "Full Name", icon: Users, placeholder: "John Doe" },
-    {
-      key: "email",
-      label: "Email",
-      icon: Mail,
-      type: "email",
-      placeholder: "email@example.com",
-    },
-    {
-      key: "phoneNumber",
-      label: "Phone",
-      icon: Phone,
-      placeholder: "+92 300 0000000",
-    },
-    {
-      key: "cnic",
-      label: "CNIC",
-      icon: CreditCard,
-      placeholder: "12345-1234567-1",
-    },
-    {
-      key: "address",
-      label: "Address",
-      icon: MapPin,
-      placeholder: "Street address",
-    },
-    { key: "city", label: "City", icon: Building2, placeholder: "Karachi" },
-    { key: "country", label: "Country", icon: Globe, placeholder: "Pakistan" },
-    {
-      key: "dateOfBirth",
-      label: "Date of Birth",
-      icon: Calendar,
-      type: "date",
-      placeholder: "",
-    },
-  ];
-
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2.5">
-        {fields.map(({ key, label, icon: Icon, type, placeholder }) => (
-          <div
-            key={key}
-            className={clsx(
-              "space-y-1",
-              key === "name" || key === "email" || key === "address"
-                ? "col-span-2"
-                : "",
-            )}
-          >
-            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-              <Icon size={10} /> {label}
-            </label>
-            <input
-              type={type ?? "text"}
-              value={form[key]}
-              onChange={set(key)}
-              placeholder={placeholder}
-              className={inputCls}
-            />
-          </div>
-        ))}
-      </div>
-
-      <div className="flex gap-2 pt-1">
-        <button
-          onClick={onCancel}
-          className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-60 transition-opacity"
-        >
-          {saving ? (
-            <Loader2 size={13} className="animate-spin" />
-          ) : (
-            <Save size={13} />
-          )}
-          {saving ? "Saving…" : "Save Changes"}
-        </button>
-      </div>
-    </div>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${configs[status] ?? "bg-gray-100 text-gray-700"}`}>
+      {status}
+    </span>
   );
 }
+{{/if}}
 
-// ── Profile Drawer ────────────────────────────────────────────
-function ProfileDrawer({
-  customerId,
-  onClose,
-  onUpdate,
-}: {
-  customerId: string;
-  onClose: () => void;
-  onUpdate: (
-    id: string,
-    data: UpdateCustomerPayload,
-  ) => Promise<{ ok: boolean; error?: string }>;
-}) {
-  const { profile, loading, error, refresh, setProfile } =
-    useCustomerProfile(customerId);
-  const [tab, setTab] = useState<"overview" | "bookings" | "account">(
-    "overview",
-  );
-  const [editing, setEditing] = useState(false);
-  const [toast, setToast] = useState<{
-    msg: string;
-    type: "success" | "error";
-  } | null>(null);
+// ── Main Component ────────────────────────────────────────────────────────────
+export default function CustomerDashboard() {
+  const { data: session } = useSession();
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const showToast = (msg: string, type: "success" | "error" = "success") => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
+  const user = session?.user;
+  const greeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return "Good morning";
+    if (h < 17) return "Good afternoon";
+    return "Good evening";
   };
 
-  const handleUpdate = async (data: UpdateCustomerPayload) => {
-    const res = await onUpdate(customerId, data);
-    if (res.ok) {
-      refresh();
-      setEditing(false);
-      showToast("Customer updated successfully");
-    } else {
-      showToast(res.error ?? "Failed to update", "error");
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/customers/dashboard");
+      if (!res.ok) throw new Error("Failed to load dashboard");
+      const json = await res.json();
+      setData(json);
+    } catch (e: any) {
+      setError(e.message || "Unexpected error");
+    } finally {
+      setLoading(false);
     }
-  };
+  }, []);
 
-  const handleToggleSuspend = async () => {
-    if (!profile) return;
-    const res = await onUpdate(customerId, { isActive: !profile.isActive });
-    if (res.ok) {
-      refresh();
-      showToast(profile.isActive ? "Customer suspended" : "Customer activated");
-    } else {
-      showToast(res.error ?? "Failed", "error");
-    }
-  };
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
-  return (
-    <>
-      {/* Backdrop */}
-      <motion.div
-        className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-      />
-
-      {/* Drawer */}
-      <motion.div
-        className="fixed right-0 top-0 bottom-0 z-[250] w-full max-w-xl bg-background border-l border-border shadow-2xl flex flex-col"
-        initial={{ x: "100%" }}
-        animate={{ x: 0 }}
-        exit={{ x: "100%" }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
-          <h2 className="font-bold text-foreground">Customer Profile</h2>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          >
-            <X size={15} />
-          </button>
+  // ── Loading State ─────────────────────────────────────────────────────────
+  if (loading && !data) {
+    return (
+      <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+        <div className="h-40 bg-gradient-to-r from-gray-100 to-gray-50 rounded-3xl animate-pulse" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-28 bg-gray-100 rounded-2xl animate-pulse" />
+          ))}
         </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 h-72 bg-gray-100 rounded-2xl animate-pulse" />
+          <div className="h-72 bg-gray-100 rounded-2xl animate-pulse" />
+        </div>
+      </div>
+    );
+  }
 
-        {/* Content */}
-        <div
-          className="flex-1 overflow-y-auto"
-          style={{ scrollbarWidth: "thin" }}
+  // ── Error State ───────────────────────────────────────────────────────────
+  if (error) {
+    return (
+      <div className="p-6 max-w-md mx-auto mt-20 text-center space-y-4">
+        <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mx-auto">
+          <AlertTriangle className="w-8 h-8 text-rose-500" />
+        </div>
+        <h2 className="text-lg font-semibold text-foreground">Failed to Load Dashboard</h2>
+        <p className="text-sm text-muted-foreground">{error}</p>
+        <button
+          onClick={fetchData}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl hover:bg-primary/90 transition"
         >
-          {loading ? (
-            <div className="flex flex-col items-center justify-center h-full gap-3">
-              <Loader2
-                size={24}
-                className="animate-spin text-muted-foreground"
-              />
-              <p className="text-sm text-muted-foreground">Loading profile…</p>
-            </div>
-          ) : error ? (
-            <div className="flex flex-col items-center justify-center h-full gap-3">
-              <p className="text-sm text-red-500">{error}</p>
-              <button
-                onClick={refresh}
-                className="text-sm text-primary hover:underline flex items-center gap-1"
-              >
-                <RefreshCw size={12} /> Retry
-              </button>
-            </div>
-          ) : profile ? (
-            <div className="space-y-0">
-              {/* Hero */}
-              <div className="px-5 pt-5 pb-4 space-y-4">
-                <div className="flex items-start gap-4">
-                  <Avatar
-                    name={profile.name}
-                    image={profile.profileImage}
-                    size="xl"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <h3 className="text-lg font-bold text-foreground truncate">
-                          {profile.name}
-                        </h3>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {profile.email}
-                        </p>
-                      </div>
-                      <CustomerBadge
-                        isActive={profile.isActive}
-                        // isVerified={profile.isVerified}
-                      />
-                    </div>
-                    {profile.phoneNumber && (
-                      <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                        <Phone size={10} /> {profile.phoneNumber}
-                      </p>
-                    )}
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {profile.createdByAdmin && (
-                        <span className="px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-500 text-[10px] font-semibold">
-                          Admin Created
-                        </span>
-                      )}
-                      {profile.lastLogin && (
-                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                          <Clock size={9} /> Last login{" "}
-                          {new Date(profile.lastLogin).toLocaleDateString()}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
+          <RefreshCw className="w-4 h-4" /> Retry
+        </button>
+      </div>
+    );
+  }
 
-                {/* Stats row */}
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    {
-                      label: "Total Bookings",
-                      value: profile.stats.totalBookings,
-                      icon: Hash,
-                      color: "bg-primary",
-                    },
-                    {
-                      label: "Total Spent",
-                      value: `$${profile.stats.totalSpent.toFixed(0)}`,
-                      icon: Banknote,
-                      color: "bg-emerald-500",
-                    },
-                    {
-                      label: "Completed",
-                      value: profile.stats.completedStays,
-                      icon: Star,
-                      color: "bg-amber-500",
-                    },
-                  ].map(({ label, value, icon: Icon, color }) => (
-                    <div
-                      key={label}
-                      className="bg-muted/50 border border-border rounded-xl p-3 text-center"
-                    >
-                      <div
-                        className={clsx(
-                          "w-7 h-7 rounded-lg mx-auto mb-1.5 flex items-center justify-center",
-                          color,
-                        )}
-                      >
-                        <Icon size={12} className="text-white" />
-                      </div>
-                      <p className="text-base font-bold text-foreground">
-                        {value}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {label}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
+  {{#if booking}}
+  const activeBooking = data?.activeBooking;
+  const bookings = data?.bookings;
+  const daysLeft = activeBooking ? daysUntilCheckout(activeBooking.check_out_date) : 0;
+  {{/if}}
 
-              {/* Tabs */}
-              <div className="px-5 border-b border-border">
-                <div className="flex gap-0">
-                  {(["overview", "bookings", "account"] as const).map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => {
-                        setTab(t);
-                        setEditing(false);
-                      }}
-                      className={clsx(
-                        "px-4 py-2.5 text-sm font-medium border-b-2 transition-all capitalize",
-                        tab === t
-                          ? "border-primary text-foreground"
-                          : "border-transparent text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      {t === "overview"
-                        ? "Overview"
-                        : t === "bookings"
-                          ? `Bookings (${profile.stats.totalBookings})`
-                          : "Account"}
-                    </button>
-                  ))}
-                </div>
-              </div>
+  {{#if billing}}
+  const billing = data?.billing;
+  {{/if}}
 
-              {/* Tab Content */}
-              <div className="px-5 py-4 space-y-4">
-                {/* ── Overview Tab ── */}
-                {tab === "overview" && (
-                  <div className="space-y-4">
-                    {editing ? (
-                      <EditForm
-                        initial={profile}
-                        onSave={handleUpdate}
-                        onCancel={() => setEditing(false)}
-                      />
-                    ) : (
-                      <>
-                        {/* Info grid */}
-                        <div className="space-y-2">
-                          {[
-                            {
-                              icon: Mail,
-                              label: "Email",
-                              value: profile.email,
-                            },
-                            {
-                              icon: Phone,
-                              label: "Phone",
-                              value: profile.phoneNumber,
-                            },
-                            {
-                              icon: CreditCard,
-                              label: "CNIC",
-                              value: profile.cnic,
-                            },
-                            {
-                              icon: Calendar,
-                              label: "Date of Birth",
-                              value: profile.dateOfBirth
-                                ? new Date(
-                                    profile.dateOfBirth,
-                                  ).toLocaleDateString("en-US", {
-                                    day: "numeric",
-                                    month: "long",
-                                    year: "numeric",
-                                  })
-                                : null,
-                            },
-                            {
-                              icon: MapPin,
-                              label: "Address",
-                              value:
-                                [profile.address, profile.city, profile.country]
-                                  .filter(Boolean)
-                                  .join(", ") || null,
-                            },
-                          ].map(({ icon: Icon, label, value }) =>
-                            value ? (
-                              <div
-                                key={label}
-                                className="flex items-start gap-3 py-2 border-b border-border/50 last:border-0"
-                              >
-                                <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center shrink-0 mt-0.5">
-                                  <Icon
-                                    size={12}
-                                    className="text-muted-foreground"
-                                  />
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">
-                                    {label}
-                                  </p>
-                                  <p className="text-sm text-foreground mt-0.5 break-all">
-                                    {value}
-                                  </p>
-                                </div>
-                              </div>
-                            ) : null,
-                          )}
-                        </div>
+  {{#if kitchen}}
+  const foodOrders = data?.foodOrders;
+  {{/if}}
 
-                        {/* Extended stats */}
-                        <div className="grid grid-cols-2 gap-2 pt-2">
-                          <StatCard
-                            label="Active Bookings"
-                            value={profile.stats.activeBookings}
-                            icon={CalendarDays}
-                            color="bg-blue-500"
-                          />
-                          <StatCard
-                            label="Cancelled"
-                            value={profile.stats.cancelledBookings}
-                            icon={XCircle}
-                            color="bg-red-500"
-                          />
-                          <StatCard
-                            label="Avg Stay"
-                            value={`${profile.stats.avgNightsPerStay}n`}
-                            icon={BedDouble}
-                            color="bg-violet-500"
-                            sub="avg nights/stay"
-                          />
-                          <StatCard
-                            label="Member Since"
-                            value={new Date(
-                              profile.createdAt,
-                            ).toLocaleDateString("en-US", {
-                              month: "short",
-                              year: "numeric",
-                            })}
-                            icon={Star}
-                            color="bg-amber-500"
-                          />
-                        </div>
+  const alerts = data?.alerts;
 
-                        <button
-                          onClick={() => setEditing(true)}
-                          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
-                        >
-                          <Edit3 size={13} /> Edit Profile
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )}
+  // Build stat cards based on available modules
+  const statCards = [];
 
-                {/* ── Bookings Tab ── */}
-                {tab === "bookings" && (
-                  <div className="space-y-2.5">
-                    {profile.recentBookings.length === 0 ? (
-                      <div className="py-12 text-center">
-                        <BedDouble
-                          size={28}
-                          className="mx-auto mb-2 text-muted-foreground/20"
-                        />
-                        <p className="text-sm text-muted-foreground">
-                          No bookings yet
-                        </p>
-                      </div>
-                    ) : (
-                      profile.recentBookings.map((b) => {
-                        const sc =
-                          STATUS_CONFIG[b.status] ?? STATUS_CONFIG.Pending;
-                        const photo = b.room?.photos?.[0];
-                        return (
-                          <motion.div
-                            key={b.booking_id}
-                            initial={{ opacity: 0, y: 4 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="flex gap-3 p-3 bg-muted/30 border border-border rounded-xl hover:bg-muted/50 transition-colors"
-                          >
-                            {/* Room photo */}
-                            <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-muted border border-border">
-                              {photo ? (
-                                <Image
-                                  src={photo}
-                                  alt=""
-                                  width={56}
-                                  height={56}
-                                  className="w-full h-full object-cover"
-                                  unoptimized
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <BedDouble
-                                    size={16}
-                                    className="text-muted-foreground/20"
-                                  />
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="min-w-0">
-                                  <p className="text-sm font-semibold text-foreground truncate">
-                                    {b.room
-                                      ? `Room ${b.room.room_number} · ${b.room.room_type}`
-                                      : "—"}
-                                  </p>
-                                  <p className="text-[11px] text-muted-foreground">
-                                    {new Date(
-                                      b.check_in_date,
-                                    ).toLocaleDateString("en-US", {
-                                      day: "numeric",
-                                      month: "short",
-                                    })}
-                                    {" → "}
-                                    {new Date(
-                                      b.check_out_date,
-                                    ).toLocaleDateString("en-US", {
-                                      day: "numeric",
-                                      month: "short",
-                                      year: "numeric",
-                                    })}
-                                    {" · "}
-                                    {b.total_nights}n
-                                  </p>
-                                </div>
-                                <span
-                                  className={clsx(
-                                    "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0",
-                                    sc.bg,
-                                    sc.text,
-                                  )}
-                                >
-                                  <span
-                                    className={clsx(
-                                      "w-1.5 h-1.5 rounded-full",
-                                      sc.dot,
-                                    )}
-                                  />
-                                  {sc.label}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between mt-1.5">
-                                <p className="text-xs font-bold text-foreground">
-                                  ${b.total_amount.toFixed(0)}
-                                </p>
-                                <p className="text-[10px] text-muted-foreground">
-                                  #{b.booking_id} ·{" "}
-                                  {b.source === "ADMIN"
-                                    ? "Admin booking"
-                                    : "Self-booked"}
-                                </p>
-                              </div>
-                            </div>
-                          </motion.div>
-                        );
-                      })
-                    )}
-                    {profile.stats.totalBookings > 10 && (
-                      <p className="text-xs text-muted-foreground text-center py-2">
-                        Showing latest 10 of {profile.stats.totalBookings}{" "}
-                        bookings
-                      </p>
-                    )}
-                  </div>
-                )}
+  {{#if booking}}
+  statCards.push({
+    label: "Total Bookings",
+    value: bookings?.total || 0,
+    icon: CalendarCheck,
+    bg: "bg-indigo-50 border-indigo-100",
+    iconColor: "text-indigo-600",
+    href: "/customer/booking",
+  });
+  {{/if}}
 
-                {/* ── Account Tab ── */}
-                {tab === "account" && (
-                  <div className="space-y-3">
-                    {/* Account info */}
-                    <div className="space-y-2">
-                      {[
-                        {
-                          label: "Account Status",
-                          value: profile.isActive ? "Active" : "Suspended",
-                          good: profile.isActive,
-                        },
-                        
-                        {
-                          label: "Created By",
-                          value: profile.createdByAdmin
-                            ? "Admin"
-                            : "Self-Registration",
-                          good: true,
-                        },
-                        {
-                          label: "Member Since",
-                          value: new Date(profile.createdAt).toLocaleDateString(
-                            "en-US",
-                            { day: "numeric", month: "long", year: "numeric" },
-                          ),
-                          good: true,
-                        },
-                        {
-                          label: "Last Updated",
-                          value: new Date(profile.updatedAt).toLocaleDateString(
-                            "en-US",
-                            { day: "numeric", month: "long", year: "numeric" },
-                          ),
-                          good: true,
-                        },
-                        // {
-                        //   label: "Last Login",
-                        //   value: profile.lastLogin
-                        //     ? new Date(profile.lastLogin).toLocaleString()
-                        //     : "Never",
-                        //   good: !!profile.lastLogin,
-                        // },
-                      ].map(({ label, value, good }) => (
-                        <div
-                          key={label}
-                          className="flex items-center justify-between py-2.5 border-b border-border/50 last:border-0"
-                        >
-                          <p className="text-sm text-muted-foreground">
-                            {label}
-                          </p>
-                          <p
-                            className={clsx(
-                              "text-sm font-semibold",
-                              good
-                                ? "text-foreground"
-                                : "text-muted-foreground",
-                            )}
-                          >
-                            {value}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
+  {{#if billing}}
+  statCards.push({
+    label: "Total Invoices",
+    value: billing?.totalInvoices || 0,
+    icon: Receipt,
+    bg: "bg-teal-50 border-teal-100",
+    iconColor: "text-teal-600",
+    href: "/customer/billing",
+  });
+  
+  statCards.push({
+    label: "Balance Due",
+    value: fmtCurrency(billing?.balanceDue || 0),
+    icon: CreditCard,
+    bg: (billing?.balanceDue || 0) > 0 ? "bg-rose-50 border-rose-100" : "bg-emerald-50 border-emerald-100",
+    iconColor: (billing?.balanceDue || 0) > 0 ? "text-rose-600" : "text-emerald-600",
+    href: "/customer/billing",
+  });
+  {{/if}}
 
-                    {/* Actions */}
-                    <div className="space-y-2 pt-2">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        Account Actions
-                      </p>
+  statCards.push({
+    label: "Notifications",
+    value: alerts?.unreadNotifications || 0,
+    icon: Bell,
+    bg: (alerts?.unreadNotifications || 0) > 0 ? "bg-amber-50 border-amber-100" : "bg-gray-50 border-gray-100",
+    iconColor: (alerts?.unreadNotifications || 0) > 0 ? "text-amber-600" : "text-gray-500",
+    href: "/customer/notifications",
+  });
 
+  return (
+    <div className="p-4 sm:p-6 space-y-6 max-w-[1400px] mx-auto">
 
-                      <button
-                        onClick={handleToggleSuspend}
-                        className={clsx(
-                          "w-full flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm font-medium transition-colors",
-                          profile.isActive
-                            ? "border-red-500/30 text-red-500 hover:bg-red-500/10"
-                            : "border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10",
-                        )}
-                      >
-                        {profile.isActive ? (
-                          <UserX size={15} />
-                        ) : (
-                          <UserCheck size={15} />
-                        )}
-                        {profile.isActive
-                          ? "Suspend Account"
-                          : "Activate Account"}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : null}
+      {/* ── Welcome Hero Banner ────────────────────────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 bg-gradient-to-br from-primary via-primary/90 to-primary/70 text-white shadow-xl"
+      >
+        <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-white/5 translate-x-16 -translate-y-16 pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full bg-white/5 -translate-x-12 translate-y-12 pointer-events-none" />
+        <div className="absolute top-6 right-6 w-32 h-32 rounded-full bg-gold/10 pointer-events-none" />
+
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <p className="text-white/70 text-sm font-medium mb-1">
+              {greeting()}, welcome back 👋
+            </p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+              {user?.name ?? "Valued Guest"}
+            </h1>
+            <p className="text-white/60 text-sm mt-1">
+              {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {(alerts?.unreadNotifications || 0) > 0 && (
+              <Link href="/customer/notifications" className="flex items-center gap-2 px-4 py-2.5 bg-white/15 hover:bg-white/25 backdrop-blur-sm rounded-xl text-sm font-semibold border border-white/20 transition-all">
+                <Bell size={15} />
+                {alerts?.unreadNotifications} unread
+              </Link>
+            )}
+            <button
+              onClick={fetchData}
+              disabled={loading}
+              className="p-2.5 bg-white/15 hover:bg-white/25 rounded-xl border border-white/20 transition-all"
+            >
+              <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
+            </button>
+          </div>
         </div>
       </motion.div>
 
-      {/* Toast inside drawer */}
-      <AnimatePresence>
-        {toast && <Toast msg={toast.msg} type={toast.type} />}
-      </AnimatePresence>
-    </>
-  );
-}
-
-// ── Main Customers Page ───────────────────────────────────────
-export default function Customers() {
-  const { customers, loading, error, refresh, updateCustomer } =
-    useCustomerModule();
-
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<
-    "all" | "active" | "suspended"
-  >("all");
-  const [sourceFilter, setSourceFilter] = useState<"all" | "admin" | "self">(
-    "all",
-  );
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [toast, setToast] = useState<{
-    msg: string;
-    type: "success" | "error";
-  } | null>(null);
-
-  const showToast = (msg: string, type: "success" | "error" = "success") => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
-  };
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return customers.filter((c) => {
-      const matchesSearch =
-        !q ||
-        c.name.toLowerCase().includes(q) ||
-        c.email.toLowerCase().includes(q) ||
-        (c.phoneNumber ?? "").includes(q) ||
-        (c.cnic ?? "").includes(q) ||
-        (c.city ?? "").toLowerCase().includes(q);
-
-      const matchesStatus =
-        statusFilter === "all" ||
-        (statusFilter === "active" && c.isActive) ||
-        (statusFilter === "suspended" && !c.isActive);
-
-      const matchesSource =
-        sourceFilter === "all" ||
-        (sourceFilter === "admin" && c.createdByAdmin) ||
-        (sourceFilter === "self" && !c.createdByAdmin);
-
-      return matchesSearch && matchesStatus && matchesSource;
-    });
-  }, [customers, search, statusFilter, sourceFilter]);
-
-  const stats = {
-    total: customers.length,
-    active: customers.filter((c) => c.isActive).length,
-    suspended: customers.filter((c) => !c.isActive).length,
-    adminCreated: customers.filter((c) => c.createdByAdmin).length,
-  };
-
-  const handleUpdate = async (id: string, data: UpdateCustomerPayload) => {
-    return updateCustomer(id, data);
-  };
-
-  const selCls =
-    "px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:border-accent/50 transition-colors";
-
-  return (
-    <div className="p-6 lg:p-8 space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Customers</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage all registered and admin-created customers
-          </p>
-        </div>
-        <button
-          onClick={refresh}
-          className="p-2.5 rounded-xl border border-border text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          title="Refresh"
+      {{#if booking}}
+      {/* ── Active Stay Card ───────────────────────────────────────────────── */}
+      {activeBooking ? (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="relative overflow-hidden rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-5 sm:p-6 shadow-sm"
         >
-          <RefreshCw size={15} />
-        </button>
-      </div>
+          <div className="flex flex-col sm:flex-row gap-5 sm:items-center justify-between">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-emerald-100 rounded-xl border border-emerald-200 flex-shrink-0">
+                <BedDouble className="w-6 h-6 text-emerald-700" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Currently Staying</span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-200 text-emerald-800 rounded-full text-[10px] font-bold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                    LIVE
+                  </span>
+                </div>
+                <h2 className="text-xl font-bold text-emerald-900">
+                  Room {activeBooking.room_number}
+                  <span className="ml-2 text-sm font-medium text-emerald-700">— {activeBooking.room_type}</span>
+                </h2>
+                <div className="flex flex-wrap gap-3 mt-2 text-xs text-emerald-700 font-medium">
+                  <span className="flex items-center gap-1"><MapPin size={11} /> Floor {activeBooking.floor}</span>
+                  <span className="flex items-center gap-1"><CalendarCheck size={11} /> Check-in: {fmt(activeBooking.check_in_date)}</span>
+                  <span className="flex items-center gap-1"><CalendarCheck size={11} /> Check-out: {fmt(activeBooking.check_out_date)}</span>
+                  <span className="flex items-center gap-1"><Moon size={11} /> {activeBooking.total_nights} night{activeBooking.total_nights !== 1 ? "s" : ""}</span>
+                </div>
+              </div>
+            </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {[
-          {
-            label: "Total Customers",
-            value: stats.total,
-            icon: Users,
-            color: "bg-primary",
-          },
-          {
-            label: "Active",
-            value: stats.active,
-            icon: UserCheck,
-            color: "bg-emerald-500",
-          },
-          {
-            label: "Suspended",
-            value: stats.suspended,
-            icon: UserX,
-            color: "bg-red-500",
-          },
-          {
-            label: "Admin Created",
-            value: stats.adminCreated,
-            icon: UserPlus,
-            color: "bg-violet-500",
-          },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <div
-            key={label}
-            className="bg-background border border-border rounded-2xl p-4 flex items-center gap-3.5"
-          >
-            <div
-              className={clsx(
-                "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
-                color,
+            <div className="flex items-center gap-3 sm:flex-col sm:items-end">
+              <div className="text-center sm:text-right">
+                <p className="text-3xl font-black text-emerald-900">{Math.max(0, daysLeft)}</p>
+                <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide">
+                  {daysLeft <= 0 ? "Checkout Today" : "Days Left"}
+                </p>
+              </div>
+              {{#if housekeeping}}
+              {(alerts?.pendingLaundry || 0) > 0 && (
+                <Link href="/customer/housekeeping" className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-200 text-emerald-800 rounded-lg text-xs font-semibold hover:bg-emerald-300 transition">
+                  <Shirt size={12} /> {alerts?.pendingLaundry} Laundry
+                </Link>
               )}
-            >
-              <Icon size={17} className="text-white" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground leading-none">
-                {value}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">{label}</p>
+              {{/if}}
             </div>
           </div>
-        ))}
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        {/* Search */}
-        <div className="relative flex-1 max-w-sm">
-          <Search
-            size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-          />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search name, email, CNIC, phone…"
-            className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 transition-colors"
-          />
-          {search && (
-            <button
-              onClick={() => setSearch("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              <X size={12} />
-            </button>
-          )}
-        </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as any)}
-          className={selCls}
+        </motion.div>
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="rounded-2xl border border-dashed border-border bg-muted/20 p-5 flex items-center gap-4"
         >
-          <option value="all">All Statuses</option>
-          <option value="active">Active</option>
-          <option value="suspended">Suspended</option>
-        </select>
-        <select
-          value={sourceFilter}
-          onChange={(e) => setSourceFilter(e.target.value as any)}
-          className={selCls}
-        >
-          <option value="all">All Sources</option>
-          <option value="admin">Admin Created</option>
-          <option value="self">Self Registered</option>
-        </select>
-      </div>
-
-      {/* Table */}
-      <div className="bg-background border border-border rounded-2xl">
-        {loading ? (
-          <div className="py-20 flex flex-col items-center gap-3">
-            <div className="w-7 h-7 rounded-full border-2 border-muted-foreground/20 border-t-primary animate-spin" />
-            <p className="text-sm text-muted-foreground">Loading customers…</p>
+          <div className="p-3 bg-muted rounded-xl"><BedDouble className="w-5 h-5 text-muted-foreground/60" /></div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-foreground">No Active Stay</p>
+            <p className="text-xs text-muted-foreground">You don't have an active check-in right now.</p>
           </div>
-        ) : error ? (
-          <div className="py-20 text-center text-sm text-red-500">{error}</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-border bg-muted/40">
-                <tr>
-                  {[
-                    "Customer",
-                    "Contact",
-                    "CNIC",
-                    "Location",
-                    "Status",
-                    "Source",
-                    "Joined",
-                    "Actions",
-                  ].map((h) => (
-                    <th
-                      key={h}
-                      className="px-4 py-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap"
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="py-16 text-center">
-                      <Users
-                        size={28}
-                        className="mx-auto mb-2.5 text-muted-foreground/20"
-                      />
-                      <p className="text-sm text-muted-foreground">
-                        No customers found
+          <Link href="/customer/booking" className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white rounded-xl text-xs font-semibold hover:bg-primary/90 transition">
+            Book a Room <ArrowRight size={11} />
+          </Link>
+        </motion.div>
+      )}
+      {{/if}}
+
+      {/* ── Stat Cards ────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {statCards.map((card, idx) => {
+          const Icon = card.icon;
+          return (
+            <motion.div
+              key={card.label}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.08 + idx * 0.05 }}
+            >
+              <Link
+                href={card.href}
+                className={`block bg-background rounded-2xl border ${card.bg} p-4 sm:p-5 hover:shadow-lg transition-all duration-300 group`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="p-2.5 bg-white rounded-xl shadow-sm border border-white/80 flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <Icon className={`w-5 h-5 ${card.iconColor}`} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block leading-tight">
+                      {card.label}
+                    </span>
+                    <span className="text-xl font-black text-foreground mt-0.5 block tracking-tight">
+                      {card.value}
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* ── Main Content Grid ──────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Left — Bookings & Food Orders -->
+        <div className="lg:col-span-2 space-y-6">
+
+          {{#if booking}}
+          {/* Recent Bookings */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.18 }}
+            className="bg-background rounded-2xl border border-border shadow-sm overflow-hidden"
+          >
+            <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+              <h3 className="font-bold text-foreground flex items-center gap-2 text-sm">
+                <CalendarCheck className="w-4 h-4 text-muted-foreground" /> My Bookings
+              </h3>
+              <Link href="/customer/booking" className="text-xs text-primary font-semibold flex items-center gap-1 hover:underline">
+                View all <ArrowRight size={11} />
+              </Link>
+            </div>
+            {!bookings?.recent || bookings.recent.length === 0 ? (
+              <div className="py-12 text-center text-sm text-muted-foreground">No bookings yet.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-muted/30 border-b border-border">
+                      {["Room", "Type", "Check-In", "Check-Out", "Nights", "Status"].map((h) => (
+                        <th key={h} className="px-4 py-3 text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/60">
+                    {bookings.recent.map((b) => (
+                      <tr key={b.booking_id} className="hover:bg-muted/20 transition-colors">
+                        <td className="px-4 py-3 font-mono font-semibold text-xs text-foreground">#{b.room_number}</td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground">{b.room_type}</td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">{fmt(b.check_in)}</td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">{fmt(b.check_out)}</td>
+                        <td className="px-4 py-3 text-xs font-semibold text-foreground">{b.total_nights}</td>
+                        <td className="px-4 py-3"><BookingStatusBadge status={b.status} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </motion.div>
+          {{/if}}
+
+          {{#if kitchen}}
+          {/* Recent Food Orders */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.22 }}
+            className="bg-background rounded-2xl border border-border shadow-sm overflow-hidden"
+          >
+            <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+              <h3 className="font-bold text-foreground flex items-center gap-2 text-sm">
+                <Utensils className="w-4 h-4 text-muted-foreground" /> Recent Food Orders
+              </h3>
+              <Link href="/customer/kitchen" className="text-xs text-primary font-semibold flex items-center gap-1 hover:underline">
+                Order Food <ArrowRight size={11} />
+              </Link>
+            </div>
+            {!foodOrders?.recent || foodOrders.recent.length === 0 ? (
+              <div className="py-12 text-center">
+                <ChefHat className="w-8 h-8 mx-auto text-muted-foreground/30 mb-2" />
+                <p className="text-sm text-muted-foreground">No food orders yet.</p>
+                <Link href="/customer/kitchen" className="text-xs text-primary font-semibold mt-1 inline-block hover:underline">
+                  Browse Menu →
+                </Link>
+              </div>
+            ) : (
+              <div className="divide-y divide-border/60">
+                {foodOrders.recent.map((order) => (
+                  <div key={order.id} className="px-5 py-3.5 flex items-center gap-4 hover:bg-muted/20 transition">
+                    <div className="p-2 bg-orange-50 rounded-xl border border-orange-100 flex-shrink-0">
+                      <ChefHat className="w-4 h-4 text-orange-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-foreground truncate">
+                        Order #{order.id} — {order.order_type}
                       </p>
-                    </td>
-                  </tr>
-                ) : (
-                  filtered.map((c, i) => (
-                    <motion.tr
-                      key={c.id}
-                      initial={{ opacity: 0, y: 3 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.015 }}
-                      className="border-t border-border hover:bg-muted/30 transition-colors group"
-                    >
-                      {/* Customer */}
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-2.5">
-                          <Avatar
-                            name={c.name}
-                            image={c.profileImage}
-                            size="sm"
-                          />
-                          <div className="min-w-0">
-                            <p className="font-semibold text-foreground text-xs truncate max-w-[130px]">
-                              {c.name}
-                            </p>
-                            <p className="text-muted-foreground text-[11px] truncate max-w-[130px]">
-                              {c.email}
-                            </p>
-                          </div>
+                      <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                        {order.items.join(", ") || "—"}
+                      </p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-xs font-bold text-foreground">{fmtCurrency(order.total_amount)}</p>
+                      <OrderStatusBadge status={order.status} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+          {{/if}}
+
+        </div>
+
+        <div className="space-y-6">
+
+          {{#if billing}}
+          {/* Billing Summary */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-background rounded-2xl border border-border shadow-sm p-5 space-y-4"
+          >
+            <h3 className="font-bold text-foreground flex items-center gap-2 text-sm">
+              <CreditCard className="w-4 h-4 text-muted-foreground" /> Billing Summary
+            </h3>
+
+            <div className="space-y-3">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground text-xs">Total Spent</span>
+                <span className="font-bold text-foreground">{fmtCurrency(billing?.totalSpent || 0)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground text-xs">Amount Paid</span>
+                <span className="font-bold text-emerald-600">{fmtCurrency(billing?.totalPaid || 0)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground text-xs">Balance Due</span>
+                <span className={`font-bold ${(billing?.balanceDue || 0) > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                  {fmtCurrency(billing?.balanceDue || 0)}
+                </span>
+              </div>
+            </div>
+
+            {(billing?.balanceDue || 0) > 0 && (
+              <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-500 flex-shrink-0 mt-0.5" />
+                <p className="text-[11px] font-medium text-rose-700">
+                  You have an outstanding balance of {fmtCurrency(billing?.balanceDue || 0)}. Please contact the front desk.
+                </p>
+              </div>
+            )}
+
+            {(billing?.balanceDue || 0) === 0 && (billing?.totalInvoices || 0) > 0 && (
+              <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center gap-2">
+                <Star className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                <p className="text-[11px] font-medium text-emerald-700">All invoices are paid. Thank you!</p>
+              </div>
+            )}
+
+            <Link href="/customer/billing" className="flex items-center justify-center gap-1.5 w-full py-2.5 bg-primary/10 text-primary rounded-xl text-xs font-semibold hover:bg-primary/20 transition border border-primary/20">
+              View All Invoices <ArrowRight size={11} />
+            </Link>
+          </motion.div>
+
+          {/* Recent Invoices */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.26 }}
+            className="bg-background rounded-2xl border border-border shadow-sm overflow-hidden"
+          >
+            <div className="px-5 py-4 border-b border-border">
+              <h3 className="font-bold text-foreground flex items-center gap-2 text-sm">
+                <Receipt className="w-4 h-4 text-muted-foreground" /> Recent Invoices
+              </h3>
+            </div>
+
+            {!billing?.recentInvoices || billing.recentInvoices.length === 0 ? (
+              <div className="py-10 text-center">
+                <CreditCard className="w-7 h-7 mx-auto text-muted-foreground/20 mb-2" />
+                <p className="text-xs text-muted-foreground">No invoices yet.</p>
+                <p className="text-[10px] text-muted-foreground/60 mt-0.5">Invoices are generated at checkout.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border/60">
+                {billing.recentInvoices.map((inv) => (
+                  <Link
+                    key={inv.invoice_id}
+                    href={`/customer/billing/${inv.invoice_id}`}
+                    className="block px-5 py-3.5 hover:bg-muted/20 transition group"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-bold text-foreground font-mono">
+                          {inv.invoice_number}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          Room {inv.room_number} · {fmt(inv.generated_at)}
+                        </p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-xs font-bold text-foreground">{fmtCurrency(inv.total_amount)}</p>
+                        <div className="mt-0.5">
+                          <PaymentStatusBadge status={inv.payment_status} />
                         </div>
-                      </td>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </motion.div>
+          {{/if}}
 
-                      {/* Contact */}
-                      <td className="px-4 py-3.5 text-xs text-muted-foreground">
-                        {c.phoneNumber ?? (
-                          <span className="text-muted-foreground/40">—</span>
-                        )}
-                      </td>
+          {/* Quick Actions */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-background rounded-2xl border border-border shadow-sm p-5 space-y-3"
+          >
+            <h3 className="font-bold text-foreground text-sm">Quick Actions</h3>
+            <div className="grid grid-cols-2 gap-2">
+              {{#if booking}}
+              <Link href="/customer/booking" className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-border hover:border-primary/30 hover:bg-muted/30 transition group">
+                <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600 group-hover:scale-110 transition-transform">
+                  <BedDouble className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-semibold text-muted-foreground text-center leading-tight">Book Room</span>
+              </Link>
+              {{/if}}
 
-                      {/* CNIC */}
-                      <td className="px-4 py-3.5 text-xs text-muted-foreground font-mono">
-                        {c.cnic ?? (
-                          <span className="text-muted-foreground/40">—</span>
-                        )}
-                      </td>
+              {{#if kitchen}}
+              <Link href="/customer/kitchen" className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-border hover:border-primary/30 hover:bg-muted/30 transition group">
+                <div className="p-2 rounded-lg bg-orange-50 text-orange-600 group-hover:scale-110 transition-transform">
+                  <ChefHat className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-semibold text-muted-foreground text-center leading-tight">Order Food</span>
+              </Link>
+              {{/if}}
 
-                      {/* Location */}
-                      <td className="px-4 py-3.5 text-xs text-muted-foreground">
-                        {[c.city, c.country].filter(Boolean).join(", ") || (
-                          <span className="text-muted-foreground/40">—</span>
-                        )}
-                      </td>
+              {{#if housekeeping}}
+              <Link href="/customer/housekeeping" className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-border hover:border-primary/30 hover:bg-muted/30 transition group">
+                <div className="p-2 rounded-lg bg-teal-50 text-teal-600 group-hover:scale-110 transition-transform">
+                  <Loader2 className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-semibold text-muted-foreground text-center leading-tight">Housekeeping</span>
+              </Link>
+              {{/if}}
 
-                      {/* Status */}
-                      <td className="px-4 py-3.5">
-                        <CustomerBadge isActive={c.isActive} />
-                      </td>
+              {{#if billing}}
+              <Link href="/customer/billing" className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-border hover:border-primary/30 hover:bg-muted/30 transition group">
+                <div className="p-2 rounded-lg bg-purple-50 text-purple-600 group-hover:scale-110 transition-transform">
+                  <Receipt className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-semibold text-muted-foreground text-center leading-tight">My Invoices</span>
+              </Link>
+              {{/if}}
+            </div>
+          </motion.div>
 
-                      {/* Source */}
-                      <td className="px-4 py-3.5">
-                        <span
-                          className={clsx(
-                            "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold",
-                            c.createdByAdmin
-                              ? "bg-violet-500/10 text-violet-500"
-                              : "bg-blue-500/10 text-blue-500",
-                          )}
-                        >
-                          {c.createdByAdmin ? "Admin" : "Self"}
-                        </span>
-                      </td>
-
-                      {/* Joined */}
-                      <td className="px-4 py-3.5 text-xs text-muted-foreground whitespace-nowrap">
-                        {new Date(c.createdAt).toLocaleDateString("en-US", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}
-                      </td>
-
-                      {/* Actions */}
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => setSelectedId(c.id)}
-                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                            title="View Profile"
-                          >
-                            <Eye size={13} />
-                          </button>
-                          <button
-                            onClick={async () => {
-                              const res = await updateCustomer(c.id, {
-                                isActive: !c.isActive,
-                              });
-                              if (res.ok)
-                                showToast(
-                                  c.isActive
-                                    ? "Customer suspended"
-                                    : "Customer activated",
-                                );
-                              else showToast(res.error ?? "Failed", "error");
-                            }}
-                            className={clsx(
-                              "p-1.5 rounded-lg transition-colors",
-                              c.isActive
-                                ? "text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
-                                : "text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10",
-                            )}
-                            title={c.isActive ? "Suspend" : "Activate"}
-                          >
-                            {c.isActive ? (
-                              <UserX size={13} />
-                            ) : (
-                              <UserCheck size={13} />
-                            )}
-                          </button>
-                        </div>
-                      </td>
-                    </motion.tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {!loading && !error && filtered.length > 0 && (
-          <div className="px-4 py-3 border-t border-border bg-muted/20 flex justify-between text-xs text-muted-foreground">
-            <span>
-              Showing {filtered.length} of {customers.length} customers
-            </span>
-            <span>
-              {stats.active} active · {stats.suspended} suspended
-            </span>
-          </div>
-        )}
+        </div>
       </div>
-
-      {/* Profile Drawer */}
-      <AnimatePresence>
-        {selectedId && (
-          <ProfileDrawer
-            key={selectedId}
-            customerId={selectedId}
-            onClose={() => setSelectedId(null)}
-            onUpdate={handleUpdate}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Toast */}
-      <AnimatePresence>
-        {toast && <Toast msg={toast.msg} type={toast.type} />}
-      </AnimatePresence>
     </div>
   );
 }

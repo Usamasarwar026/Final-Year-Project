@@ -8,16 +8,14 @@ import {
   type TierId,
   getModuleFilesForTier,
   getBaseFilesForTierFunc,
-  // getTierSpecificFilePath,
 } from "./moduleFiles";
 import { resolveDependencies } from "./moduleDependencies";
 import { BASE_PACKAGES, MODULE_PACKAGES, DEV_PACKAGES } from "./packageMapping";
-import { processTemplate, buildVars } from "./templateEngine";
+import { processTemplate, processModuleBlocks, buildVars } from "./templateEngine";
 import { buildSchema } from "./schemaBuilder";
 
 // ─── Path Configuration ───────────────────────────────────────
 const GENERATOR_ROOT = process.cwd();
-// const TEMPLATE_ROOT = path.join(GENERATOR_ROOT, "..", "smart-hotel-template");
 
 const ADVANCED_TEMPLATE_ROOT = path.join(
   GENERATOR_ROOT,
@@ -37,44 +35,21 @@ function getTemplateRoot(tier: TierId): string {
 
 // ─── Binary file extensions ───────────────────────────────────
 const BINARY_EXTENSIONS = new Set([
-  ".png",
-  ".jpg",
-  ".jpeg",
-  ".gif",
-  ".webp",
-  ".avif",
-  ".svg",
-  ".ico",
-  ".bmp",
-  ".tiff",
-  ".tif",
-  ".woff",
-  ".woff2",
-  ".ttf",
-  ".otf",
-  ".eot",
-  ".pdf",
-  ".zip",
-  ".tar",
-  ".gz",
-  ".mp4",
-  ".mp3",
-  ".wav",
-  ".ogg",
-  ".webm",
+  ".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".svg", ".ico",
+  ".bmp", ".tiff", ".tif", ".woff", ".woff2", ".ttf", ".otf", ".eot",
+  ".pdf", ".zip", ".tar", ".gz", ".mp4", ".mp3", ".wav", ".ogg", ".webm",
 ]);
 
 function isBinaryFile(filePath: string): boolean {
   const ext = path.extname(filePath).toLowerCase();
   return BINARY_EXTENSIONS.has(ext);
 }
+
 function verifyTemplateRoot(tier: TierId): string {
   const templateRoot = getTemplateRoot(tier);
-
   if (!fs.existsSync(templateRoot)) {
     throw new Error(`Template folder not found: ${templateRoot}`);
   }
-
   return templateRoot;
 }
 
@@ -94,10 +69,15 @@ export async function buildProjectZip({
   // Resolve dependencies
   const modules = resolveDependencies(rawModules);
 
+
+
+  
+  console.log(`\n========== GENERATOR DEBUG ==========`);
   console.log(`[generator] Tier: ${tier}`);
-  console.log(`[generator] Template root: ${templateRoot}`);
-  console.log(`[generator] Raw modules: ${rawModules.join(", ")}`);
-  console.log(`[generator] Resolved modules: ${modules.join(", ")}`);
+  console.log(`[generator] Raw modules: ${rawModules.join(', ')}`);
+  console.log(`[generator] Resolved modules: ${modules.join(', ')}`);
+  console.log(`[generator] Modules count: ${modules.length}`);
+  console.log(`=====================================\n`);
 
   const zip = new JSZip();
   const vars = buildVars(websiteName);
@@ -105,78 +85,160 @@ export async function buildProjectZip({
   const root = zip.folder(slug)!;
   const copiedFiles = new Set<string>();
 
-  function addFile(
-    filePath: string,
-    sourceRoot: string = templateRoot,
-  ): boolean {
-    if (copiedFiles.has(filePath)) return true;
+  // ─── Core file processor ─────────────────────────────────────
+  // 
+  // Processing order:
+  //   1. processModuleBlocks  — {{#if module}} blocks strip karo
+  //   2. processTemplate      — {{VAR_NAME}} replace karo
+  //
+  // Yeh order important hai: pehle blocks remove ho,
+  // phir remaining content mein vars replace hon.
+  //
+  // function addFile(
+  //   filePath: string,
+  //   sourceRoot: string = templateRoot,
+  // ): boolean {
+  //   if (copiedFiles.has(filePath)) return true;
 
-    const fullPath = path.join(sourceRoot, filePath);
+  //   const fullPath = path.join(sourceRoot, filePath);
 
-    if (!fs.existsSync(fullPath)) {
-      console.warn(`[generator] MISSING: ${filePath}`);
-      return false;
-    }
+  //   if (!fs.existsSync(fullPath)) {
+  //     console.warn(`[generator] MISSING: ${filePath}`);
+  //     return false;
+  //   }
 
-    if (isBinaryFile(filePath)) {
-      const buffer = fs.readFileSync(fullPath);
-      root.file(filePath, buffer, { binary: true });
-    } else {
-      let content = fs.readFileSync(fullPath, "utf-8");
+  //   if (isBinaryFile(filePath)) {
+  //     const buffer = fs.readFileSync(fullPath);
+  //     root.file(filePath, buffer, { binary: true });
+  //   } else {
+  //     let content = fs.readFileSync(fullPath, "utf-8");
 
-      if (content.includes("{{")) {
-        content = processTemplate(content, vars);
-      }
+  //     // Step 1: Module conditional blocks process karo
+  //     if (content.includes("{{#if")) {
+  //       content = processModuleBlocks(content, modules, tier);
+  //     }
 
-      root.file(filePath, content);
-    }
+  //     // Step 2: Template variables replace karo
+  //     if (content.includes("{{")) {
+  //       content = processTemplate(content, vars);
+  //     }
 
-    copiedFiles.add(filePath);
-    return true;
+  //     root.file(filePath, content);
+  //   }
+
+  //   copiedFiles.add(filePath);
+  //   return true;
+  // }
+
+  // src/lib/generator/buildProject.ts - Update addFile function
+
+// src/lib/generator/buildProject.ts - Fixed addFile function
+
+function addFile(
+  filePath: string,
+  sourceRoot: string = templateRoot,
+): boolean {
+  if (copiedFiles.has(filePath)) return true;
+
+  const fullPath = path.join(sourceRoot, filePath);
+
+  if (!fs.existsSync(fullPath)) {
+    console.warn(`[generator] MISSING: ${filePath}`);
+    return false;
   }
 
-  // ── Helper: add all files from a list ──────────────────────────
+  if (isBinaryFile(filePath)) {
+    const buffer = fs.readFileSync(fullPath);
+    root.file(filePath, buffer, { binary: true });
+  } else {
+    let content = fs.readFileSync(fullPath, "utf-8");
+
+    // DEBUG: Log for dashboard files
+    if (filePath.includes('AdminDashboard') || filePath.includes('dashboard/route')) {
+      console.log(`\n[generator] ========== Processing: ${filePath} ==========`);
+      console.log('[generator] Modules:', modules);
+      console.log('[generator] Tier:', tier);
+      console.log('[generator] Original contains {{#if}}:', content.includes('{{#if'));
+      
+      // Show first few lines for debugging
+      const lines = content.split('\n');
+      const firstLines = lines.slice(0, 5).join('\n');
+      console.log('[generator] First 5 lines:\n', firstLines);
+    }
+
+    // Step 1: Process module blocks FIRST
+    if (content.includes('{{#if')) {
+      const beforeLength = content.length;
+      console.log(`[generator] Processing {{#if}} blocks...`);
+      content = processModuleBlocks(content, modules, tier);
+      const afterLength = content.length;
+      console.log(`[generator] After processing: ${beforeLength} -> ${afterLength} chars`);
+      console.log('[generator] Still has {{#if}}:', content.includes('{{#if'));
+    }
+
+    // Step 2: Process template variables
+    if (content.includes('{{')) {
+      console.log('[generator] Processing template variables...');
+      content = processTemplate(content, vars);
+    }
+
+    // DEBUG: Verify result
+    if (filePath.includes('AdminDashboard') || filePath.includes('dashboard/route')) {
+      console.log('[generator] Final check - has {{#if}}:', content.includes('{{#if'));
+      const finalLines = content.split('\n').slice(0, 10).join('\n');
+      console.log('[generator] First 10 lines after processing:\n', finalLines);
+      console.log('[generator] ========== Done ==========\n');
+    }
+
+    root.file(filePath, content);
+  }
+
+  copiedFiles.add(filePath);
+  return true;
+}
+  // ── Helper: list se files add karo ───────────────────────────
   function addFiles(filePaths: string[], sourceRoot: string) {
     for (const filePath of filePaths) {
+      // Prisma schema skip — hum dynamically build karte hain
       if (filePath === "prisma/schema.prisma") continue;
       addFile(filePath, sourceRoot);
     }
   }
 
-  // ── 1. BASE files for this tier ─────────────────────────────────
+  // ── 1. BASE files for this tier ──────────────────────────────
   console.log("[generator] Copying base files...");
   const baseFiles = getBaseFilesForTierFunc(tier);
   addFiles(baseFiles, templateRoot);
 
-  // ── 2. Public folder ───────────────────────────────────────────
+  // ── 2. Public folder ─────────────────────────────────────────
   console.log("[generator] Copying public folder...");
   copyPublicFolder(root, vars, copiedFiles, templateRoot);
 
-  // ── 3. MODULE files for selected modules ───────────────────────
+  // ── 3. MODULE files for selected modules ─────────────────────
   for (const moduleId of modules) {
     console.log(`[generator] Copying module: ${moduleId}`);
     const moduleFiles = getModuleFilesForTier(moduleId, tier);
     addFiles(moduleFiles, templateRoot);
   }
 
-  // ── 4. Prisma schema (tier-specific) ───────────────────────────
+  // ── 4. Prisma schema (dynamically built) ─────────────────────
   console.log("[generator] Building Prisma schema...");
   const schema = buildSchema(modules, tier);
   root.file("prisma/schema.prisma", schema);
 
-  // ── 5. .env file ───────────────────────────────────────────────
+  // ── 5. .env file ─────────────────────────────────────────────
   root.file(".env", buildEnvTemplate(websiteName, modules, tier));
 
-  // ── 6. package.json (dynamic from BASE_PACKAGES, MODULE_PACKAGES, DEV_PACKAGES) ──
+  // ── 6. package.json (dynamic) ────────────────────────────────
   root.file("package.json", buildPackageJson(slug, modules));
 
-  // ── 7. README ──────────────────────────────────────────────────
+  // ── 7. README ────────────────────────────────────────────────
   root.file(
     "README.md",
     buildReadme(websiteName, slug, modules, rawModules, tier),
   );
 
-  // ── 8. nav.config.ts (tier-specific) ───────────────────────────
+  // ── 8. nav.config.ts (tier + module specific) ────────────────
   root.file(
     "src/components/sidebar/nav.config.ts",
     buildNavConfig(modules, tier),
@@ -194,14 +256,13 @@ export async function buildProjectZip({
   return buffer;
 }
 
-// ─── Copy entire public/ folder with tier-specific support ──────
+// ─── Copy entire public/ folder ──────────────────────────────
 function copyPublicFolder(
   root: JSZip,
   vars: ReturnType<typeof buildVars>,
   copiedFiles: Set<string>,
   templateRoot: string,
 ) {
-  // const tierPublicPath = path.join(templateRoot, "tiers", tier, "public");
   const publicSrc = path.join(templateRoot, "public");
 
   if (!fs.existsSync(publicSrc)) {
@@ -230,6 +291,10 @@ function copyPublicFolder(
         root.file(destPath, buf, { binary: true });
       } else {
         let text = fs.readFileSync(srcPath, "utf-8");
+        if (text.includes("{{#if")) {
+          // Public folder files mein bhi module blocks support
+          text = processModuleBlocks(text, [], ""); // public files mein modules nahi hote
+        }
         if (text.includes("{{")) {
           text = processTemplate(text, vars);
         }
@@ -245,7 +310,7 @@ function copyPublicFolder(
   console.log(`[generator] public/ copied — ${count} files`);
 }
 
-// ─── .env template (tier-specific) ────────────────────────────
+// ─── .env template ────────────────────────────────────────────
 function buildEnvTemplate(
   websiteName: string,
   modules: ModuleId[],
@@ -265,7 +330,6 @@ DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DBNAME?schema=public"
 # ── NextAuth ──────────────────────────────────────────────────
 NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET="change-me-in-production"
-
 ${
   needsEmail
     ? `
@@ -275,7 +339,6 @@ EMAIL_PASS=""
 `
     : ""
 }
-
 ${
   needsCloudinary
     ? `
@@ -286,7 +349,6 @@ CLOUDINARY_API_SECRET=""
 `
     : ""
 }
-
 ${
   needsStaff
     ? `
@@ -295,24 +357,17 @@ ${
 `
     : ""
 }
-
 # ── App ───────────────────────────────────────────────────────
 NEXT_PUBLIC_APP_NAME="${websiteName}"
 `;
 }
 
-// ─── package.json (dynamic - using BASE_PACKAGES, MODULE_PACKAGES, DEV_PACKAGES) ──
-function buildPackageJson(
-  slug: string,
-  modules: ModuleId[],
-  // tier: TierId,
-): string {
+// ─── package.json ─────────────────────────────────────────────
+function buildPackageJson(slug: string, modules: ModuleId[]): string {
   const deps: Record<string, string> = {};
   const devDeps: Record<string, string> = {};
 
-  // Package versions mapping
   const versions: Record<string, string> = {
-    // Base packages
     next: "16.2.6",
     react: "19.2.4",
     "react-dom": "19.2.4",
@@ -333,14 +388,10 @@ function buildPackageJson(
     "radix-ui": "^1.4.3",
     recharts: "^2.12.0",
     cloudinary: "^2.10.0",
-
-    // Module-specific packages
     nodemailer: "^7.0.13",
     jspdf: "^2.5.1",
     "jspdf-autotable": "^3.8.0",
     xlsx: "^0.18.5",
-
-    // Dev packages
     prisma: "^7.8.0",
     typescript: "^5",
     "@types/node": "^20",
@@ -358,34 +409,21 @@ function buildPackageJson(
     tsx: "^4.22.3",
   };
 
-  // Add BASE_PACKAGES
   BASE_PACKAGES.forEach((pkg) => {
-    if (versions[pkg]) {
-      deps[pkg] = versions[pkg];
-    } else {
-      deps[pkg] = "latest";
-    }
+    deps[pkg] = versions[pkg] ?? "latest";
   });
 
-  // Add MODULE_PACKAGES based on selected modules
   modules.forEach((moduleId) => {
     const modulePackages = MODULE_PACKAGES[moduleId] ?? [];
     modulePackages.forEach((pkg) => {
-      if (!deps[pkg] && versions[pkg]) {
-        deps[pkg] = versions[pkg];
-      } else if (!deps[pkg]) {
-        deps[pkg] = "latest";
+      if (!deps[pkg]) {
+        deps[pkg] = versions[pkg] ?? "latest";
       }
     });
   });
 
-  // Add DEV_PACKAGES
   DEV_PACKAGES.forEach((pkg) => {
-    if (versions[pkg]) {
-      devDeps[pkg] = versions[pkg];
-    } else {
-      devDeps[pkg] = "latest";
-    }
+    devDeps[pkg] = versions[pkg] ?? "latest";
   });
 
   return JSON.stringify(
@@ -408,7 +446,7 @@ function buildPackageJson(
   );
 }
 
-// ─── README.md (tier-specific) ────────────────────────────────
+// ─── README.md ────────────────────────────────────────────────
 function buildReadme(
   websiteName: string,
   slug: string,
@@ -422,24 +460,19 @@ function buildReadme(
 
   const tierGuide = {
     basic: `## Basic Tier
-This is a simplified version for small hotels/guesthouses:
 - No staff management
-- Simple role system (only Admin and Customer)
-- Basic booking flow
-- Customer self-service portal`,
+- Simple role system (Admin only)
+- Basic booking flow`,
     intermediate: `## Intermediate Tier
-For mid-sized hotels:
 - Full staff management
 - Housekeeping operations
 - Billing system
 - Role-based access control`,
     advanced: `## Advanced Tier
-Complete hotel management system:
 - All modules included
 - Inventory management
 - Kitchen operations
-- Advanced analytics and reports
-- Multi-department support`,
+- Advanced analytics and reports`,
   };
 
   return `# ${websiteName}
@@ -467,14 +500,14 @@ npm run dev
 Visit: http://localhost:3000
 
 ## Default Credentials
-After seeding the database (\`npm run seed\`):
+After seeding (\`npm run seed\`):
 - **Admin:** admin@hotel.com / admin123
 ${tier !== "basic" ? "- **Staff:** staff@hotel.com / staff123" : ""}
 - **Customer:** Sign up via /signup
 `;
 }
 
-// ─── nav.config.ts (tier-specific) ────────────────────────────
+// ─── nav.config.ts ────────────────────────────────────────────
 function buildNavConfig(modules: ModuleId[], tier: TierId): string {
   if (tier === "basic") {
     return buildBasicNavConfig(modules);
@@ -488,20 +521,18 @@ function buildBasicNavConfig(modules: ModuleId[]): string {
   ];
 
   const adminMap: Partial<Record<ModuleId, string>> = {
-    rooms: `  { label: "Rooms", href: "/admin/rooms", icon: BedDouble },`,
-    booking: `  { label: "Booking", href: "/admin/booking", icon: CalendarCheck },`,
+    rooms:    `  { label: "Rooms", href: "/admin/rooms", icon: BedDouble },`,
+    booking:  `  { label: "Booking", href: "/admin/booking", icon: CalendarCheck },`,
     customer: `  { label: "Customer", href: "/admin/customer", icon: UserRound },`,
   };
 
   const ORDER: ModuleId[] = ["booking", "rooms", "customer"];
-
   for (const mod of ORDER) {
     if (!modules.includes(mod)) continue;
     if (adminMap[mod]) adminItems.push(adminMap[mod]!);
   }
 
-  return `// src/config/nav.ts
-// Auto-generated by HotelGen for BASIC tier
+  return `// src/config/nav.ts — Auto-generated by HotelGen (BASIC tier)
 
 import {
   LayoutDashboard,
@@ -541,42 +572,28 @@ function buildFullNavConfig(modules: ModuleId[], tier: TierId): string {
     `  { label: "Dashboard", href: "/customer/dashboard", icon: LayoutDashboard },`,
   ];
 
-  // Admin nav items with children support
-  const adminNavItems: string[] = [];
+  type AdminEntry = {
+    label: string;
+    href: string;
+    icon: string;
+    children?: Array<{ label: string; href: string; icon: string }>;
+  };
 
-  // Helper to add admin item with children
-  function addAdminItem(label: string, href: string, icon: string, children?: Array<{ label: string; href: string; icon: string }>) {
-    if (children && children.length > 0) {
-      const childrenStr = children.map(child => 
-        `      { label: "${child.label}", href: "${child.href}", icon: ${child.icon} }`
-      ).join(",\n");
-      adminNavItems.push(`  {\n    label: "${label}",\n    href: "${href}",\n    icon: ${icon},\n    children: [\n${childrenStr}\n    ]\n  },`);
-    } else {
-      adminNavItems.push(`  { label: "${label}", href: "${href}", icon: ${icon} },`);
-    }
-  }
+  type StaffEntry = {
+    label: string;
+    href: string;
+    icon: string;
+    permission: string;
+    children?: Array<{ label: string; href: string; icon: string; permission: string }>;
+  };
 
-  // Helper to add staff item with children
-  function addStaffItem(label: string, href: string, icon: string, permission: string, children?: Array<{ label: string; href: string; icon: string; permission: string }>) {
-    if (children && children.length > 0) {
-      const childrenStr = children.map(child => 
-        `      { label: "${child.label}", href: "${child.href}", icon: ${child.icon}, permission: "${child.permission}" }`
-      ).join(",\n");
-      staffItems.push(`  {\n    label: "${label}",\n    href: "${href}",\n    icon: ${icon},\n    permission: "${permission}",\n    children: [\n${childrenStr}\n    ]\n  },`);
-    } else {
-      staffItems.push(`  { label: "${label}", href: "${href}", icon: ${icon}, permission: "${permission}" },`);
-    }
-  }
-
-  // Admin Maps with children
-  const adminMap: Record<string, { label: string; href: string; icon: string; children?: Array<{ label: string; href: string; icon: string }> }> = {
-    rooms: { label: "Rooms", href: "/admin/rooms", icon: "BedDouble" },
-    booking: { label: "Booking", href: "/admin/booking", icon: "CalendarCheck" },
+  const adminMap: Partial<Record<ModuleId, AdminEntry>> = {
+    rooms:    { label: "Rooms", href: "/admin/rooms", icon: "BedDouble" },
+    booking:  { label: "Booking", href: "/admin/booking", icon: "CalendarCheck" },
     customer: { label: "Customer", href: "/admin/customer", icon: "UserRound" },
-    staff: { label: "Staff Management", href: "/admin/staff", icon: "Users" },
+    staff:    { label: "Staff Management", href: "/admin/staff", icon: "Users" },
     housekeeping: { label: "House Keeping", href: "/admin/housekeeping", icon: "Brush" },
-    billing: { label: "Billing", href: "/admin/billing", icon: "CreditCard" },
-    // Kitchen with children
+    billing:  { label: "Billing", href: "/admin/billing", icon: "CreditCard" },
     kitchen: {
       label: "Kitchen Management",
       href: "/admin/kitchen",
@@ -591,7 +608,6 @@ function buildFullNavConfig(modules: ModuleId[], tier: TierId): string {
         { label: "Reports", href: "/admin/kitchen/reports", icon: "TrendingUp" },
       ],
     },
-    // Inventory with children
     inventory: {
       label: "Inventory",
       href: "/admin/inventory",
@@ -607,7 +623,6 @@ function buildFullNavConfig(modules: ModuleId[], tier: TierId): string {
         { label: "Reports", href: "/admin/inventory/reports", icon: "BarChart3" },
       ],
     },
-    // Reports with children
     reports: {
       label: "Reports",
       href: "/admin/reports",
@@ -625,16 +640,14 @@ function buildFullNavConfig(modules: ModuleId[], tier: TierId): string {
     },
   };
 
-  // Staff Maps with children
-  const staffMap: Record<string, { label: string; href: string; icon: string; permission: string; children?: Array<{ label: string; href: string; icon: string; permission: string }> }> = {
-    booking: { label: "Booking", href: "/staff/booking", icon: "CalendarCheck", permission: "booking" },
-    rooms: { label: "Rooms", href: "/staff/rooms", icon: "BedDouble", permission: "rooms" },
-    customer: { label: "Customer", href: "/staff/customer", icon: "UserRound", permission: "customer" },
+  const staffMap: Partial<Record<ModuleId, StaffEntry>> = {
+    booking:      { label: "Booking", href: "/staff/booking", icon: "CalendarCheck", permission: "booking" },
+    rooms:        { label: "Rooms", href: "/staff/rooms", icon: "BedDouble", permission: "rooms" },
+    customer:     { label: "Customer", href: "/staff/customer", icon: "UserRound", permission: "customer" },
     housekeeping: { label: "House Keeping", href: "/staff/housekeeping", icon: "Brush", permission: "housekeeping" },
-    billing: { label: "Billing", href: "/staff/billing", icon: "CreditCard", permission: "billing" },
-    reports: { label: "Reports", href: "/staff/reports", icon: "BarChart3", permission: "reports" },
-    inventory: { label: "Inventory", href: "/staff/inventory", icon: "Package", permission: "inventory" },
-    // Kitchen with children
+    billing:      { label: "Billing", href: "/staff/billing", icon: "CreditCard", permission: "billing" },
+    reports:      { label: "Reports", href: "/staff/reports", icon: "BarChart3", permission: "reports" },
+    inventory:    { label: "Inventory", href: "/staff/inventory", icon: "Package", permission: "inventory" },
     kitchen: {
       label: "Kitchen",
       href: "/staff/kitchen",
@@ -647,21 +660,20 @@ function buildFullNavConfig(modules: ModuleId[], tier: TierId): string {
         { label: "Categories", href: "/staff/kitchen/categories", icon: "Tags", permission: "KITCHEN_CATEGORIES_MANAGE" },
         { label: "Kitchen Staff", href: "/staff/kitchen/staff", icon: "UsersRound", permission: "KITCHEN_STAFF_MANAGE" },
         { label: "Delivery Assignments", href: "/staff/kitchen/deliveries", icon: "Bike", permission: "DELIVERY_ASSIGN" },
-        { label: "My Deliveries", href: "/staff/kitchen/my-deliveries", icon: "Truck", permission: "DELIVERY_ACCESS" },
         { label: "Reports", href: "/staff/kitchen/reports", icon: "TrendingUp", permission: "KITCHEN_REPORTS" },
       ],
     },
   };
 
   const customerMap: Partial<Record<ModuleId, string>> = {
-    booking: `  { label: "My Bookings", href: "/customer/booking", icon: CalendarCheck },`,
-    kitchen: `  { label: "Order Food", href: "/customer/kitchen", icon: ShoppingCart },`,
-    billing: `  { label: "Billing", href: "/customer/billing", icon: CreditCard },`,
+    booking:      `  { label: "My Bookings", href: "/customer/booking", icon: CalendarCheck },`,
+    kitchen:      `  { label: "Order Food", href: "/customer/kitchen", icon: ShoppingCart },`,
+    billing:      `  { label: "Billing", href: "/customer/billing", icon: CreditCard },`,
     housekeeping: `  { label: "Room Service", href: "/customer/housekeeping", icon: Brush },`,
   };
 
   const ORDER: ModuleId[] = [
-    "booking", "rooms", "customer", "staff", "kitchen", 
+    "booking", "rooms", "customer", "staff", "kitchen",
     "inventory", "housekeeping", "billing", "reports",
   ];
 
@@ -669,41 +681,45 @@ function buildFullNavConfig(modules: ModuleId[], tier: TierId): string {
   for (const mod of ORDER) {
     if (!modules.includes(mod)) continue;
     const item = adminMap[mod];
-    if (item) {
-      if (item.children) {
-        addAdminItem(item.label, item.href, item.icon, item.children);
-      } else {
-        adminItems.push(`  { label: "${item.label}", href: "${item.href}", icon: ${item.icon} },`);
-      }
+    if (!item) continue;
+
+    if (item.children && item.children.length > 0) {
+      const childrenStr = item.children
+        .map((c) => `      { label: "${c.label}", href: "${c.href}", icon: ${c.icon} }`)
+        .join(",\n");
+      adminItems.push(
+        `  {\n    label: "${item.label}",\n    href: "${item.href}",\n    icon: ${item.icon},\n    children: [\n${childrenStr}\n    ]\n  },`,
+      );
+    } else {
+      adminItems.push(`  { label: "${item.label}", href: "${item.href}", icon: ${item.icon} },`);
     }
   }
-
-  // Merge adminItems with adminNavItems
-  const allAdminItems = [...adminItems, ...adminNavItems];
 
   // Build staff nav
   for (const mod of ORDER) {
     if (!modules.includes(mod)) continue;
     const item = staffMap[mod];
-    if (item) {
-      if (item.children) {
-        addStaffItem(item.label, item.href, item.icon, item.permission, item.children);
-      } else {
-        staffItems.push(`  { label: "${item.label}", href: "${item.href}", icon: ${item.icon}, permission: "${item.permission}" },`);
-      }
+    if (!item) continue;
+
+    if (item.children && item.children.length > 0) {
+      const childrenStr = item.children
+        .map((c) => `      { label: "${c.label}", href: "${c.href}", icon: ${c.icon}, permission: "${c.permission}" }`)
+        .join(",\n");
+      staffItems.push(
+        `  {\n    label: "${item.label}",\n    href: "${item.href}",\n    icon: ${item.icon},\n    permission: "${item.permission}",\n    children: [\n${childrenStr}\n    ]\n  },`,
+      );
+    } else {
+      staffItems.push(`  { label: "${item.label}", href: "${item.href}", icon: ${item.icon}, permission: "${item.permission}" },`);
     }
   }
 
   // Build customer nav
   for (const mod of ORDER) {
     if (!modules.includes(mod)) continue;
-    if (customerMap[mod]) {
-      customerItems.push(customerMap[mod]!);
-    }
+    if (customerMap[mod]) customerItems.push(customerMap[mod]!);
   }
 
-  return `// src/config/nav.ts
-// Auto-generated by HotelGen for ${tier.toUpperCase()} tier
+  return `// src/config/nav.ts — Auto-generated by HotelGen (${tier.toUpperCase()} tier)
 
 import {
   LayoutDashboard,
@@ -740,7 +756,7 @@ export type NavItem = {
 };
 
 export const adminNav: NavItem[] = [
-${allAdminItems.join("\n")}
+${adminItems.join("\n")}
 ];
 
 export const staffNav: NavItem[] = [
@@ -751,7 +767,6 @@ export const customerNav: NavItem[] = [
 ${customerItems.join("\n")}
 ];
 
-// Helper to filter staffNav by permissions
 export function filterStaffNavByPermissions(userPermissions: string[]): NavItem[] {
   function filter(items: NavItem[]): NavItem[] {
     return items

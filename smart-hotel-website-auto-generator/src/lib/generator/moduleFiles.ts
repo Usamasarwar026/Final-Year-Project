@@ -472,6 +472,7 @@ export const MODULE_FILES: Record<ModuleId, Record<TierId, string[]>> = {
       "src/app/api/housekeeping/tasks/[id]/route.ts",
       "src/hooks/useHousekeeping.ts",
       "src/modules/houseKeeping/HouseKeeping.tsx",
+      "src/modules/houseKeeping/CustomerHousekeeping.tsx",
       "src/types/housekeeping.ts",
       "src/app/customer/housekeeping/page.tsx",
       "src/app/staff/housekeeping/page.tsx",
