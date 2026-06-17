@@ -506,6 +506,7 @@ export const MODULE_FILES: Record<ModuleId, Record<TierId, string[]>> = {
       "src/app/admin/kitchen/categories/page.tsx",
       "src/app/admin/kitchen/dashboard/page.tsx",
       "src/app/admin/kitchen/deliveries/page.tsx",
+      "src/app/admin/kitchen/my-deliveries/page.tsx",
       "src/app/admin/kitchen/deliverystaff/page.tsx",
       "src/app/admin/kitchen/menu/page.tsx",
       "src/app/admin/kitchen/orders/page.tsx",

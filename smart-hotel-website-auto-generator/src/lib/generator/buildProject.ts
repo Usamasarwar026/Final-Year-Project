@@ -85,54 +85,6 @@ export async function buildProjectZip({
   const root = zip.folder(slug)!;
   const copiedFiles = new Set<string>();
 
-  // ─── Core file processor ─────────────────────────────────────
-  // 
-  // Processing order:
-  //   1. processModuleBlocks  — {{#if module}} blocks strip karo
-  //   2. processTemplate      — {{VAR_NAME}} replace karo
-  //
-  // Yeh order important hai: pehle blocks remove ho,
-  // phir remaining content mein vars replace hon.
-  //
-  // function addFile(
-  //   filePath: string,
-  //   sourceRoot: string = templateRoot,
-  // ): boolean {
-  //   if (copiedFiles.has(filePath)) return true;
-
-  //   const fullPath = path.join(sourceRoot, filePath);
-
-  //   if (!fs.existsSync(fullPath)) {
-  //     console.warn(`[generator] MISSING: ${filePath}`);
-  //     return false;
-  //   }
-
-  //   if (isBinaryFile(filePath)) {
-  //     const buffer = fs.readFileSync(fullPath);
-  //     root.file(filePath, buffer, { binary: true });
-  //   } else {
-  //     let content = fs.readFileSync(fullPath, "utf-8");
-
-  //     // Step 1: Module conditional blocks process karo
-  //     if (content.includes("{{#if")) {
-  //       content = processModuleBlocks(content, modules, tier);
-  //     }
-
-  //     // Step 2: Template variables replace karo
-  //     if (content.includes("{{")) {
-  //       content = processTemplate(content, vars);
-  //     }
-
-  //     root.file(filePath, content);
-  //   }
-
-  //   copiedFiles.add(filePath);
-  //   return true;
-  // }
-
-  // src/lib/generator/buildProject.ts - Update addFile function
-
-// src/lib/generator/buildProject.ts - Fixed addFile function
 
 function addFile(
   filePath: string,
@@ -648,6 +600,7 @@ function buildFullNavConfig(modules: ModuleId[], tier: TierId): string {
     billing:      { label: "Billing", href: "/staff/billing", icon: "CreditCard", permission: "billing" },
     reports:      { label: "Reports", href: "/staff/reports", icon: "BarChart3", permission: "reports" },
     inventory:    { label: "Inventory", href: "/staff/inventory", icon: "Package", permission: "inventory" },
+    
     kitchen: {
       label: "Kitchen",
       href: "/staff/kitchen",
@@ -660,6 +613,7 @@ function buildFullNavConfig(modules: ModuleId[], tier: TierId): string {
         { label: "Categories", href: "/staff/kitchen/categories", icon: "Tags", permission: "KITCHEN_CATEGORIES_MANAGE" },
         { label: "Kitchen Staff", href: "/staff/kitchen/staff", icon: "UsersRound", permission: "KITCHEN_STAFF_MANAGE" },
         { label: "Delivery Assignments", href: "/staff/kitchen/deliveries", icon: "Bike", permission: "DELIVERY_ASSIGN" },
+        { label: "My Deliveries", href: "/staff/kitchen/my-deliveries", icon: "Truck", permission: "DELIVERY_ACCESS" },
         { label: "Reports", href: "/staff/kitchen/reports", icon: "TrendingUp", permission: "KITCHEN_REPORTS" },
       ],
     },
@@ -768,19 +722,37 @@ ${customerItems.join("\n")}
 ];
 
 export function filterStaffNavByPermissions(userPermissions: string[]): NavItem[] {
+ 
+  function hasAccess(item: NavItem): boolean {
+    // Agar item ki apni permission check karo
+    if (item.permission && !userPermissions.includes(item.permission)) {
+      // Permission match nahi hui — lekin dekho kya koi child accessible hai
+      if (item.children) {
+        const accessibleChildren = item.children.filter(child => hasAccess(child));
+        return accessibleChildren.length > 0; // Child accessible hai toh parent bhi show karo
+      }
+      return false; // Na apni permission, na children
+    }
+    return true; // Permission hai ya required nahi
+  }
+
   function filter(items: NavItem[]): NavItem[] {
     return items
       .map((item) => {
-        if (item.permission && !userPermissions.includes(item.permission)) return null;
+        if (!hasAccess(item)) return null;
+
         if (item.children) {
           const filteredChildren = filter(item.children);
-          if (filteredChildren.length === 0 && item.permission) return null;
-          return { ...item, children: filteredChildren.length ? filteredChildren : undefined };
+          return {
+            ...item,
+            children: filteredChildren.length ? filteredChildren : undefined,
+          };
         }
         return item;
       })
       .filter(Boolean) as NavItem[];
   }
+
   return filter(staffNav);
 }
 `;

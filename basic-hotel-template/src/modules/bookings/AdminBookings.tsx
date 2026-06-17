@@ -135,7 +135,8 @@ function BookingDetailModal({
   return (
     <div
       className="fixed inset-0 z-[300] flex items-center justify-center p-4"
-      style={{ position: "fixed", inset: 0 }}
+      style={{ margin: 0, padding: 0 }}
+
     >
       <motion.div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
@@ -467,7 +468,7 @@ function CustomerDropdown({
                         {c.email}
                       </p>
                     </div>
-                    {selected?.id === c.id && (
+                    {selected?.customer_id === c.customer_id && (
                       <CheckCircle2
                         size={13}
                         className="text-accent shrink-0"
@@ -847,6 +848,8 @@ function CreateCustomerPanel({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 20 }}
       className="space-y-4"
+      style={{ margin: 0, padding: 0 }}
+
     >
       {/* Header */}
       <div className="flex items-center gap-2">

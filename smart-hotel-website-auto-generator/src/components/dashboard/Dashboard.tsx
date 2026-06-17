@@ -297,11 +297,11 @@ function StepModules({
       </div>
 
       <div className="mb-4 p-3 rounded-lg bg-gradient-brand/5 border border-primary/20">
-        <p className="text-xs font-medium text-foreground">📋 How it works:</p>
+        <p className="text-xs font-medium text-foreground"> How it works:</p>
         <ul className="text-[11px] text-muted-foreground mt-1 space-y-0.5">
-          <li>• ✅ Required modules (Authentication) are always selected</li>
+          <li>• Required modules (Authentication) are always selected</li>
           <li>• Click on any module to select/deselect it</li>
-          <li>• 🔒 Locked modules are dependencies and cannot be removed</li>
+          <li>• Locked modules are dependencies and cannot be removed</li>
           <li>• When you deselect a module, its locked dependencies will also be removed</li>
         </ul>
       </div>
@@ -578,7 +578,7 @@ function StepGenerate({
 
         <div className="grid grid-cols-2 gap-2 mb-3">
           {[
-            { label: "Framework", value: "Next.js 15 + TS" },
+            { label: "Framework", value: "Next.js 16 + TS" },
             { label: "Auth", value: "NextAuth.js" },
             { label: "Schema Type", value: tier.schemaType },
           ].map(({ label, value }) => (
@@ -665,7 +665,7 @@ export default function Dashboard() {
       // Check what was auto-added (excluding authentication)
       const autoAdded = resolved.filter(m => !selectedModules.includes(m) && m !== moduleId && m !== "authentication");
       if (autoAdded.length > 0) {
-        toast.success(`✨ Auto-added: ${autoAdded.map(m => MODULE_META[m]?.label).join(", ")}`);
+        toast.success(` Auto-added: ${autoAdded.map(m => MODULE_META[m]?.label).join(", ")}`);
       }
       
       setSelectedModules(resolved);
@@ -697,7 +697,7 @@ export default function Dashboard() {
       let finalSelection = newSelection;
       if (orphaned.length > 0) {
         finalSelection = newSelection.filter(m => !orphaned.includes(m));
-        toast.info(`🗑️ Removed dependencies: ${orphaned.map(m => MODULE_META[m]?.label).join(", ")}`);
+        toast.info(` Removed dependencies: ${orphaned.map(m => MODULE_META[m]?.label).join(", ")}`);
       }
       
       setSelectedModules(finalSelection);
@@ -737,7 +737,7 @@ export default function Dashboard() {
       a.click();
       URL.revokeObjectURL(url);
 
-      toast.success("✅ Project generated and downloading!");
+      toast.success(" Project generated and downloading!");
       
       setStep(1);
       setTier(null);

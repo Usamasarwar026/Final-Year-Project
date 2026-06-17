@@ -1,38 +1,4 @@
-// // src/lib/generator/templateEngine.ts
-// // Placeholder replacement engine
 
-// export type TemplateVars = {
-//   WEBSITE_NAME: string;        // "Grand Palace Hotel"
-//   WEBSITE_SLUG: string;        // "grand-palace-hotel"
-//   GENERATED_AT: string;        // "2025-01-01"
-// };
-
-// // Replace all {{PLACEHOLDER}} in file content
-// export function processTemplate(content: string, vars: TemplateVars): string {
-//   let result = content;
-//   for (const [key, value] of Object.entries(vars)) {
-//     const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
-//     result = result.replace(regex, value);
-//   }
-//   return result;
-// }
-
-// // Convert display name to slug
-// export function toSlug(name: string): string {
-//   return name
-//     .toLowerCase()
-//     .replace(/[^a-z0-9]+/g, "-")
-//     .replace(/^-+|-+$/g, "");
-// }
-
-// // Build template vars from user input
-// export function buildVars(websiteName: string): TemplateVars {
-//   return {
-//     WEBSITE_NAME: websiteName,
-//     WEBSITE_SLUG: toSlug(websiteName),
-//     GENERATED_AT: new Date().toISOString().split("T")[0],
-//   };
-// }
 // src/lib/generator/templateEngine.ts
 
 export type TemplateVars = {
@@ -56,43 +22,6 @@ export function processTemplate(content: string, vars: TemplateVars): string {
   });
 }
 
-/**
- * ════════════════════════════════════════════════════════════════
- * MODULE-CONDITIONAL BLOCK PROCESSOR
- * ════════════════════════════════════════════════════════════════
- *
- * SUPPORTED SYNTAX (aur kuch nahi):
- *
- *   {{#if rooms}}                    <- single module
- *     ...code...
- *   {{/if}}
- *
- *   {{#if rooms+booking}}            <- AND: dono modules required
- *     ...code...
- *   {{/if}}
- *
- *   {{#if kitchen,inventory}}        <- OR: koi ek module kafi
- *     ...code...
- *   {{/if}}
- *
- *   {{#if tier_basic}}               <- tier === "basic"
- *   {{#if tier_intermediate}}        <- tier === "intermediate" OR "advanced"
- *   {{#if tier_advanced}}            <- tier === "advanced"
- *
- *   {{#if kitchen+tier_advanced}}    <- module AND tier combo
- *
- * NESTED BLOCKS supported (innermost-first, multi-pass).
- *
- * ❌ NOT SUPPORTED (use plain React/JS instead — see notes below):
- *   - {{else}} / {{else if ...}}
- *   - JS expressions: {{#if kpis.length > 0}}
- *   - HTML comments <!-- --> inside JSX (use {/* *\/} instead)
- *
- * Agar template mein invalid/unsupported {{#if}} syntax reh jaye,
- * yeh function THROW karega (silent pass-through nahi karega) —
- * taake broken marker generated project mein kabhi na jaye.
- * ════════════════════════════════════════════════════════════════
- */
 export function processModuleBlocks(
   content: string,
   selectedModules: string[],
