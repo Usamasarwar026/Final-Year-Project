@@ -13,6 +13,7 @@ import { resolveDependencies } from "./moduleDependencies";
 import { BASE_PACKAGES, MODULE_PACKAGES, DEV_PACKAGES } from "./packageMapping";
 import { processTemplate, processModuleBlocks, buildVars } from "./templateEngine";
 import { buildSchema } from "./schemaBuilder";
+import buildSeedFile from "./buildSeedFile";
 
 // ─── Path Configuration ───────────────────────────────────────
 const GENERATOR_ROOT = process.cwd();
@@ -55,12 +56,18 @@ function verifyTemplateRoot(tier: TierId): string {
 
 type BuildInput = {
   websiteName: string;
+  adminName: string;
+  adminEmail: string;
+  adminPassword: string;
   modules: ModuleId[];
   tier: TierId;
 };
 
 export async function buildProjectZip({
   websiteName,
+   adminName,
+  adminEmail,
+  adminPassword,
   modules: rawModules,
   tier,
 }: BuildInput): Promise<Buffer> {
@@ -80,7 +87,7 @@ export async function buildProjectZip({
   console.log(`=====================================\n`);
 
   const zip = new JSZip();
-  const vars = buildVars(websiteName);
+  const vars = buildVars(websiteName,adminName, adminEmail, adminPassword);
   const slug = vars.WEBSITE_SLUG;
   const root = zip.folder(slug)!;
   const copiedFiles = new Set<string>();
@@ -183,6 +190,8 @@ function addFile(
 
   // ── 6. package.json (dynamic) ────────────────────────────────
   root.file("package.json", buildPackageJson(slug, modules));
+
+   root.file("prisma/seed.ts", buildSeedFile(adminName, adminEmail, adminPassword, tier));
 
   // ── 7. README ────────────────────────────────────────────────
   root.file(

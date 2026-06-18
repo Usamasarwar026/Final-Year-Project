@@ -25,6 +25,7 @@ export const BASE_FILES: Record<TierId, string[]> = {
     "postcss.config.js",
     ".gitignore",
     "eslint.config.mjs",
+    "prisma.config.ts",
     "src/app/globals.css",
     "src/app/layout.tsx",
     "src/app/page.tsx",
@@ -74,6 +75,7 @@ export const BASE_FILES: Record<TierId, string[]> = {
     "src/services/notificationService.ts",
     "src/app/api/notifications/route.ts",
     "src/app/api/notifications/[id]/route.ts",
+    "src/app/api/rooms/public/route.ts",
   ],
   intermediate: [
     "next.config.ts",
@@ -82,6 +84,7 @@ export const BASE_FILES: Record<TierId, string[]> = {
     "postcss.config.js",
     ".gitignore",
     "eslint.config.mjs",
+    "prisma.config.ts",
     "src/app/globals.css",
     "src/app/layout.tsx",
     "src/app/page.tsx",
@@ -148,6 +151,7 @@ export const BASE_FILES: Record<TierId, string[]> = {
     "postcss.config.js",
     ".gitignore",
     "eslint.config.mjs",
+    "prisma.config.ts",
     "src/app/globals.css",
     "src/app/layout.tsx",
     "src/app/page.tsx",
@@ -271,6 +275,7 @@ export const MODULE_FILES: Record<ModuleId, Record<TierId, string[]>> = {
       "src/modules/rooms/components/ViewRoomModal.tsx",
       "src/app/api/rooms/route.ts",
       "src/app/api/rooms/[id]/route.ts",
+      "src/app/api/rooms/upload/route.ts",
       "src/services/roomService.ts",
       "src/services/roomApiService.ts",
     ],
@@ -544,6 +549,7 @@ export const MODULE_FILES: Record<ModuleId, Record<TierId, string[]>> = {
       "src/app/staff/kitchen/dashboard/page.tsx",
       "src/app/staff/kitchen/deliveries/page.tsx",
       "src/app/staff/kitchen/deliverystaff/page.tsx",
+      "src/app/staff/kitchen/my-deliveries/page.tsx",
       "src/app/staff/kitchen/menu/page.tsx",
       "src/app/staff/kitchen/orders/page.tsx",
       "src/app/staff/kitchen/orders/[id]/invoice/page.tsx",
@@ -659,7 +665,7 @@ export const MODULE_FILES: Record<ModuleId, Record<TierId, string[]>> = {
   },
 };
 
-// ⚠️ HELPER FUNCTIONS - SABSE NICHE
+//  HELPER FUNCTIONS 
 
 export function getModuleFilesForTier(
   moduleId: ModuleId,

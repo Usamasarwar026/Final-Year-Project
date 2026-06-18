@@ -1,6 +1,3 @@
-
-
-
 // src/lib/generator/packageMapping.ts
 import { ModuleId } from "./moduleFiles";
 

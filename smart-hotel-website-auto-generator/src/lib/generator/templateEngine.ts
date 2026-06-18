@@ -1,17 +1,26 @@
 
 // src/lib/generator/templateEngine.ts
-
 export type TemplateVars = {
   WEBSITE_NAME: string;
   WEBSITE_SLUG: string;
+  ADMIN_NAME: string;
+  ADMIN_EMAIL: string;
+  ADMIN_PASSWORD: string; //  Actually seed file mein use hoga, template mein nahi
   [key: string]: string;
 };
 
-// ─── Build template variables from website name ────────────────
-export function buildVars(websiteName: string): TemplateVars {
+export function buildVars(
+  websiteName: string,
+  adminName: string,
+  adminEmail: string,
+  adminPassword: string,
+): TemplateVars {
   return {
     WEBSITE_NAME: websiteName,
     WEBSITE_SLUG: websiteName.toLowerCase().replace(/\s+/g, "-"),
+    ADMIN_NAME: adminName,
+    ADMIN_EMAIL: adminEmail,
+    ADMIN_PASSWORD: adminPassword, // Seed file mein use hoga
   };
 }
 

@@ -16,16 +16,27 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { websiteName, modules, tier } = body as {
-    websiteName: string;
-    modules: ModuleId[];
-    tier: TierId;
-  };
+  const { websiteName, adminName, adminEmail, adminPassword, modules, tier } =
+    body as {
+      websiteName: string;
+      adminName: string;
+      adminEmail: string;
+      adminPassword: string;
+      modules: ModuleId[];
+      tier: TierId;
+    };
 
   // Validate
   if (!websiteName?.trim()) {
     return NextResponse.json(
       { error: "Website name is required" },
+      { status: 400 },
+    );
+  }
+  // Validate
+  if (!adminName || !adminEmail || !adminPassword) {
+    return NextResponse.json(
+      { error: "Admin details required" },
       { status: 400 },
     );
   }
@@ -49,7 +60,7 @@ export async function POST(req: NextRequest) {
     data: {
       name: websiteName.trim(),
       modules: modules,
-      tier: tier,  // ← ADD tier to database
+      tier: tier, // ← ADD tier to database
       status: "GENERATING",
       userId,
     },
@@ -59,8 +70,11 @@ export async function POST(req: NextRequest) {
     // Build ZIP with tier parameter
     const zipBuffer = await buildProjectZip({
       websiteName: websiteName.trim(),
+      adminName,
+      adminEmail,
+      adminPassword,
       modules,
-      tier,  // ← PASS tier to buildProjectZip
+      tier, // ← PASS tier to buildProjectZip
     });
 
     // Mark as DONE
