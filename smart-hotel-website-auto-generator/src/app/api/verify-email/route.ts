@@ -17,7 +17,6 @@ export async function GET(req: Request) {
         { status: 400 },
       );
     }
-
     const user = await prisma.user.findFirst({
       where: {
         verifyToken: token,

@@ -52,7 +52,7 @@ export async function POST(req: Request) {
       {
         success: true,
         message:
-          "User registered successfully please verify your email to login",
+          "User registered successfully... please verify your email to login",
         user: newUser,
       },
       { status: 200 },

@@ -363,6 +363,8 @@ function ProfileDrawer({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
+        style={{ margin: 0, padding: 0 }}
+
       />
 
       {/* Drawer */}
@@ -373,6 +375,8 @@ function ProfileDrawer({
         exit={{ x: "100%" }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         onClick={(e) => e.stopPropagation()}
+        style={{ margin: 0, padding: 0 }}
+
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">

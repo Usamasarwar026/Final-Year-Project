@@ -7,7 +7,7 @@ import { getStaffReport } from "@/services/reportService";
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     if (!from || !to) {
       return NextResponse.json(
         { error: "from and to query params are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     console.error("[GET /api/reports/staff]", err);
     return NextResponse.json(
       { error: err.message || "Failed to load staff report" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

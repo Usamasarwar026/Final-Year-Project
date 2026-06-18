@@ -186,20 +186,58 @@ export const customerNav: NavItem[] = [
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPER — filter staffNav by user's permissions
 // ─────────────────────────────────────────────────────────────────────────────
+// export function filterStaffNavByPermissions(userPermissions: string[]): NavItem[] {
+//   function filter(items: NavItem[]): NavItem[] {
+//     return items
+//       .map((item) => {
+//         // Items without permission are always shown
+//         if (item.permission && !userPermissions.includes(item.permission)) return null;
+
+//         if (item.children) {
+//           const filteredChildren = filter(item.children);
+//           // If the parent has a permission AND all children got filtered out, hide the parent too
+//           if (filteredChildren.length === 0 && item.permission) return null;
+//           return { ...item, children: filteredChildren.length ? filteredChildren : undefined };
+//         }
+
+//         return item;
+//       })
+//       .filter(Boolean) as NavItem[];
+//   }
+
+//   return filter(staffNav);
+// }
+
+
+
+
+
 export function filterStaffNavByPermissions(userPermissions: string[]): NavItem[] {
+  function hasAccess(item: NavItem): boolean {
+    // Agar item ki apni permission check karo
+    if (item.permission && !userPermissions.includes(item.permission)) {
+      // Permission match nahi hui — lekin dekho kya koi child accessible hai
+      if (item.children) {
+        const accessibleChildren = item.children.filter(child => hasAccess(child));
+        return accessibleChildren.length > 0; // Child accessible hai toh parent bhi show karo
+      }
+      return false; // Na apni permission, na children
+    }
+    return true; // Permission hai ya required nahi
+  }
+
   function filter(items: NavItem[]): NavItem[] {
     return items
       .map((item) => {
-        // Items without permission are always shown
-        if (item.permission && !userPermissions.includes(item.permission)) return null;
+        if (!hasAccess(item)) return null;
 
         if (item.children) {
           const filteredChildren = filter(item.children);
-          // If the parent has a permission AND all children got filtered out, hide the parent too
-          if (filteredChildren.length === 0 && item.permission) return null;
-          return { ...item, children: filteredChildren.length ? filteredChildren : undefined };
+          return {
+            ...item,
+            children: filteredChildren.length ? filteredChildren : undefined,
+          };
         }
-
         return item;
       })
       .filter(Boolean) as NavItem[];

@@ -1,3 +1,5 @@
+// smart-hotel-template/src/modules/customer/CustomerDashboard.tsx
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -8,7 +10,6 @@ import {
   CalendarCheck,
   CreditCard,
   BedDouble,
-  ChefHat,
   Bell,
   RefreshCw,
   AlertTriangle,
@@ -22,10 +23,14 @@ import {
   MapPin,
   Moon,
   Receipt,
+  {{#if kitchen}}
+  ChefHat,
   Utensils,
+  {{/if}}
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+{{#if booking}}
 interface ActiveBooking {
   booking_id: number;
   room_number: string;
@@ -47,7 +52,9 @@ interface RecentBooking {
   status: string;
   total_nights: number;
 }
+{{/if}}
 
+{{#if billing}}
 interface RecentInvoice {
   invoice_id: number;
   invoice_number: string;
@@ -59,7 +66,9 @@ interface RecentInvoice {
   payment_status: string;
   generated_at: string;
 }
+{{/if}}
 
+{{#if kitchen}}
 interface RecentOrder {
   id: number;
   order_type: string;
@@ -69,8 +78,10 @@ interface RecentOrder {
   created_at: string;
   items: string[];
 }
+{{/if}}
 
 interface DashboardData {
+  {{#if booking}}
   activeBooking: ActiveBooking | null;
   bookings: {
     total: number;
@@ -78,6 +89,8 @@ interface DashboardData {
     cancelled: number;
     recent: RecentBooking[];
   };
+  {{/if}}
+  {{#if billing}}
   billing: {
     totalInvoices: number;
     totalSpent: number;
@@ -85,10 +98,15 @@ interface DashboardData {
     balanceDue: number;
     recentInvoices: RecentInvoice[];
   };
+  {{/if}}
+  {{#if kitchen}}
   foodOrders: { recent: RecentOrder[] };
+  {{/if}}
   alerts: {
     unreadNotifications: number;
+    {{#if housekeeping}}
     pendingLaundry: number;
+    {{/if}}
   };
 }
 
@@ -103,6 +121,7 @@ const fmt = (d: string) =>
 const fmtCurrency = (n: number) =>
   `PKR ${new Intl.NumberFormat("en-US", { minimumFractionDigits: 0 }).format(n)}`;
 
+{{#if booking}}
 function daysUntilCheckout(checkoutDate: string): number {
   const now = new Date();
   const checkout = new Date(checkoutDate);
@@ -128,7 +147,9 @@ function BookingStatusBadge({ status }: { status: string }) {
     </span>
   );
 }
+{{/if}}
 
+{{#if billing}}
 function PaymentStatusBadge({ status }: { status: string }) {
   const configs: Record<string, string> = {
     Paid: "bg-emerald-100 text-emerald-800 border-emerald-200",
@@ -141,7 +162,9 @@ function PaymentStatusBadge({ status }: { status: string }) {
     </span>
   );
 }
+{{/if}}
 
+{{#if kitchen}}
 function OrderStatusBadge({ status }: { status: string }) {
   const configs: Record<string, string> = {
     Pending: "bg-amber-100 text-amber-800",
@@ -157,6 +180,7 @@ function OrderStatusBadge({ status }: { status: string }) {
     </span>
   );
 }
+{{/if}}
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function CustomerDashboard() {
@@ -229,43 +253,64 @@ export default function CustomerDashboard() {
     );
   }
 
-  const { activeBooking, bookings, billing, foodOrders, alerts } = data!;
+  {{#if booking}}
+  const activeBooking = data?.activeBooking;
+  const bookings = data?.bookings;
   const daysLeft = activeBooking ? daysUntilCheckout(activeBooking.check_out_date) : 0;
+  {{/if}}
 
-  const statCards = [
-    {
-      label: "Total Bookings",
-      value: bookings.total,
-      icon: CalendarCheck,
-      bg: "bg-indigo-50 border-indigo-100",
-      iconColor: "text-indigo-600",
-      href: "/customer/booking",
-    },
-    {
-      label: "Total Invoices",
-      value: billing.totalInvoices,
-      icon: Receipt,
-      bg: "bg-teal-50 border-teal-100",
-      iconColor: "text-teal-600",
-      href: "/customer/billing",
-    },
-    {
-      label: "Balance Due",
-      value: fmtCurrency(billing.balanceDue),
-      icon: CreditCard,
-      bg: billing.balanceDue > 0 ? "bg-rose-50 border-rose-100" : "bg-emerald-50 border-emerald-100",
-      iconColor: billing.balanceDue > 0 ? "text-rose-600" : "text-emerald-600",
-      href: "/customer/billing",
-    },
-    {
-      label: "Notifications",
-      value: alerts.unreadNotifications,
-      icon: Bell,
-      bg: alerts.unreadNotifications > 0 ? "bg-amber-50 border-amber-100" : "bg-gray-50 border-gray-100",
-      iconColor: alerts.unreadNotifications > 0 ? "text-amber-600" : "text-gray-500",
-      href: "/customer/notifications",
-    },
-  ];
+  {{#if billing}}
+  const billing = data?.billing;
+  {{/if}}
+
+  {{#if kitchen}}
+  const foodOrders = data?.foodOrders;
+  {{/if}}
+
+  const alerts = data?.alerts;
+
+  // Build stat cards based on available modules
+  const statCards = [];
+
+  {{#if booking}}
+  statCards.push({
+    label: "Total Bookings",
+    value: bookings?.total || 0,
+    icon: CalendarCheck,
+    bg: "bg-indigo-50 border-indigo-100",
+    iconColor: "text-indigo-600",
+    href: "/customer/booking",
+  });
+  {{/if}}
+
+  {{#if billing}}
+  statCards.push({
+    label: "Total Invoices",
+    value: billing?.totalInvoices || 0,
+    icon: Receipt,
+    bg: "bg-teal-50 border-teal-100",
+    iconColor: "text-teal-600",
+    href: "/customer/billing",
+  });
+  
+  statCards.push({
+    label: "Balance Due",
+    value: fmtCurrency(billing?.balanceDue || 0),
+    icon: CreditCard,
+    bg: (billing?.balanceDue || 0) > 0 ? "bg-rose-50 border-rose-100" : "bg-emerald-50 border-emerald-100",
+    iconColor: (billing?.balanceDue || 0) > 0 ? "text-rose-600" : "text-emerald-600",
+    href: "/customer/billing",
+  });
+  {{/if}}
+
+  statCards.push({
+    label: "Notifications",
+    value: alerts?.unreadNotifications || 0,
+    icon: Bell,
+    bg: (alerts?.unreadNotifications || 0) > 0 ? "bg-amber-50 border-amber-100" : "bg-gray-50 border-gray-100",
+    iconColor: (alerts?.unreadNotifications || 0) > 0 ? "text-amber-600" : "text-gray-500",
+    href: "/customer/notifications",
+  });
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-[1400px] mx-auto">
@@ -276,7 +321,6 @@ export default function CustomerDashboard() {
         animate={{ opacity: 1, y: 0 }}
         className="relative overflow-hidden rounded-3xl p-6 sm:p-8 bg-gradient-to-br from-primary via-primary/90 to-primary/70 text-white shadow-xl"
       >
-        {/* Decorative circles */}
         <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-white/5 translate-x-16 -translate-y-16 pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full bg-white/5 -translate-x-12 translate-y-12 pointer-events-none" />
         <div className="absolute top-6 right-6 w-32 h-32 rounded-full bg-gold/10 pointer-events-none" />
@@ -295,10 +339,10 @@ export default function CustomerDashboard() {
           </div>
 
           <div className="flex items-center gap-3">
-            {alerts.unreadNotifications > 0 && (
+            {(alerts?.unreadNotifications || 0) > 0 && (
               <Link href="/customer/notifications" className="flex items-center gap-2 px-4 py-2.5 bg-white/15 hover:bg-white/25 backdrop-blur-sm rounded-xl text-sm font-semibold border border-white/20 transition-all">
                 <Bell size={15} />
-                {alerts.unreadNotifications} unread
+                {alerts?.unreadNotifications} unread
               </Link>
             )}
             <button
@@ -312,6 +356,7 @@ export default function CustomerDashboard() {
         </div>
       </motion.div>
 
+      {{#if booking}}
       {/* ── Active Stay Card ───────────────────────────────────────────────── */}
       {activeBooking ? (
         <motion.div
@@ -338,20 +383,10 @@ export default function CustomerDashboard() {
                   <span className="ml-2 text-sm font-medium text-emerald-700">— {activeBooking.room_type}</span>
                 </h2>
                 <div className="flex flex-wrap gap-3 mt-2 text-xs text-emerald-700 font-medium">
-                  <span className="flex items-center gap-1">
-                    <MapPin size={11} /> Floor {activeBooking.floor}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <CalendarCheck size={11} />
-                    Check-in: {fmt(activeBooking.check_in_date)}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <CalendarCheck size={11} />
-                    Check-out: {fmt(activeBooking.check_out_date)}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Moon size={11} /> {activeBooking.total_nights} night{activeBooking.total_nights !== 1 ? "s" : ""}
-                  </span>
+                  <span className="flex items-center gap-1"><MapPin size={11} /> Floor {activeBooking.floor}</span>
+                  <span className="flex items-center gap-1"><CalendarCheck size={11} /> Check-in: {fmt(activeBooking.check_in_date)}</span>
+                  <span className="flex items-center gap-1"><CalendarCheck size={11} /> Check-out: {fmt(activeBooking.check_out_date)}</span>
+                  <span className="flex items-center gap-1"><Moon size={11} /> {activeBooking.total_nights} night{activeBooking.total_nights !== 1 ? "s" : ""}</span>
                 </div>
               </div>
             </div>
@@ -363,11 +398,13 @@ export default function CustomerDashboard() {
                   {daysLeft <= 0 ? "Checkout Today" : "Days Left"}
                 </p>
               </div>
-              {alerts.pendingLaundry > 0 && (
+              {{#if housekeeping}}
+              {(alerts?.pendingLaundry || 0) > 0 && (
                 <Link href="/customer/housekeeping" className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-200 text-emerald-800 rounded-lg text-xs font-semibold hover:bg-emerald-300 transition">
-                  <Shirt size={12} /> {alerts.pendingLaundry} Laundry
+                  <Shirt size={12} /> {alerts?.pendingLaundry} Laundry
                 </Link>
               )}
+              {{/if}}
             </div>
           </div>
         </motion.div>
@@ -393,6 +430,7 @@ export default function CustomerDashboard() {
           </Link>
         </motion.div>
       )}
+      {{/if}}
 
       {/* ── Stat Cards ────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -431,9 +469,10 @@ export default function CustomerDashboard() {
       {/* ── Main Content Grid ──────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {/* Left — Bookings & Food Orders */}
+        {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">
 
+          {{#if booking}}
           {/* Recent Bookings */}
           <motion.div
             initial={{ opacity: 0, y: 15 }}
@@ -449,7 +488,7 @@ export default function CustomerDashboard() {
                 View all <ArrowRight size={11} />
               </Link>
             </div>
-            {bookings.recent.length === 0 ? (
+            {!bookings?.recent || bookings.recent.length === 0 ? (
               <div className="py-12 text-center text-sm text-muted-foreground">No bookings yet.</div>
             ) : (
               <div className="overflow-x-auto">
@@ -472,14 +511,16 @@ export default function CustomerDashboard() {
                         <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">{fmt(b.check_out)}</td>
                         <td className="px-4 py-3 text-xs font-semibold text-foreground">{b.total_nights}</td>
                         <td className="px-4 py-3"><BookingStatusBadge status={b.status} /></td>
-                      </tr>
+                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             )}
           </motion.div>
+          {{/if}}
 
+          {{#if kitchen}}
           {/* Recent Food Orders */}
           <motion.div
             initial={{ opacity: 0, y: 15 }}
@@ -495,7 +536,7 @@ export default function CustomerDashboard() {
                 Order Food <ArrowRight size={11} />
               </Link>
             </div>
-            {foodOrders.recent.length === 0 ? (
+            {!foodOrders?.recent || foodOrders.recent.length === 0 ? (
               <div className="py-12 text-center">
                 <ChefHat className="w-8 h-8 mx-auto text-muted-foreground/30 mb-2" />
                 <p className="text-sm text-muted-foreground">No food orders yet.</p>
@@ -527,11 +568,14 @@ export default function CustomerDashboard() {
               </div>
             )}
           </motion.div>
+          {{/if}}
+
         </div>
 
-        {/* Right — Billing Summary & Invoices */}
+        {/* Right Column */}
         <div className="space-y-6">
 
+          {{#if billing}}
           {/* Billing Summary */}
           <motion.div
             initial={{ opacity: 0, y: 15 }}
@@ -546,30 +590,30 @@ export default function CustomerDashboard() {
             <div className="space-y-3">
               <div className="flex justify-between items-center text-sm">
                 <span className="text-muted-foreground text-xs">Total Spent</span>
-                <span className="font-bold text-foreground">{fmtCurrency(billing.totalSpent)}</span>
+                <span className="font-bold text-foreground">{fmtCurrency(billing?.totalSpent || 0)}</span>
               </div>
               <div className="flex justify-between items-center text-sm">
                 <span className="text-muted-foreground text-xs">Amount Paid</span>
-                <span className="font-bold text-emerald-600">{fmtCurrency(billing.totalPaid)}</span>
+                <span className="font-bold text-emerald-600">{fmtCurrency(billing?.totalPaid || 0)}</span>
               </div>
               <div className="flex justify-between items-center text-sm">
                 <span className="text-muted-foreground text-xs">Balance Due</span>
-                <span className={`font-bold ${billing.balanceDue > 0 ? "text-rose-600" : "text-emerald-600"}`}>
-                  {fmtCurrency(billing.balanceDue)}
+                <span className={`font-bold ${(billing?.balanceDue || 0) > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                  {fmtCurrency(billing?.balanceDue || 0)}
                 </span>
               </div>
             </div>
 
-            {billing.balanceDue > 0 && (
+            {(billing?.balanceDue || 0) > 0 && (
               <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-rose-500 flex-shrink-0 mt-0.5" />
                 <p className="text-[11px] font-medium text-rose-700">
-                  You have an outstanding balance of {fmtCurrency(billing.balanceDue)}. Please contact the front desk.
+                  You have an outstanding balance of {fmtCurrency(billing?.balanceDue || 0)}. Please contact the front desk.
                 </p>
               </div>
             )}
 
-            {billing.balanceDue === 0 && billing.totalInvoices > 0 && (
+            {(billing?.balanceDue || 0) === 0 && (billing?.totalInvoices || 0) > 0 && (
               <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center gap-2">
                 <Star className="w-4 h-4 text-emerald-500 flex-shrink-0" />
                 <p className="text-[11px] font-medium text-emerald-700">All invoices are paid. Thank you!</p>
@@ -594,7 +638,7 @@ export default function CustomerDashboard() {
               </h3>
             </div>
 
-            {billing.recentInvoices.length === 0 ? (
+            {!billing?.recentInvoices || billing.recentInvoices.length === 0 ? (
               <div className="py-10 text-center">
                 <CreditCard className="w-7 h-7 mx-auto text-muted-foreground/20 mb-2" />
                 <p className="text-xs text-muted-foreground">No invoices yet.</p>
@@ -629,6 +673,7 @@ export default function CustomerDashboard() {
               </div>
             )}
           </motion.div>
+          {{/if}}
 
           {/* Quick Actions */}
           <motion.div
@@ -639,23 +684,41 @@ export default function CustomerDashboard() {
           >
             <h3 className="font-bold text-foreground text-sm">Quick Actions</h3>
             <div className="grid grid-cols-2 gap-2">
-              {[
-                { label: "Book Room", href: "/customer/booking", icon: BedDouble, color: "text-indigo-600 bg-indigo-50" },
-                { label: "Order Food", href: "/customer/kitchen", icon: ChefHat, color: "text-orange-600 bg-orange-50" },
-                { label: "Housekeeping", href: "/customer/housekeeping", icon: Loader2, color: "text-teal-600 bg-teal-50" },
-                { label: "My Invoices", href: "/customer/billing", icon: Receipt, color: "text-purple-600 bg-purple-50" },
-              ].map(({ label, href, icon: Icon, color }) => (
-                <Link
-                  key={label}
-                  href={href}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-border hover:border-primary/30 hover:bg-muted/30 transition group"
-                >
-                  <div className={`p-2 rounded-lg ${color} group-hover:scale-110 transition-transform`}>
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <span className="text-[10px] font-semibold text-muted-foreground text-center leading-tight">{label}</span>
-                </Link>
-              ))}
+              {{#if booking}}
+              <Link href="/customer/booking" className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-border hover:border-primary/30 hover:bg-muted/30 transition group">
+                <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600 group-hover:scale-110 transition-transform">
+                  <BedDouble className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-semibold text-muted-foreground text-center leading-tight">Book Room</span>
+              </Link>
+              {{/if}}
+
+              {{#if kitchen}}
+              <Link href="/customer/kitchen" className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-border hover:border-primary/30 hover:bg-muted/30 transition group">
+                <div className="p-2 rounded-lg bg-orange-50 text-orange-600 group-hover:scale-110 transition-transform">
+                  <ChefHat className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-semibold text-muted-foreground text-center leading-tight">Order Food</span>
+              </Link>
+              {{/if}}
+
+              {{#if housekeeping}}
+              <Link href="/customer/housekeeping" className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-border hover:border-primary/30 hover:bg-muted/30 transition group">
+                <div className="p-2 rounded-lg bg-teal-50 text-teal-600 group-hover:scale-110 transition-transform">
+                  <Loader2 className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-semibold text-muted-foreground text-center leading-tight">Housekeeping</span>
+              </Link>
+              {{/if}}
+
+              {{#if billing}}
+              <Link href="/customer/billing" className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-border hover:border-primary/30 hover:bg-muted/30 transition group">
+                <div className="p-2 rounded-lg bg-purple-50 text-purple-600 group-hover:scale-110 transition-transform">
+                  <Receipt className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-semibold text-muted-foreground text-center leading-tight">My Invoices</span>
+              </Link>
+              {{/if}}
             </div>
           </motion.div>
 

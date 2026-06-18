@@ -35,17 +35,13 @@ export default function LandingPage() {
   const {
     data: rooms = [],
     isLoading: loading,
-    isError,
   } = useQuery({
     queryKey: ["publicRooms"],
     queryFn: fetchPublicRooms,
     staleTime: 5 * 60 * 1000, // 5 min cache
   });
 
-  // Show sonner toast on error
-  if (isError) {
-    toast.error("Rooms load nahi ho sakay. Dobara try karein.");
-  }
+
 
   // ── handlers ──────────────────────────────────────────
   const handleBookNow = async () => {

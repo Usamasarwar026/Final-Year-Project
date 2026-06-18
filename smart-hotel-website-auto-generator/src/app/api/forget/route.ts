@@ -17,7 +17,6 @@ export async function POST(req: Request) {
         { status: 401 },
       );
     }
-
     const resetToken = crypto.randomBytes(20).toString("hex");
     const passwordResetToken = crypto
       .createHash("sha256")

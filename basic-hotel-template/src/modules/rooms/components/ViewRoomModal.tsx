@@ -34,7 +34,8 @@ export function ViewRoomModal({ room, onClose, onEdit }: Props) {
   return (
     <AnimatePresence>
       {room && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4" style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0 }}>
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4" style={{ margin: 0, padding: 0 }}
+>
           <motion.div className="absolute inset-0 bg-black/70 backdrop-blur-sm"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={onClose} />

@@ -1,4 +1,5 @@
 // src/app/api/billing/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOption";
@@ -11,27 +12,45 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { searchParams } = new URL(req.url);
-    const search = searchParams.get("search") || undefined;
-    const payment_status = searchParams.get("payment_status") || undefined;
-    const startDate = searchParams.get("startDate") || undefined;
-    const endDate = searchParams.get("endDate") || undefined;
+    const searchParams = req.nextUrl.searchParams;
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const search = searchParams.get('search') || undefined;
+    const payment_status = searchParams.get('payment_status') || undefined;
+    const startDate = searchParams.get('startDate') || undefined;
+    const endDate = searchParams.get('endDate') || undefined;
 
     const isAdmin = session.user.role === "ADMIN";
     const isStaff = session.user.role === "STAFF";
 
-    let invoices;
-    if (isAdmin) {
-      invoices = await getInvoices({ search, payment_status, startDate, endDate });
-    } else if (isStaff && session.user.permissions?.includes("billing")) {
-      invoices = await getInvoices({ search, payment_status, startDate, endDate });
+    let result;
+    if (isAdmin || (isStaff && session.user.permissions?.includes('billing'))) {
+      result = await getInvoices({ 
+        search, 
+        payment_status, 
+        startDate, 
+        endDate,
+        page,
+        limit 
+      });
     } else {
       // Guest users can only see their own invoices
-      invoices = await getInvoices({ payment_status, startDate, endDate, guest_id: session.user.id });
+      result = await getInvoices({ 
+        payment_status, 
+        startDate, 
+        endDate, 
+        guest_id: session.user.id,
+        page,
+        limit 
+      });
     }
 
+    // result contains { invoices: [], pagination: {} }
+    const invoices = result.invoices || [];
+    const pagination = result.pagination;
+
     // Serialize Decimal values to numbers for JS client compatibility
-    const serialized = invoices.map((invoice) => ({
+    const serializedInvoices = invoices.map((invoice: any) => ({
       ...invoice,
       room_charges: Number(invoice.room_charges),
       service_charges: Number(invoice.service_charges),
@@ -46,7 +65,10 @@ export async function GET(req: NextRequest) {
       balance_due: Number(invoice.balance_due),
     }));
 
-    return NextResponse.json({ invoices: serialized });
+    return NextResponse.json({ 
+      invoices: serializedInvoices,
+      pagination 
+    });
   } catch (err: any) {
     console.error("[GET /api/billing]", err);
     return NextResponse.json({ error: err.message || "Failed to load invoices" }, { status: 500 });
@@ -61,7 +83,10 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { booking_id, tax_percent, discount_percent } = body;
+    // Support both camelCase and snake_case
+    const booking_id = body.booking_id || body.bookingId;
+    const tax_percent = body.tax_percent || body.taxPercent;
+    const discount_percent = body.discount_percent || body.discountPercent;
 
     if (!booking_id) {
       return NextResponse.json({ error: "booking_id is required" }, { status: 422 });

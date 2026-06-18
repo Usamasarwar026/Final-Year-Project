@@ -826,7 +826,7 @@ function ProfileDrawer({
                           value: profile.isActive ? "Active" : "Suspended",
                           good: profile.isActive,
                         },
-                        
+
                         {
                           label: "Created By",
                           value: profile.createdByAdmin
@@ -884,7 +884,6 @@ function ProfileDrawer({
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                         Account Actions
                       </p>
-
 
                       <button
                         onClick={handleToggleSuspend}

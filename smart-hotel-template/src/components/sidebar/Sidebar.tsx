@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu } from "lucide-react";
-import { adminNav, customerNav, NavItem, staffNav } from "./nav.config";
+import { adminNav, customerNav, filterStaffNavByPermissions, NavItem, staffNav } from "./nav.config";
 import SidebarInner from "./SidebarInner";
 import { useProfile } from "@/hooks/useProfile";
 
@@ -29,9 +29,7 @@ export default function Sidebar() {
     role === "ADMIN"
       ? adminNav
       : role === "STAFF"
-        ? staffNav.filter(
-            (item) => !item.permission || permissions.includes(item.permission),
-          )
+        ? filterStaffNavByPermissions(permissions)
         : customerNav;
 
   useEffect(() => {

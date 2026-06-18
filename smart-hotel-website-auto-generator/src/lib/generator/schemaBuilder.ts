@@ -16,15 +16,6 @@ datasource db {
 }
 `;
 
-// ─── BASE ENUMS (always) ───────────────────────────────────────
-// const BASE_ENUMS = `
-// enum Role {
-//   ADMIN
-//   STAFF
-//   CUSTOMER
-// }
-// `;
-
 function getBaseEnums(tier: TierId): string {
   if (tier === "basic") {
     return `
@@ -167,6 +158,7 @@ enum Gender {
 
 // ─── STAFF MODELS ──────────────────────────────────────────────
 function buildStaffModels(modules: Set<ModuleId>, tier: TierId): string {
+  if (!modules.has("staff")) return "";
   if (tier === "basic") return "";
   const hasHousekeeping = modules.has("housekeeping");
   const hasKitchen = modules.has("kitchen");
@@ -966,8 +958,10 @@ export function buildSchema(modules: ModuleId[], tier: TierId): string {
   parts.push(getBaseEnums(tier));
   parts.push(NOTIFICATION_MODEL);
 
-  const staffModels = buildStaffModels(set, tier);
-  if (staffModels) parts.push(staffModels);
+  if (set.has("staff") && tier !== "basic") {
+    const staffModels = buildStaffModels(set, tier);
+    if (staffModels) parts.push(staffModels);
+  }
   if (set.has("rooms")) {
     parts.push(buildRoomsModels(set, tier));
   }
@@ -980,7 +974,6 @@ export function buildSchema(modules: ModuleId[], tier: TierId): string {
   if (set.has("booking")) {
     parts.push(buildBookingModels(set, tier));
   }
-  
 
   // Housekeeping (only for intermediate/advanced)
   if (set.has("housekeeping") && tier !== "basic") {

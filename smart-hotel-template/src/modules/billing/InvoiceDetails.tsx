@@ -47,6 +47,7 @@ export default function InvoiceDetails() {
   const [payMethod, setPayMethod] = useState("Cash");
   const [payNotes, setPayNotes] = useState("");
   const [submittingPayment, setSubmittingPayment] = useState(false);
+  const basePath = session?.user?.role === "STAFF" ? "/staff" : "/admin";
 
   const loadInvoice = useCallback(async () => {
     if (!id) return;
@@ -166,14 +167,14 @@ export default function InvoiceDetails() {
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
           <Link
-            href={`/admin/billing/${invoice.invoice_id}/print`}
+            href={`${basePath}/billing/${invoice.invoice_id}/print`}
             target="_blank"
             className="flex items-center gap-2 px-4 py-3 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-zinc-800/80 transition-all text-slate-700 dark:text-zinc-300 shadow-sm"
           >
             <Printer size={14} className="text-slate-400" /> Print
           </Link>
           <Link
-            href={`/admin/billing/${invoice.invoice_id}/print`}
+            href={`${basePath}/billing/${invoice.invoice_id}/print`}
             target="_blank"
             className="flex items-center gap-2 px-4 py-3 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-zinc-800/80 transition-all text-slate-700 dark:text-zinc-300 shadow-sm"
           >
