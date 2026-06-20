@@ -23,71 +23,61 @@ function serializeCustomer(customer: any) {
   };
 }
 
-// GET /api/customers
+// GET /api/customers?q=&page=1&limit=10&status=all
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-
     if (!session) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(req.url);
-    const search = searchParams.get("q");
+    const search = searchParams.get("q") ?? "";
+    const status = searchParams.get("status") ?? "all"; // "all" | "active" | "inactive"
+    const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
+    const limit = Math.min(
+      50,
+      Math.max(5, parseInt(searchParams.get("limit") ?? "10"))
+    );
+    const skip = (page - 1) * limit;
 
-    const customers = await prisma.customer.findMany({
-      where: {
-        ...(search
-          ? {
-              OR: [
-                {
-                  name: {
-                    contains: search,
-                    mode: "insensitive",
-                  },
-                },
-                {
-                  email: {
-                    contains: search,
-                    mode: "insensitive",
-                  },
-                },
-                {
-                  phone_number: {
-                    contains: search,
-                    mode: "insensitive",
-                  },
-                },
-                {
-                  cnic: {
-                    contains: search,
-                    mode: "insensitive",
-                  },
-                },
-              ],
-            }
-          : {}),
-      },
-      include: {
-        bookings: {
-          select: {
-            booking_id: true,
-          },
-        },
-      },
-      orderBy: {
-        created_at: "desc",
-      },
-    });
+    const where: any = {};
 
-    return NextResponse.json({ 
-      customers: customers.map(serializeCustomer) 
+    if (search.trim()) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { phone_number: { contains: search, mode: "insensitive" } },
+        { cnic: { contains: search, mode: "insensitive" } },
+        { city: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    if (status === "active") where.is_active = true;
+    else if (status === "inactive") where.is_active = false;
+
+    // Run count + paginated fetch in parallel
+    const [total, customers] = await prisma.$transaction([
+      prisma.customer.count({ where }),
+      prisma.customer.findMany({
+        where,
+        orderBy: { created_at: "desc" },
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    return NextResponse.json({
+      customers: customers.map(serializeCustomer),
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     });
   } catch (error) {
-    console.error(error);
+    console.error("[GET /api/customers]", error);
     return NextResponse.json(
       { error: "Failed to fetch customers" },
       { status: 500 }
@@ -99,16 +89,11 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-
     if (!session) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await req.json();
-
     const {
       name,
       email,
@@ -123,12 +108,8 @@ export async function POST(req: NextRequest) {
     } = body;
 
     if (!name?.trim()) {
-      return NextResponse.json(
-        { error: "Name is required" },
-        { status: 422 }
-      );
+      return NextResponse.json({ error: "Name is required" }, { status: 422 });
     }
-
     if (!phone_number?.trim()) {
       return NextResponse.json(
         { error: "Phone number is required" },
@@ -140,7 +121,7 @@ export async function POST(req: NextRequest) {
       where: {
         OR: [
           ...(email ? [{ email }] : []),
-          { phone_number: phone_number },
+          { phone_number },
           ...(cnic ? [{ cnic }] : []),
         ],
       },
@@ -148,9 +129,7 @@ export async function POST(req: NextRequest) {
 
     if (existingCustomer) {
       return NextResponse.json(
-        {
-          error: "Customer already exists with same email, phone number or CNIC",
-        },
+        { error: "Customer already exists with same email, phone number or CNIC" },
         { status: 409 }
       );
     }

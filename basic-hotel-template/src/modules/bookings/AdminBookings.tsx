@@ -1,4 +1,3 @@
-// src/modules/booking/AdminBookings.tsx
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -23,9 +22,10 @@ import {
   CreditCard,
   ArrowLeft,
   Loader2,
-  Info,
   UserCheck,
   Calendar,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import clsx from "clsx";
 import { useBookings } from "@/hooks/useBookings";
@@ -40,6 +40,7 @@ import {
   type Room,
 } from "@/types/bookings";
 import { toast } from "sonner";
+import { useDebounce } from "@/hooks/useDebounce";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 const today = () => new Date().toISOString().split("T")[0];
@@ -61,6 +62,10 @@ const fmt = (d: string) =>
   });
 const fmtShort = (d: string) =>
   new Date(d).toLocaleDateString("en-US", { day: "numeric", month: "short" });
+
+// ─── Page size options (same pattern as Rooms) ────────────────────────────────
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50] as const;
+type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
 
 // ─── StatusBadge ──────────────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: BookingStatus }) {
@@ -111,24 +116,127 @@ function StatCard({
   );
 }
 
+// ─── Pagination ───────────────────────────────────────────────────────────────
+function Pagination({
+  page,
+  totalPages,
+  total,
+  limit,
+  isFetching,
+  onPageChange,
+  onLimitChange,
+}: {
+  page: number;
+  totalPages: number;
+  total: number;
+  limit: PageSize;
+  isFetching: boolean;
+  onPageChange: (p: number) => void;
+  onLimitChange: (l: PageSize) => void;
+}) {
+  const from = total === 0 ? 0 : (page - 1) * limit + 1;
+  const to = Math.min(page * limit, total);
+
+  const navBtn = (disabled: boolean) =>
+    clsx(
+      "h-8 w-8 flex items-center justify-center rounded-lg border border-border text-xs transition-colors",
+      disabled
+        ? "text-muted-foreground/30 bg-muted/30 cursor-not-allowed"
+        : "text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer",
+    );
+
+  return (
+    <div className="px-4 py-3 border-t border-border bg-muted/20 flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">
+          {total === 0 ? (
+            "No bookings"
+          ) : (
+            <>
+              Showing{" "}
+              <span className="font-medium text-foreground">
+                {from}–{to}
+              </span>{" "}
+              of{" "}
+              <span className="font-medium text-foreground">{total}</span>
+            </>
+          )}
+        </span>
+        {isFetching && (
+          <Loader2 size={11} className="animate-spin text-muted-foreground" />
+        )}
+      </div>
+
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            Rows per page
+          </span>
+          <select
+            value={limit}
+            onChange={(e) => {
+              onLimitChange(Number(e.target.value) as PageSize);
+              onPageChange(1);
+            }}
+            className="h-7 px-2 pr-6 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:border-accent/50 transition-colors appearance-none cursor-pointer"
+          >
+            {PAGE_SIZE_OPTIONS.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="w-px h-4 bg-border" />
+
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => onPageChange(page - 1)}
+            disabled={page === 1}
+            className={navBtn(page === 1)}
+          >
+            <ChevronLeft size={13} />
+          </button>
+          <span className="text-xs text-muted-foreground whitespace-nowrap px-1">
+            Page <span className="font-medium text-foreground">{page}</span> of{" "}
+            <span className="font-medium text-foreground">
+              {totalPages || 1}
+            </span>
+          </span>
+          <button
+            onClick={() => onPageChange(page + 1)}
+            disabled={page >= totalPages}
+            className={navBtn(page >= totalPages)}
+          >
+            <ChevronRight size={13} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Booking Detail Modal ──────────────────────────────────────────────────────
 function BookingDetailModal({
   booking,
   onClose,
   onStatusChange,
+  updatingId,
+  updatingStatus,
 }: {
   booking: Booking;
   onClose: () => void;
   onStatusChange: (id: number, status: BookingStatus) => Promise<void>;
+  updatingId: number | null;
+  updatingStatus: BookingStatus | null;
 }) {
-  const [loading, setLoading] = useState(false);
   const actions = STATUS_ACTIONS[booking.status] ?? [];
   const photos = booking.room?.photos ?? [];
+  const isThisUpdating = updatingId === booking.booking_id;
 
   const handleAction = async (next: BookingStatus) => {
-    setLoading(true);
     await onStatusChange(booking.booking_id, next);
-    setLoading(false);
     onClose();
   };
 
@@ -136,7 +244,6 @@ function BookingDetailModal({
     <div
       className="fixed inset-0 z-[300] flex items-center justify-center p-4"
       style={{ margin: 0, padding: 0 }}
-
     >
       <motion.div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
@@ -244,9 +351,7 @@ function BookingDetailModal({
               <p className="text-[10px] uppercase tracking-wider text-amber-600 font-semibold mb-1">
                 Special Requests
               </p>
-              <p className="text-sm text-foreground">
-                {booking.special_requests}
-              </p>
+              <p className="text-sm text-foreground">{booking.special_requests}</p>
             </div>
           )}
 
@@ -254,14 +359,12 @@ function BookingDetailModal({
             <div className="space-y-1 border-t border-border pt-3 text-xs text-muted-foreground">
               {booking.actual_check_in && (
                 <p>
-                  {" "}
                   Checked in:{" "}
                   {new Date(booking.actual_check_in).toLocaleString()}
                 </p>
               )}
               {booking.actual_check_out && (
                 <p>
-                  {" "}
                   Checked out:{" "}
                   {new Date(booking.actual_check_out).toLocaleString()}
                 </p>
@@ -277,23 +380,27 @@ function BookingDetailModal({
           >
             Close
           </button>
-          {actions.map((a) => (
-            <button
-              key={a.next}
-              onClick={() => handleAction(a.next)}
-              disabled={loading}
-              className={clsx(
-                "flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60",
-                a.color,
-              )}
-            >
-              {loading ? (
-                <Loader2 size={14} className="animate-spin mx-auto" />
-              ) : (
-                a.label
-              )}
-            </button>
-          ))}
+          {actions.map((a) => {
+            const isThisAction =
+              isThisUpdating && updatingStatus === a.next;
+            return (
+              <button
+                key={a.next}
+                onClick={() => handleAction(a.next)}
+                disabled={isThisUpdating}
+                className={clsx(
+                  "flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60",
+                  a.color,
+                )}
+              >
+                {isThisAction ? (
+                  <Loader2 size={14} className="animate-spin mx-auto" />
+                ) : (
+                  a.label
+                )}
+              </button>
+            );
+          })}
         </div>
       </motion.div>
     </div>
@@ -318,7 +425,6 @@ function CustomerDropdown({
   const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
 
-  // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node))
@@ -335,7 +441,7 @@ function CustomerDropdown({
         return (
           !q ||
           c.name.toLowerCase().includes(q) ||
-          c.email?.toLowerCase().includes(q)  ||
+          c.email?.toLowerCase().includes(q) ||
           (c.phone_number ?? "").includes(q)
         );
       }),
@@ -344,7 +450,6 @@ function CustomerDropdown({
 
   return (
     <div ref={ref} className="relative">
-      {/* Trigger */}
       <button
         type="button"
         onClick={() => setOpen((p) => !p)}
@@ -387,7 +492,6 @@ function CustomerDropdown({
         />
       </button>
 
-      {/* Dropdown */}
       <AnimatePresence>
         {open && (
           <motion.div
@@ -397,7 +501,6 @@ function CustomerDropdown({
             transition={{ duration: 0.14 }}
             className="absolute top-full left-0 right-0 mt-1.5 bg-background border border-border rounded-2xl shadow-2xl z-50 overflow-hidden"
           >
-            {/* Search */}
             <div className="p-2 border-b border-border">
               <div className="relative">
                 <Search
@@ -414,7 +517,6 @@ function CustomerDropdown({
               </div>
             </div>
 
-            {/* List */}
             <div
               className="max-h-56 overflow-y-auto"
               style={{ scrollbarWidth: "thin" }}
@@ -479,7 +581,6 @@ function CustomerDropdown({
               )}
             </div>
 
-            {/* Create new */}
             <div className="p-2 border-t border-border">
               <button
                 type="button"
@@ -528,7 +629,6 @@ function RoomDropdown({
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  // Close when room list changes (dates changed)
   useEffect(() => {
     if (selected && !rooms.find((r) => r.room_id === selected.room_id))
       onSelect(null as any);
@@ -641,7 +741,6 @@ function RoomDropdown({
                         selected?.room_id === room.room_id && "bg-accent/8",
                       )}
                     >
-                      {/* Room number badge */}
                       <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent/70 flex items-center justify-center text-white text-[11px] font-bold shrink-0">
                         {room.room_number}
                       </div>
@@ -714,13 +813,10 @@ interface NewCustomerForm {
   email: string;
   phoneNumber: string;
   cnic: string;
-
   gender: "Male" | "Female" | "Other" | "";
   dateOfBirth: string;
-
   city: string;
   country: string;
-
   emergencyContact: string;
   notes: string;
 }
@@ -741,13 +837,10 @@ function CreateCustomerPanel({
     email: "",
     phoneNumber: "",
     cnic: "",
-
     gender: "",
     dateOfBirth: "",
-
     city: "",
     country: "",
-
     emergencyContact: "",
     notes: "",
   });
@@ -757,25 +850,32 @@ function CreateCustomerPanel({
   const set =
     (k: keyof NewCustomerForm) => (e: React.ChangeEvent<HTMLInputElement>) =>
       setForm((p) => ({ ...p, [k]: e.target.value }));
+
   const validate = () => {
     const errs: Partial<NewCustomerForm> = {};
-
     if (!form.name.trim()) errs.name = "Required";
-
     if (!form.phoneNumber.trim()) errs.phoneNumber = "Required";
-
-    if (form.email && !/\S+@\S+\.\S+/.test(form.email)) {
+    if (form.email && !/\S+@\S+\.\S+/.test(form.email))
       errs.email = "Invalid email";
-    }
-
     setErrors(errs);
-
     return Object.keys(errs).length === 0;
   };
+
   const handleCreate = async () => {
     if (!validate()) return;
     setSaving(true);
-    const res = await createCustomer(form);
+    const res = await createCustomer({
+      name: form.name,
+      email: form.email,
+      phone_number: form.phoneNumber,
+      cnic: form.cnic,
+      gender: form.gender,
+      date_of_birth: form.dateOfBirth,
+      city: form.city,
+      country: form.country,
+      emergency_contact: form.emergencyContact,
+      notes: form.notes,
+    });
     setSaving(false);
     if (res.ok && res.data) {
       onCreated(res.data);
@@ -785,61 +885,13 @@ function CreateCustomerPanel({
   };
 
   const fields = [
-    {
-      k: "name",
-      label: "Full Name *",
-      type: "text",
-      placeholder: "John Smith",
-      icon: Users,
-    },
-
-    {
-      k: "email",
-      label: "Email",
-      type: "email",
-      placeholder: "john@email.com",
-      icon: Mail,
-    },
-
-    {
-      k: "phoneNumber",
-      label: "Phone Number *",
-      type: "tel",
-      placeholder: "+92 300 1234567",
-      icon: Phone,
-    },
-
-    {
-      k: "cnic",
-      label: "CNIC",
-      type: "text",
-      placeholder: "35202-1234567-1",
-      icon: CreditCard,
-    },
-
-    {
-      k: "city",
-      label: "City",
-      type: "text",
-      placeholder: "Lahore",
-      icon: MapPin,
-    },
-
-    {
-      k: "country",
-      label: "Country",
-      type: "text",
-      placeholder: "Pakistan",
-      icon: MapPin,
-    },
-
-    {
-      k: "emergencyContact",
-      label: "Emergency Contact",
-      type: "tel",
-      placeholder: "+92 300 1111111",
-      icon: Phone,
-    },
+    { k: "name", label: "Full Name *", type: "text", placeholder: "John Smith", icon: Users },
+    { k: "email", label: "Email", type: "email", placeholder: "john@email.com", icon: Mail },
+    { k: "phoneNumber", label: "Phone Number *", type: "tel", placeholder: "+92 300 1234567", icon: Phone },
+    { k: "cnic", label: "CNIC", type: "text", placeholder: "35202-1234567-1", icon: CreditCard },
+    { k: "city", label: "City", type: "text", placeholder: "Lahore", icon: MapPin },
+    { k: "country", label: "Country", type: "text", placeholder: "Pakistan", icon: MapPin },
+    { k: "emergencyContact", label: "Emergency Contact", type: "tel", placeholder: "+92 300 1111111", icon: Phone },
   ] as const;
 
   return (
@@ -848,10 +900,7 @@ function CreateCustomerPanel({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 20 }}
       className="space-y-4"
-      style={{ margin: 0, padding: 0 }}
-
     >
-      {/* Header */}
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -864,11 +913,12 @@ function CreateCustomerPanel({
           <h4 className="text-sm font-semibold text-foreground">
             Create New Customer
           </h4>
-          <p>Create a guest profile for hotel bookings</p>
+          <p className="text-xs text-muted-foreground">
+            Create a guest profile for hotel bookings
+          </p>
         </div>
       </div>
 
-      {/* Fields */}
       <div className="grid grid-cols-2 gap-3">
         {fields.map(({ k, label, type, placeholder, icon: Icon }) => (
           <div key={k} className={k === "name" ? "col-span-2" : ""}>
@@ -899,19 +949,16 @@ function CreateCustomerPanel({
           </div>
         ))}
       </div>
+
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-muted-foreground mb-1.5">
             Gender
           </label>
-
           <select
             value={form.gender}
             onChange={(e) =>
-              setForm((prev) => ({
-                ...prev,
-                gender: e.target.value as any,
-              }))
+              setForm((prev) => ({ ...prev, gender: e.target.value as any }))
             }
             className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm"
           >
@@ -925,33 +972,26 @@ function CreateCustomerPanel({
           <label className="block text-xs font-medium text-muted-foreground mb-1.5">
             Date of Birth
           </label>
-
           <input
             type="date"
             value={form.dateOfBirth}
             onChange={(e) =>
-              setForm((prev) => ({
-                ...prev,
-                dateOfBirth: e.target.value,
-              }))
+              setForm((prev) => ({ ...prev, dateOfBirth: e.target.value }))
             }
             className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm"
           />
         </div>
       </div>
-      <div className="col-span-2">
+
+      <div>
         <label className="block text-xs font-medium text-muted-foreground mb-1.5">
           Notes
         </label>
-
         <textarea
           rows={3}
           value={form.notes}
           onChange={(e) =>
-            setForm((prev) => ({
-              ...prev,
-              notes: e.target.value,
-            }))
+            setForm((prev) => ({ ...prev, notes: e.target.value }))
           }
           placeholder="Additional guest notes..."
           className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm resize-none"
@@ -975,8 +1015,7 @@ function CreateCustomerPanel({
   );
 }
 
-
-// ─── Main Create Booking Modal ─────────────────────────────────────────────────
+// ─── Create Booking Modal ──────────────────────────────────────────────────────
 function CreateBookingModal({
   onClose,
   onCreated,
@@ -991,7 +1030,6 @@ function CreateBookingModal({
   const [checkOut, setCheckOut] = useState(addDays(today(), 3));
   const [specialReqs, setSpecialReqs] = useState("");
   const [saving, setSaving] = useState(false);
-  
 
   const {
     rooms,
@@ -1046,10 +1084,7 @@ function CreateBookingModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[300] flex items-center justify-center p-4"
-      style={{ position: "fixed", inset: 0 }}
-    >
+    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
       <motion.div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         initial={{ opacity: 0 }}
@@ -1066,7 +1101,6 @@ function CreateBookingModal({
         transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center">
@@ -1089,7 +1123,6 @@ function CreateBookingModal({
           </button>
         </div>
 
-        {/* Body */}
         <div
           className="overflow-y-auto flex-1 p-5"
           style={{ scrollbarWidth: "thin" }}
@@ -1109,8 +1142,7 @@ function CreateBookingModal({
                 animate={{ opacity: 1 }}
                 className="space-y-5"
               >
-
-                {/* ── SECTION 1: Customer ──────────────────────────────── */}
+                {/* Customer */}
                 <div className="space-y-2">
                   <label className="flex items-center gap-1.5 text-xs font-semibold text-foreground uppercase tracking-wide">
                     <UserCheck size={12} className="text-accent" /> Customer *
@@ -1147,16 +1179,14 @@ function CreateBookingModal({
                         <span className="flex items-center gap-1">
                           <CalendarCheck size={10} />
                           {selectedCust.bookings?.length ?? 0} previous booking
-                          {(selectedCust.bookings?.length ?? 0) !== 1
-                            ? "s"
-                            : ""}
+                          {(selectedCust.bookings?.length ?? 0) !== 1 ? "s" : ""}
                         </span>
                       </div>
                     </motion.div>
                   )}
                 </div>
 
-                {/* ── SECTION 2: Dates ─────────────────────────────────── */}
+                {/* Dates */}
                 <div className="space-y-2">
                   <label className="flex items-center gap-1.5 text-xs font-semibold text-foreground uppercase tracking-wide">
                     <Calendar size={12} className="text-accent" /> Stay Dates *
@@ -1203,7 +1233,7 @@ function CreateBookingModal({
                   )}
                 </div>
 
-                {/* ── SECTION 3: Room ──────────────────────────────────── */}
+                {/* Room */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="flex items-center gap-1.5 text-xs font-semibold text-foreground uppercase tracking-wide">
@@ -1229,7 +1259,6 @@ function CreateBookingModal({
                       animate={{ opacity: 1, height: "auto" }}
                       className="overflow-hidden"
                     >
-                      {/* Price breakdown mini card */}
                       <div className="mt-2 p-3 rounded-xl bg-muted/50 border border-border space-y-1.5 text-xs">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">
@@ -1254,7 +1283,7 @@ function CreateBookingModal({
                   )}
                 </div>
 
-                {/* ── SECTION 4: Special Requests ─────────────────────── */}
+                {/* Special Requests */}
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-foreground uppercase tracking-wide">
                     Special Requests{" "}
@@ -1275,7 +1304,6 @@ function CreateBookingModal({
           </AnimatePresence>
         </div>
 
-        {/* Footer — only show on main step */}
         {step === "main" && (
           <div className="flex gap-3 px-5 py-4 border-t border-border shrink-0">
             <button
@@ -1310,18 +1338,47 @@ function CreateBookingModal({
 
 // ─── Main Admin Bookings Page ──────────────────────────────────────────────────
 export default function AdminBookings() {
-  const { bookings, loading, error, refresh, updateStatus, deleteBooking } =
-    useBookings();
+  // ── Pagination + filter state ──
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState<PageSize>(10);
   const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState<BookingStatus | "All">(
-    "All",
-  );
+  const [filterStatus, setFilterStatus] = useState<BookingStatus | "All">("All");
+
+  // Debounce search so API isn't hit on every keystroke
+  const debouncedSearch = useDebounce(search, 400);
+
+  const {
+    bookings,
+    pagination,
+    loading,
+    isFetching,
+    error,
+    refresh,
+    updateStatus,
+    deleteBooking,
+    updatingId,
+    updatingStatus,
+    isDeleting,
+    deletingId,
+  } = useBookings({
+    page,
+    limit,
+    search: debouncedSearch,
+    status: filterStatus,
+  });
+
   const [viewBooking, setViewBooking] = useState<Booking | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
-  // const showToast = (msg: string, type: "success" | "error" = "success") => {
-  //   type === "success" ? toast.success(msg) : toast.error(msg);
-  // };
+  // Reset to page 1 when filters change
+  const handleSearch = (val: string) => {
+    setSearch(val);
+    setPage(1);
+  };
+  const handleStatusFilter = (val: BookingStatus | "All") => {
+    setFilterStatus(val);
+    setPage(1);
+  };
 
   const handleStatusChange = async (id: number, status: BookingStatus) => {
     const res = await updateStatus(id, status);
@@ -1336,20 +1393,9 @@ export default function AdminBookings() {
     else toast.error(res.error);
   };
 
-  const filtered = bookings.filter((b) => {
-    const q = search.toLowerCase();
-    return (
-      (filterStatus === "All" || b.status === filterStatus) &&
-      (!q ||
-        b.user?.name?.toLowerCase().includes(q) ||
-        b.user?.email?.toLowerCase().includes(q) ||
-        b.room?.room_number?.toLowerCase().includes(q) ||
-        String(b.booking_id).includes(q))
-    );
-  });
-
+  // Stats from current page data (server handles filtering, these reflect visible rows)
   const stats = {
-    total: bookings.length,
+    total: pagination?.total ?? bookings.length,
     pending: bookings.filter((b) => b.status === "Pending").length,
     confirmed: bookings.filter((b) => b.status === "Confirmed").length,
     checkedIn: bookings.filter((b) => b.status === "CheckedIn").length,
@@ -1410,13 +1456,13 @@ export default function AdminBookings() {
           />
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearch(e.target.value)}
             placeholder="Search guest, room, booking ID…"
             className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 transition-colors"
           />
           {search && (
             <button
-              onClick={() => setSearch("")}
+              onClick={() => handleSearch("")}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
               <X size={12} />
@@ -1425,7 +1471,7 @@ export default function AdminBookings() {
         </div>
         <select
           value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value as any)}
+          onChange={(e) => handleStatusFilter(e.target.value as any)}
           className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:border-accent/50 transition-colors"
         >
           <option value="All">All Statuses</option>
@@ -1448,7 +1494,22 @@ export default function AdminBookings() {
         ) : error ? (
           <div className="py-20 text-center text-sm text-red-500">{error}</div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto relative">
+            {/* Overlay spinner on page / filter change (not initial load) */}
+            {isFetching && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-[1px]">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background border border-border shadow-sm">
+                  <Loader2
+                    size={13}
+                    className="animate-spin text-muted-foreground"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    Updating…
+                  </span>
+                </div>
+              </div>
+            )}
+
             <table className="w-full text-sm">
               <thead className="border-b border-border bg-muted/40">
                 <tr>
@@ -1474,7 +1535,7 @@ export default function AdminBookings() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
+                {bookings.length === 0 ? (
                   <tr>
                     <td colSpan={10} className="py-16 text-center">
                       <CalendarCheck
@@ -1487,141 +1548,170 @@ export default function AdminBookings() {
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((b, i) => (
-                    <motion.tr
-                      key={b.booking_id}
-                      initial={{ opacity: 0, y: 3 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.02 }}
-                      className="border-t border-border hover:bg-muted/30 transition-colors"
-                    >
-                      {/* ID */}
-                      <td className="px-4 py-3.5 text-muted-foreground font-mono text-xs">
-                        #{b.booking_id}
-                      </td>
+                  bookings.map((b, i) => {
+                    const isRowUpdating = updatingId === b.booking_id;
+                    const isRowDeleting = deletingId === b.booking_id;
 
-                      {/* Guest */}
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-accent/70 flex items-center justify-center text-white text-[9px] font-bold shrink-0">
-                            {(b.user?.name ?? "?")
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")
-                              .toUpperCase()
-                              .slice(0, 2)}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-medium text-foreground text-xs truncate max-w-[110px]">
-                              {b.user?.name ?? "—"}
-                            </p>
-                            <p className="text-muted-foreground text-[10px] truncate max-w-[110px]">
-                              {b.user?.email ?? "—"}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
+                    return (
+                      <motion.tr
+                        key={b.booking_id}
+                        initial={{ opacity: 0, y: 3 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.02 }}
+                        className={clsx(
+                          "border-t border-border hover:bg-muted/30 transition-colors",
+                          (isRowUpdating || isRowDeleting) && "opacity-60",
+                        )}
+                      >
+                        {/* ID */}
+                        <td className="px-4 py-3.5 text-muted-foreground font-mono text-xs">
+                          #{b.booking_id}
+                        </td>
 
-                      {/* Room */}
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-2">
-                          {b.room?.photos?.[0] ? (
-                            <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-border">
-                              <Image
-                                src={b.room.photos[0] as string}
-                                alt=""
-                                width={32}
-                                height={32}
-                                className="w-full h-full object-cover"
-                                unoptimized
-                              />
+                        {/* Guest */}
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-accent/70 flex items-center justify-center text-white text-[9px] font-bold shrink-0">
+                              {(b.user?.name ?? "?")
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")
+                                .toUpperCase()
+                                .slice(0, 2)}
                             </div>
+                            <div className="min-w-0">
+                              <p className="font-medium text-foreground text-xs truncate max-w-[110px]">
+                                {b.user?.name ?? "—"}
+                              </p>
+                              <p className="text-muted-foreground text-[10px] truncate max-w-[110px]">
+                                {b.user?.email ?? "—"}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Room */}
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-2">
+                            {b.room?.photos?.[0] ? (
+                              <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-border">
+                                <Image
+                                  src={b.room.photos[0] as string}
+                                  alt=""
+                                  width={32}
+                                  height={32}
+                                  className="w-full h-full object-cover"
+                                  unoptimized
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-8 h-8 rounded-lg bg-muted border border-border flex items-center justify-center shrink-0">
+                                <BedDouble
+                                  size={12}
+                                  className="text-muted-foreground/40"
+                                />
+                              </div>
+                            )}
+                            <div>
+                              <p className="font-semibold text-foreground text-xs">
+                                {b.room?.room_number ?? "—"}
+                              </p>
+                              <p className="text-muted-foreground text-[10px]">
+                                {b.room?.room_type}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Check-in */}
+                        <td className="px-4 py-3.5 text-foreground text-xs whitespace-nowrap">
+                          {fmtShort(b.check_in_date)}
+                        </td>
+                        {/* Check-out */}
+                        <td className="px-4 py-3.5 text-foreground text-xs whitespace-nowrap">
+                          {fmtShort(b.check_out_date)}
+                        </td>
+                        {/* Nights */}
+                        <td className="px-4 py-3.5 text-muted-foreground text-xs">
+                          {b.total_nights}n
+                        </td>
+                        {/* Amount */}
+                        <td className="px-4 py-3.5 font-semibold text-foreground text-xs">
+                          PKR {Number(b.total_amount).toFixed(0)}
+                        </td>
+                        {/* Status */}
+                        <td className="px-4 py-3.5">
+                          {isRowUpdating ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-muted text-muted-foreground">
+                              <Loader2 size={10} className="animate-spin" />
+                              Updating…
+                            </span>
                           ) : (
-                            <div className="w-8 h-8 rounded-lg bg-muted border border-border flex items-center justify-center shrink-0">
-                              <BedDouble
-                                size={12}
-                                className="text-muted-foreground/40"
-                              />
-                            </div>
+                            <StatusBadge status={b.status} />
                           )}
-                          <div>
-                            <p className="font-semibold text-foreground text-xs">
-                              {b.room?.room_number ?? "—"}
-                            </p>
-                            <p className="text-muted-foreground text-[10px]">
-                              {b.room?.room_type}
-                            </p>
+                        </td>
+                        {/* Source */}
+                        <td className="px-4 py-3.5">
+                          <span
+                            className={clsx(
+                              "text-[9px] font-semibold px-1.5 py-0.5 rounded",
+                              b.source === "ADMIN"
+                                ? "bg-purple-100 text-purple-700"
+                                : "bg-blue-100 text-blue-700",
+                            )}
+                          >
+                            {b.source === "ADMIN" ? "Admin" : "Customer"}
+                          </span>
+                        </td>
+                        {/* Actions */}
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => setViewBooking(b)}
+                              disabled={isRowUpdating || isRowDeleting}
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-40"
+                            >
+                              <Eye size={13} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(b.booking_id)}
+                              disabled={isDeleting || isRowUpdating}
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-40"
+                            >
+                              {isRowDeleting ? (
+                                <Loader2
+                                  size={13}
+                                  className="animate-spin text-red-400"
+                                />
+                              ) : (
+                                <Trash2 size={13} />
+                              )}
+                            </button>
                           </div>
-                        </div>
-                      </td>
-
-                      {/* Check-in */}
-                      <td className="px-4 py-3.5 text-foreground text-xs whitespace-nowrap">
-                        {fmtShort(b.check_in_date)}
-                      </td>
-                      {/* Check-out */}
-                      <td className="px-4 py-3.5 text-foreground text-xs whitespace-nowrap">
-                        {fmtShort(b.check_out_date)}
-                      </td>
-                      {/* Nights */}
-                      <td className="px-4 py-3.5 text-muted-foreground text-xs">
-                        {b.total_nights}n
-                      </td>
-                      {/* Amount */}
-                      <td className="px-4 py-3.5 font-semibold text-foreground text-xs">
-                        PKR {Number(b.total_amount).toFixed(0)}
-                      </td>
-                      {/* Status */}
-                      <td className="px-4 py-3.5">
-                        <StatusBadge status={b.status} />
-                      </td>
-                      {/* Source */}
-                      <td className="px-4 py-3.5">
-                        <span
-                          className={clsx(
-                            "text-[9px] font-semibold px-1.5 py-0.5 rounded",
-                            b.source === "ADMIN"
-                              ? "bg-purple-100 text-purple-700"
-                              : "bg-blue-100 text-blue-700",
-                          )}
-                        >
-                          {b.source === "ADMIN" ? "Admin" : "Customer"}
-                        </span>
-                      </td>
-                      {/* Actions */}
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => setViewBooking(b)}
-                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                          >
-                            <Eye size={13} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(b.booking_id)}
-                            className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </td>
-                    </motion.tr>
-                  ))
+                        </td>
+                      </motion.tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
         )}
 
-        {!loading && !error && filtered.length > 0 && (
-          <div className="px-4 py-3 border-t border-border bg-muted/20 flex justify-between text-xs text-muted-foreground">
-            <span>
-              Showing {filtered.length} of {bookings.length}
-            </span>
-            <span>
-              {stats.pending} pending · {stats.checkedIn} checked in
-            </span>
-          </div>
+        {/* Pagination */}
+        {!loading && !error && pagination && (
+          <Pagination
+            page={page}
+            totalPages={pagination.totalPages}
+            total={pagination.total}
+            limit={limit}
+            isFetching={isFetching}
+            onPageChange={setPage}
+            onLimitChange={(l) => {
+              setLimit(l);
+              setPage(1);
+            }}
+          />
         )}
       </div>
 
@@ -1632,6 +1722,8 @@ export default function AdminBookings() {
             booking={viewBooking}
             onClose={() => setViewBooking(null)}
             onStatusChange={handleStatusChange}
+            updatingId={updatingId}
+            updatingStatus={updatingStatus}
           />
         )}
       </AnimatePresence>
@@ -1640,7 +1732,7 @@ export default function AdminBookings() {
         {showCreate && (
           <CreateBookingModal
             onClose={() => setShowCreate(false)}
-            onCreated={(b) => {
+            onCreated={() => {
               refresh();
               setShowCreate(false);
             }}

@@ -11,8 +11,6 @@ export function useProfile() {
   return useQuery<UserProfile>({
     queryKey: PROFILE_KEY,
     queryFn:  profileService.getProfile,
-    staleTime: 1000 * 60 * 3,  // 3 min — API Cache-Control ke saath sync
-    retry: 1,                   // ek baar retry karo, zyada nahi
   });
 }
 

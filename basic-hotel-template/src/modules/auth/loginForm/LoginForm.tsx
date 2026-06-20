@@ -161,12 +161,6 @@ export const LoginForm = () => {
             </Button>
           </form>
           
-          <p className="mt-6 text-sm text-center text-muted-foreground">
-            New here?{" "}
-            <Link href="/signup" className="text-accent hover:underline">
-              Create an account
-            </Link>
-          </p>
         </Card>
       </div>
     </div>

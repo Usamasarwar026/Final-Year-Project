@@ -1,76 +1,86 @@
 // src/hooks/useCustomers.ts
-import { useState, useEffect, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import api from "@/lib/axios";
 import type { Customer, CreateCustomerPayload } from "@/types/bookings";
 
 type ApiResult<T = void> = { ok: boolean; data?: T; error?: string };
 
+export const customerKeys = {
+  active: ["customers", "active"] as const,
+};
+
+// Only active customers — for booking dropdown
 export function useCustomers() {
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const fetch = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const { data, isLoading: loading, error } = useQuery<Customer[]>({
+    queryKey: customerKeys.active,
+    queryFn: async () => {
+      // status=active → backend returns only is_active=true customers, no pagination (limit=200)
+      const { data } = await api.get<{ customers: Customer[] }>("/customers", {
+        params: { status: "active", limit: 200, page: 1 },
+      });
+      return data.customers ?? [];
+    },
+    staleTime: 60_000,         // customer list doesn't change often
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (payload: CreateCustomerPayload) => {
+      const { data } = await api.post<{ customer: Customer }>("/customers", payload);
+      return data.customer;
+    },
+    onSuccess: (newCustomer) => {
+      // Prepend to active list cache so dropdown shows immediately
+      queryClient.setQueryData<Customer[]>(customerKeys.active, (old = []) => [
+        newCustomer,
+        ...old,
+      ]);
+    },
+    onError: (e: any) => {
+      toast.error(e?.response?.data?.error ?? "Failed to create customer");
+    },
+  });
+
+  const createCustomer = async (payload: CreateCustomerPayload): Promise<ApiResult<Customer>> => {
     try {
-      const { data } = await api.get<{ customers: Customer[] }>("/customers");
-      console.log("data", data);
-      setCustomers(data.customers);
+      const customer = await createMutation.mutateAsync(payload);
+      return { ok: true, data: customer };
     } catch (e: any) {
-      setError(e?.response?.data?.error ?? "Failed to load customers");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetch();
-  }, [fetch]);
-
-  const createCustomer = async (
-    payload: CreateCustomerPayload,
-  ): Promise<ApiResult<Customer>> => {
-    try {
-      const { data } = await api.post<{ customer: Customer }>(
-        "/customers",
-        payload,
-      );
-      // Append to local state so dropdown updates immediately
-      setCustomers((prev) => [data.customer, ...prev]);
-      return { ok: true, data: data.customer };
-    } catch (e: any) {
-      return {
-        ok: false,
-        error: e?.response?.data?.error ?? "Failed to create customer",
-      };
+      return { ok: false, error: e?.response?.data?.error ?? "Failed to create customer" };
     }
   };
 
-  return { customers, loading, error, refresh: fetch, createCustomer };
+  return {
+    customers: data ?? [],
+    loading,
+    error: error ? String((error as any)?.message) : null,
+    createCustomer,
+    isCreating: createMutation.isPending,
+  };
 }
 
-// Hook: available rooms for a date range
+// Available rooms for admin booking modal
 export function useAvailableRoomsForAdmin(checkIn: string, checkOut: string) {
-  const [rooms, setRooms] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { data, isLoading: loading, error } = useQuery({
+    queryKey: ["available-rooms", checkIn, checkOut],
+    queryFn: async () => {
+      const { data } = await api.get(
+        `/bookings/available-rooms?checkIn=${checkIn}&checkOut=${checkOut}`
+      );
+      return data.rooms ?? [];
+    },
+    enabled: !!checkIn && !!checkOut && checkIn < checkOut,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
 
-  useEffect(() => {
-    if (!checkIn || !checkOut || checkIn >= checkOut) {
-      setRooms([]);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    api
-      .get(`/bookings/available-rooms?checkIn=${checkIn}&checkOut=${checkOut}`)
-      .then(({ data }) => setRooms(data.rooms ?? []))
-      .catch((e) =>
-        setError(e?.response?.data?.error ?? "Failed to fetch rooms"),
-      )
-      .finally(() => setLoading(false));
-  }, [checkIn, checkOut]);
-
-  return { rooms, loading, error };
+  return {
+    rooms: data ?? [],
+    loading,
+    error: error ? String((error as any)?.message) : null,
+  };
 }

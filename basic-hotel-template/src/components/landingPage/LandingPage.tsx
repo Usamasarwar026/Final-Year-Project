@@ -7,7 +7,6 @@ import { useSession, signIn } from "next-auth/react";
 import Image from "next/image";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { Footer } from "../footer/Footer";
 import { Button } from "../button/Button";
 import {
@@ -24,7 +23,6 @@ async function fetchPublicRooms(): Promise<Room[]> {
   const { data } = await api.get<{ rooms: Room[] }>("/rooms/public");
   return data.rooms ?? [];
 }
-
 // ── component ────────────────────────────────────────────
 export default function LandingPage() {
   const router = useRouter();
@@ -32,16 +30,22 @@ export default function LandingPage() {
   const [visibleCount, setVisibleCount] = useState(9);
 
   // TanStack Query — replaces useEffect + useState(loading/rooms)
+
   const {
     data: rooms = [],
-    isLoading: loading,
+    isLoading,
+    isError,
   } = useQuery({
     queryKey: ["publicRooms"],
     queryFn: fetchPublicRooms,
-    staleTime: 5 * 60 * 1000, // 5 min cache
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
   });
 
-
+ 
+  if (isError) {
+    return <div className="text-center py-20">Failed to load rooms.</div>;
+  }
 
   // ── handlers ──────────────────────────────────────────
   const handleBookNow = async () => {
@@ -86,12 +90,7 @@ export default function LandingPage() {
             >
               Login
             </Link>
-            <Link
-              href="/signup"
-              className="bg-gold text-black px-6 py-1 rounded-md text-sm"
-            >
-              Sign up
-            </Link>
+            
           </div>
         </div>
       </motion.header>
@@ -149,95 +148,114 @@ export default function LandingPage() {
           Featured Rooms
         </h2>
 
-        {loading ? (
+        {isLoading ? (
           <div className="flex flex-col items-center gap-3 py-20">
             <div className="w-7 h-7 rounded-full border-2 border-muted-foreground/20 border-t-primary animate-spin" />
             <p className="text-sm text-muted-foreground">Loading rooms…</p>
           </div>
         ) : (
           <>
-            <div className="grid md:grid-cols-3 gap-6">
-              {visibleRooms.map((room, i) => {
-                const statusConfig = STATUS_CONFIG[room.status];
-                const roomImage =
-                  room.photos?.[0] || "/assets/room-standard.jpg";
-                return (
-                  <motion.div
-                    key={room.room_id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    whileHover={{ scale: 1.03 }}
-                    className="bg-card rounded-xl overflow-hidden shadow-lg flex flex-col"
-                  >
-                    <div className="relative h-56 w-full">
-                      <Image
-                        src={roomImage}
-                        alt={`Room ${room.room_number}`}
-                        fill
-                        className="object-cover"
-                        unoptimized
-                      />
-                      <div className="absolute top-3 right-3">
-                        <span
-                          className={clsx(
-                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold",
-                            statusConfig.bg,
-                            statusConfig.text,
-                          )}
-                        >
-                          <span
-                            className={clsx(
-                              "w-1.5 h-1.5 rounded-full",
-                              statusConfig.dot,
-                            )}
-                          />
-                          {statusConfig.label}
-                        </span>
-                      </div>
-                    </div>
+            {rooms.length === 0 ? (
+              <div className="py-20 text-center">
+                <h3 className="text-2xl font-semibold">No Rooms Available</h3>
 
-                    <div className="p-4 flex flex-col flex-1">
-                      <h3 className="font-serif text-xl">
-                        Room {room.room_number}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {room.room_type}
-                      </p>
-                      <p className="text-lg font-bold text-primary mt-2">
-                        PKR {Number(room.price_per_night).toFixed(0)}/night
-                      </p>
-                      <button
-                        onClick={handleRoomBook}
-                        className="mt-4 bg-gold text-black px-4 py-2 rounded-lg font-semibold hover:bg-gold/90 transition-colors"
-                      >
-                        Book Now
-                      </button>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-
-            {rooms.length > 9 && (
-              <div className="flex justify-center gap-4 mt-10">
-                {visibleCount < rooms.length && (
-                  <button
-                    onClick={handleShowMore}
-                    className="border border-primary px-6 py-2 rounded-lg text-primary font-semibold hover:bg-primary hover:text-primary-foreground transition-colors"
-                  >
-                    Show More
-                  </button>
-                )}
-                {visibleCount > 9 && (
-                  <button
-                    onClick={handleShowLess}
-                    className="border border-muted-foreground px-6 py-2 rounded-lg text-muted-foreground font-semibold hover:bg-muted transition-colors"
-                  >
-                    Show Less
-                  </button>
-                )}
+                <p className="mt-2 text-muted-foreground">
+                  There are currently no rooms available. Please check again
+                  later.
+                </p>
               </div>
+            ) : (
+              <>
+                <div className="grid md:grid-cols-3 gap-6">
+                  {visibleRooms.map((room, i) => {
+                    const statusConfig = STATUS_CONFIG[room.status];
+                    const roomImage =
+                      room.photos?.[0] || "/assets/room-standard.jpg";
+
+                    return (
+                      <motion.div
+                        key={room.room_id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.05 }}
+                        whileHover={{ scale: 1.03 }}
+                        className="bg-card rounded-xl overflow-hidden shadow-lg flex flex-col"
+                      >
+                        <div className="relative h-56 w-full">
+                          <Image
+                            src={roomImage}
+                            alt={`Room ${room.room_number}`}
+                            fill
+                            className="object-cover"
+                            unoptimized
+                          />
+
+                          <div className="absolute top-3 right-3">
+                            <span
+                              className={clsx(
+                                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold",
+                                statusConfig.bg,
+                                statusConfig.text,
+                              )}
+                            >
+                              <span
+                                className={clsx(
+                                  "w-1.5 h-1.5 rounded-full",
+                                  statusConfig.dot,
+                                )}
+                              />
+                              {statusConfig.label}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="p-4 flex flex-col flex-1">
+                          <h3 className="font-serif text-xl">
+                            Room {room.room_number}
+                          </h3>
+
+                          <p className="text-sm text-muted-foreground">
+                            {room.room_type}
+                          </p>
+
+                          <p className="text-lg font-bold text-primary mt-2">
+                            PKR {Number(room.price_per_night).toFixed(0)}/night
+                          </p>
+
+                          <button
+                            onClick={handleRoomBook}
+                            className="mt-4 bg-gold text-black px-4 py-2 rounded-lg font-semibold hover:bg-gold/90 transition-colors"
+                          >
+                            Book Now
+                          </button>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+
+                {rooms.length > 9 && (
+                  <div className="flex justify-center gap-4 mt-10">
+                    {visibleCount < rooms.length && (
+                      <button
+                        onClick={handleShowMore}
+                        className="border border-primary px-6 py-2 rounded-lg text-primary font-semibold hover:bg-primary hover:text-primary-foreground transition-colors"
+                      >
+                        Show More
+                      </button>
+                    )}
+
+                    {visibleCount > 9 && (
+                      <button
+                        onClick={handleShowLess}
+                        className="border border-muted-foreground px-6 py-2 rounded-lg text-muted-foreground font-semibold hover:bg-muted transition-colors"
+                      >
+                        Show Less
+                      </button>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
@@ -262,7 +280,7 @@ export default function LandingPage() {
               size="lg"
               className="bg-gold text-primary hover:bg-gold/90"
             >
-              <Link href="/signup">Create account</Link>
+              <Link href="/login">SignIn account</Link>
             </Button>
             <Button
               asChild

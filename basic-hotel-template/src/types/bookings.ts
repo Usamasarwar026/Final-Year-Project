@@ -127,26 +127,19 @@ export type Gender = "Male" | "Female" | "Other";
 // ─── User / Customer ───────────────────────────────────────────────────────
 export interface Customer {
   customer_id: number;
-
   name: string;
   email?: string | null;
   phone_number: string;
   cnic?: string | null;
-
   gender?: Gender | null;
   date_of_birth?: string | null;
-
   city?: string | null;
   country?: string | null;
-
   emergency_contact?: string | null;
   notes?: string | null;
-
   is_active: boolean;
-
   created_at: string;
   updated_at: string;
-
   bookings?: {
     booking_id: number;
   }[];
@@ -185,29 +178,19 @@ export interface CreateBookingPayload {
   check_in_date: string;
   check_out_date: string;
   special_requests?: string;
-  // admin-only
   user_id?: string;
   source?: BookingSource;
 }
 export interface CreateCustomerPayload {
   name: string;
-
   email?: string;
-
   phone_number: string;
-
   cnic?: string;
-
   gender?: Gender;
-
   date_of_birth?: string;
-
   city?: string;
-
   country?: string;
-
   emergency_contact?: string;
-
   notes?: string;
 }
 

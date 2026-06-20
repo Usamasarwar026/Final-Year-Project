@@ -1,6 +1,6 @@
 // services/roomApiService.ts
-import type { Room } from '@/constant/constant';
-import api from '@/lib/axios';
+import type { Room } from "@/constant/constant";
+import api from "@/lib/axios";
 
 export interface RoomsResponse {
   rooms: Room[];
@@ -21,20 +21,20 @@ export interface RoomFilters {
   page?: number;
   limit?: number;
   sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  sortOrder?: "asc" | "desc";
 }
 
 export const roomApiService = {
   // Get all rooms with pagination and filters
   getRooms: async (filters: RoomFilters = {}): Promise<RoomsResponse> => {
     const params = new URLSearchParams();
-    
+
     Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== 'All') {
+      if (value !== undefined && value !== null && value !== "All") {
         params.append(key, String(value));
       }
     });
-    
+
     const response = await api.get(`/rooms?${params.toString()}`);
     return response.data;
   },
@@ -46,13 +46,18 @@ export const roomApiService = {
   },
 
   // Create room
-  createRoom: async (data: Omit<Room, 'room_id' | 'created_at' | 'updated_at'>): Promise<{ room: Room }> => {
-    const response = await api.post('/rooms', data);
+  createRoom: async (
+    data: Omit<Room, "room_id" | "created_at" | "updated_at">,
+  ): Promise<{ room: Room }> => {
+    const response = await api.post("/rooms", data);
     return response.data;
   },
 
   // Update room
-  updateRoom: async (id: number, data: Partial<Room>): Promise<{ room: Room }> => {
+  updateRoom: async (
+    id: number,
+    data: Partial<Room>,
+  ): Promise<{ room: Room }> => {
     const response = await api.put(`/rooms/${id}`, data);
     return response.data;
   },
@@ -66,9 +71,9 @@ export const roomApiService = {
   // Upload photo
   uploadPhoto: async (file: File): Promise<{ url: string }> => {
     const formData = new FormData();
-    formData.append('file', file);
-    const response = await api.post('/rooms/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+    formData.append("file", file);
+    const response = await api.post("/rooms/upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
     });
     return response.data;
   },

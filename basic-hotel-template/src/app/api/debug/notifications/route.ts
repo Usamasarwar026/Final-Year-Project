@@ -37,7 +37,7 @@ export async function GET(request: Request) {
       if (admin) {
         try {
           testDirect = await createNotification({
-            title: "🔔 Test Notification",
+            title: " Test Notification",
             message: "This is a test notification to verify the system works end-to-end.",
             type: "system",
             priority: "Medium",
@@ -52,7 +52,7 @@ export async function GET(request: Request) {
 
       try {
         testBroadcast = await createNotification({
-          title: "📢 Broadcast Test",
+          title: " Broadcast Test",
           message: "This is a broadcast test notification sent to all ADMINs.",
           type: "system",
           priority: "Low",

@@ -33,7 +33,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   }
 
   const role = session.user.role as string;
-  if (role !== "ADMIN" && role !== "STAFF") {
+  if (role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -140,7 +140,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   }
 
   const role = session.user.role as string;
-  if (role !== "ADMIN" && role !== "STAFF") {
+  if (role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

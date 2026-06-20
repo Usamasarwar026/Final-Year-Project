@@ -10,15 +10,13 @@ import {
   Filter,
   ChevronDown,
   Search,
-  AlertCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNotifications, type Notification } from "@/hooks/useNotifications";
 
 // ── Module → route mapping ───────────────────────────────────────────────────
 function getNotificationHref(n: Notification, role: string | undefined): string {
-  const base =
-    role === "ADMIN" ? "/admin" : role === "STAFF" ? "/staff" : "/customer";
+  const base = "admin" 
   const moduleRoutes: Record<string, string> = {
     booking: `${base}/bookings`,
     room: `${base}/rooms`,

@@ -4,39 +4,74 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOption";
 import { prisma } from "@/database/db";
 
-// ─── GET /api/bookings ─────────────────────────────────────────────────────
+// ─── GET /api/bookings?page=1&limit=10&q=&status= ─────────────────────────
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    // const where = { user_id: session.user.id };
+    const { searchParams } = new URL(req.url);
+    const page   = Math.max(1, parseInt(searchParams.get("page")  ?? "1"));
+    const limit  = Math.min(50, Math.max(5, parseInt(searchParams.get("limit") ?? "10")));
+    const search = searchParams.get("q")?.trim() ?? "";
+    const status = searchParams.get("status") ?? "All";
+    const skip   = (page - 1) * limit;
 
-    const bookings = await prisma.booking.findMany({
-      include: {
-        customer: {
-          select: {
-            customer_id: true,
-            name: true,
-            email: true,
-            phone_number: true,
+    const where: any = {};
+
+    if (status && status !== "All") {
+      where.status = status;
+    }
+
+    if (search) {
+      where.OR = [
+        { customer: { name:  { contains: search, mode: "insensitive" } } },
+        { customer: { email: { contains: search, mode: "insensitive" } } },
+        { room:     { room_number: { contains: search, mode: "insensitive" } } },
+      ];
+      // booking_id numeric search
+      const numId = parseInt(search);
+      if (!isNaN(numId)) {
+        where.OR.push({ booking_id: numId });
+      }
+    }
+
+    const [total, bookings] = await prisma.$transaction([
+      prisma.booking.count({ where }),
+      prisma.booking.findMany({
+        where,
+        include: {
+          customer: {
+            select: {
+              customer_id: true,
+              name: true,
+              email: true,
+              phone_number: true,
+            },
           },
+          room: true,
         },
-        room: true,
-      },
-      orderBy: { created_at: "desc" },
-    });
+        orderBy: { created_at: "desc" },
+        skip,
+        take: limit,
+      }),
+    ]);
 
-    // Parse JSON fields
     const parsed = bookings.map(serializeBooking);
-    return NextResponse.json({ bookings: parsed });
+
+    return NextResponse.json({
+      bookings: parsed,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   } catch (err) {
     console.error("[GET /api/bookings]", err);
-    return NextResponse.json(
-      { error: "Failed to load bookings" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to load bookings" }, { status: 500 });
   }
 }
 
@@ -48,60 +83,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const {
-      room_id,
-      customer_id,
-      check_in_date,
-      check_out_date,
-      special_requests,
-      source,
-    } = body;
-    console.log("body", body);
+    const { room_id, customer_id, check_in_date, check_out_date, special_requests, source } = body;
 
-    // Validate required
     if (!room_id || !customer_id || !check_in_date || !check_out_date) {
       return NextResponse.json(
-        {
-          error:
-            "room_id, customer_id, check_in_date, check_out_date are required",
-        },
-        { status: 422 },
+        { error: "room_id, customer_id, check_in_date, check_out_date are required" },
+        { status: 422 }
       );
     }
 
     const ciDate = new Date(check_in_date);
     const coDate = new Date(check_out_date);
     if (ciDate >= coDate) {
-      return NextResponse.json(
-        { error: "Check-out must be after check-in" },
-        { status: 422 },
-      );
+      return NextResponse.json({ error: "Check-out must be after check-in" }, { status: 422 });
     }
 
-    // Determine customer
     const bookingUserId =
-      session.user.role === "ADMIN" && customer_id
-        ? customer_id
-        : session.user.id;
+      session.user.role === "ADMIN" && customer_id ? customer_id : session.user.id;
 
-    // Check room exists
-    const room = await prisma.room.findUnique({
-      where: { room_id: Number(room_id) },
-    });
-    if (!room || !room.is_active) {
-      return NextResponse.json(
-        { error: "Room not found or inactive" },
-        { status: 404 },
-      );
-    }
-    if (room.status === "Maintenance") {
-      return NextResponse.json(
-        { error: "Room is under maintenance" },
-        { status: 409 },
-      );
-    }
+    const room = await prisma.room.findUnique({ where: { room_id: Number(room_id) } });
+    if (!room || !room.is_active)
+      return NextResponse.json({ error: "Room not found or inactive" }, { status: 404 });
+    if (room.status === "Maintenance")
+      return NextResponse.json({ error: "Room is under maintenance" }, { status: 409 });
 
-    // Conflict check
     const conflict = await prisma.booking.findFirst({
       where: {
         room_id: Number(room_id),
@@ -110,84 +115,59 @@ export async function POST(req: NextRequest) {
         check_out_date: { gt: ciDate },
       },
     });
-    if (conflict) {
-      return NextResponse.json(
-        { error: "Room not available for selected dates" },
-        { status: 409 },
-      );
-    }
+    if (conflict)
+      return NextResponse.json({ error: "Room not available for selected dates" }, { status: 409 });
 
-    // Calculate nights + total
-    const nights = Math.round(
-      (coDate.getTime() - ciDate.getTime()) / 86_400_000,
-    );
-    const total = Number(room.price_per_night) * nights;
+    const nights = Math.round((coDate.getTime() - ciDate.getTime()) / 86_400_000);
+    const total  = Number(room.price_per_night) * nights;
 
     const booking = await prisma.$transaction(async (tx) => {
       const b = await tx.booking.create({
         data: {
           customer_id: Number(customer_id),
-          room_id: Number(room_id),
-          check_in_date: ciDate,
+          room_id:     Number(room_id),
+          check_in_date:  ciDate,
           check_out_date: coDate,
-          status: session.user.role === "ADMIN" ? "Confirmed" : "Pending",
-          total_nights: nights,
-          total_amount: total,
+          status:         session.user.role === "ADMIN" ? "Confirmed" : "Pending",
+          total_nights:   nights,
+          total_amount:   total,
           special_requests: special_requests || null,
-          source: source ?? session.user.role === "ADMIN",
+          source:         source ?? (session.user.role === "ADMIN" ? "ADMIN" : "CUSTOMER"),
         },
-        include: {
-          customer: true,
-          room: true,
-        },
+        include: { customer: true, room: true },
       });
-
-      // Update room status
       await tx.room.update({
         where: { room_id: Number(room_id) },
-        data: { status: "Reserved" },
+        data:  { status: "Reserved" },
       });
-
       return b;
     });
 
-    // Create background notifications
+    // Background notifications (non-blocking)
     try {
-      const { createNotification } =
-        await import("@/services/notificationService");
-
+      const { createNotification } = await import("@/services/notificationService");
       if (session.user.role === "ADMIN") {
-        // Notify the customer that the admin created/confirmed a booking for them
         await createNotification({
           title: "Booking Confirmed",
           message: `Your booking for Room ${booking.room?.room_number} from ${ciDate.toLocaleDateString()} to ${coDate.toLocaleDateString()} has been confirmed.`,
-          type: "booking",
-          priority: "Medium",
-          module: "booking",
+          type: "booking", priority: "Medium", module: "booking",
           reference_id: String(booking.booking_id),
           recipient_user_id: bookingUserId,
           sender_user_id: session.user.id,
         });
-
-        // Notify the admin role as well (Dashboard visibility)
         await createNotification({
           title: "Booking Created",
-          message: `Booking for Room ${booking.room?.room_number} has been created and confirmed by Admin.`,
-          type: "booking",
-          priority: "Low",
-          module: "booking",
+          message: `Booking for Room ${booking.room?.room_number} created and confirmed by Admin.`,
+          type: "booking", priority: "Low", module: "booking",
           reference_id: String(booking.booking_id),
           role_target: "ADMIN",
           sender_user_id: session.user.id,
         });
       } else {
-        // Customer created booking -> Notify Customer, ADMIN and STAFF
         await createNotification({
           title: "Booking Request Submitted",
-          message: `Your booking request for Room ${booking.room?.room_number} from ${ciDate.toLocaleDateString()} to ${coDate.toLocaleDateString()} has been submitted successfully.`,
-          type: "booking",
-          priority: "Medium",
-          module: "booking",
+          message: `Your booking request for Room ${booking.room?.room_number} has been submitted successfully.`,
+          type: "booking", priority: "Medium", module: "booking",
           reference_id: String(booking.booking_id),
           recipient_user_id: bookingUserId,
           sender_user_id: session.user.id,
@@ -195,9 +175,7 @@ export async function POST(req: NextRequest) {
         await createNotification({
           title: "New Booking Request",
           message: `${booking.customer.name || "A guest"} has requested Room ${booking.room?.room_number} from ${ciDate.toLocaleDateString()} to ${coDate.toLocaleDateString()}.`,
-          type: "booking",
-          priority: "High",
-          module: "booking",
+          type: "booking", priority: "High", module: "booking",
           reference_id: String(booking.booking_id),
           role_target: "ADMIN",
           sender_user_id: session.user.id,
@@ -205,48 +183,41 @@ export async function POST(req: NextRequest) {
         await createNotification({
           title: "New Booking Request",
           message: `${booking.customer?.name || "A guest"} has requested Room ${booking.room?.room_number} from ${ciDate.toLocaleDateString()} to ${coDate.toLocaleDateString()}.`,
-          type: "booking",
-          priority: "High",
-          module: "booking",
+          type: "booking", priority: "High", module: "booking",
           reference_id: String(booking.booking_id),
           role_target: "STAFF",
           sender_user_id: session.user.id,
         });
       }
     } catch (notifErr) {
-      console.error(
-        "[POST /api/bookings] Notification trigger failed:",
-        notifErr,
-      );
+      console.error("[POST /api/bookings] Notification failed:", notifErr);
     }
 
-    return NextResponse.json(
-      { booking: serializeBooking(booking) },
-      { status: 201 },
-    );
+    return NextResponse.json({ booking: serializeBooking(booking) }, { status: 201 });
   } catch (err) {
     console.error("[POST /api/bookings]", err);
-    return NextResponse.json(
-      { error: "Failed to create booking" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to create booking" }, { status: 500 });
   }
 }
 
-// ─── GET /api/bookings/available-rooms ────────────────────────────────────
-// This lives in a separate route file: /api/bookings/available-rooms/route.ts
-// (shown below in available-rooms/route.ts)
-
-// ─── Serialize helper ──────────────────────────────────────────────────────
+// ─── Serializer ────────────────────────────────────────────────────────────
 function serializeBooking(b: any) {
   return {
     ...b,
     total_amount: Number(b.total_amount),
+    check_in_date:
+      b.check_in_date instanceof Date
+        ? b.check_in_date.toISOString().split("T")[0]
+        : b.check_in_date,
+    check_out_date:
+      b.check_out_date instanceof Date
+        ? b.check_out_date.toISOString().split("T")[0]
+        : b.check_out_date,
     user: b.customer
       ? {
-          id: b.customer.customer_id,
-          name: b.customer.name,
-          email: b.customer.email,
+          id:          b.customer.customer_id,
+          name:        b.customer.name,
+          email:       b.customer.email,
           phoneNumber: b.customer.phone_number,
         }
       : b.user,
@@ -255,7 +226,7 @@ function serializeBooking(b: any) {
           ...b.room,
           price_per_night: Number(b.room.price_per_night),
           amenities: parseJson(b.room.amenities),
-          photos: parseJson(b.room.photos),
+          photos:    parseJson(b.room.photos),
         }
       : null,
   };
@@ -265,11 +236,7 @@ function parseJson(val: unknown): unknown {
   if (val === null || val === undefined) return [];
   if (Array.isArray(val)) return val;
   if (typeof val === "string") {
-    try {
-      return JSON.parse(val);
-    } catch {
-      return [];
-    }
+    try { return JSON.parse(val); } catch { return []; }
   }
   return val;
 }

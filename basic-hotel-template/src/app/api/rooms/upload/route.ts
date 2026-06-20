@@ -11,7 +11,7 @@ import path from "path";
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   const role = (session?.user as any)?.role;
-  if (role !== "ADMIN" && role !== "STAFF")
+  if (role !== "ADMIN")
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
 
   try {

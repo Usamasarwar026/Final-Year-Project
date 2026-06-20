@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu } from "lucide-react";
-
 import { adminNav, NavItem } from "./nav.config";
 import SidebarInner from "./SidebarInner";
 import { useProfile } from "@/hooks/useProfile";
@@ -18,6 +17,8 @@ export default function Sidebar() {
   const role = session?.user?.role as string | undefined;
 
   const { data: profile, isLoading: profileLoading } = useProfile();
+  console.log("profile data LOADING", profileLoading,)
+  console.log("profile data ", profile,)
 
   const email = profile?.email;
   const name = profile?.name;
