@@ -1,8 +1,17 @@
 // src/hooks/useBookings.ts
-import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
 import { toast } from "sonner";
 import api from "@/lib/axios";
-import type { Booking, BookingStatus, CreateBookingPayload } from "@/types/bookings";
+import type {
+  Booking,
+  BookingStatus,
+  CreateBookingPayload,
+} from "@/types/bookings";
 
 export interface BookingFilters {
   page?: number;
@@ -32,7 +41,13 @@ export function useBookings(filters: BookingFilters = {}) {
   const { page = 1, limit = 10, search = "", status = "All" } = filters;
   const queryClient = useQueryClient();
 
-  const { data, isLoading: loading, isFetching, error: queryError, refetch } = useQuery<BookingListResponse>({
+  const {
+    data,
+    isLoading: loading,
+    isFetching,
+    error: queryError,
+    refetch,
+  } = useQuery<BookingListResponse>({
     queryKey: bookingKeys.list({ page, limit, search, status }),
     queryFn: async () => {
       const { data } = await api.get<BookingListResponse>("/bookings", {
@@ -53,8 +68,17 @@ export function useBookings(filters: BookingFilters = {}) {
 
   // Update status mutation — per-booking loading via `variables`
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: number; status: BookingStatus }) => {
-      const { data } = await api.patch<{ booking: Booking }>(`/bookings/${id}`, { status });
+    mutationFn: async ({
+      id,
+      status,
+    }: {
+      id: number;
+      status: BookingStatus;
+    }) => {
+      const { data } = await api.patch<{ booking: Booking }>(
+        `/bookings/${id}`,
+        { status },
+      );
       return data.booking;
     },
     onSuccess: (updated) => {
@@ -65,10 +89,10 @@ export function useBookings(filters: BookingFilters = {}) {
           return {
             ...old,
             bookings: old.bookings.map((b) =>
-              b.booking_id === updated.booking_id ? { ...b, ...updated } : b
+              b.booking_id === updated.booking_id ? { ...b, ...updated } : b,
             ),
           };
-        }
+        },
       );
     },
     onError: (e: any) => {
@@ -91,7 +115,7 @@ export function useBookings(filters: BookingFilters = {}) {
             bookings: old.bookings.filter((b) => b.booking_id !== deletedId),
             pagination: { ...old.pagination, total: old.pagination.total - 1 },
           };
-        }
+        },
       );
     },
     onError: (e: any) => {
@@ -99,12 +123,18 @@ export function useBookings(filters: BookingFilters = {}) {
     },
   });
 
-  const updateStatus = async (id: number, status: BookingStatus): Promise<ApiResult<Booking>> => {
+  const updateStatus = async (
+    id: number,
+    status: BookingStatus,
+  ): Promise<ApiResult<Booking>> => {
     try {
       const booking = await updateStatusMutation.mutateAsync({ id, status });
       return { ok: true, data: booking };
     } catch (e: any) {
-      return { ok: false, error: e?.response?.data?.error ?? "Failed to update" };
+      return {
+        ok: false,
+        error: e?.response?.data?.error ?? "Failed to update",
+      };
     }
   };
 
@@ -113,17 +143,28 @@ export function useBookings(filters: BookingFilters = {}) {
       await deleteBookingMutation.mutateAsync(id);
       return { ok: true };
     } catch (e: any) {
-      return { ok: false, error: e?.response?.data?.error ?? "Failed to delete" };
+      return {
+        ok: false,
+        error: e?.response?.data?.error ?? "Failed to delete",
+      };
     }
   };
 
-  const createBooking = async (payload: CreateBookingPayload): Promise<ApiResult<Booking>> => {
+  const createBooking = async (
+    payload: CreateBookingPayload,
+  ): Promise<ApiResult<Booking>> => {
     try {
-      const { data } = await api.post<{ booking: Booking }>("/bookings", payload);
+      const { data } = await api.post<{ booking: Booking }>(
+        "/bookings",
+        payload,
+      );
       queryClient.invalidateQueries({ queryKey: bookingKeys.all });
       return { ok: true, data: data.booking };
     } catch (e: any) {
-      return { ok: false, error: e?.response?.data?.error ?? "Failed to create booking" };
+      return {
+        ok: false,
+        error: e?.response?.data?.error ?? "Failed to create booking",
+      };
     }
   };
 
@@ -150,16 +191,24 @@ export function useBookings(filters: BookingFilters = {}) {
     updatingId,
     updatingStatus,
     isDeleting: deleteBookingMutation.isPending,
-    deletingId: deleteBookingMutation.isPending ? deleteBookingMutation.variables : null,
+    deletingId: deleteBookingMutation.isPending
+      ? deleteBookingMutation.variables
+      : null,
   };
 }
 
 // Hook for available rooms
 export function useAvailableRooms(checkIn: string, checkOut: string) {
-  const { data, isLoading: loading, error } = useQuery({
+  const {
+    data,
+    isLoading: loading,
+    error,
+  } = useQuery({
     queryKey: ["available-rooms", checkIn, checkOut],
     queryFn: async () => {
-      const { data } = await api.get(`/bookings/available-rooms?checkIn=${checkIn}&checkOut=${checkOut}`);
+      const { data } = await api.get(
+        `/bookings/available-rooms?checkIn=${checkIn}&checkOut=${checkOut}`,
+      );
       return data.rooms ?? [];
     },
     enabled: !!checkIn && !!checkOut && checkIn < checkOut,

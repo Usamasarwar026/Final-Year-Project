@@ -153,7 +153,7 @@ export function useCustomerModule(params: CustomerListParams = {}) {
     onError: () => {},
   });
 
-  const handleUpdate = useCallback(
+  const updateCustomer = useCallback(
     async (
       id: string | number,
       payload: UpdateCustomerPayload
@@ -179,7 +179,7 @@ export function useCustomerModule(params: CustomerListParams = {}) {
     isFetching,
     error: queryError ? String((queryError as any)?.message) : null,
     refresh: refetch,
-    updateCustomer: handleUpdate,
+    updateCustomer,
   };
 }
 

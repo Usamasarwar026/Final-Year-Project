@@ -14,6 +14,21 @@ import {
   Loader2,
   AlertCircle,
   ChevronRight,
+  Bell,
+  Sparkles,
+  ChefHat,
+  Briefcase,
+  Shield,
+  User,
+  Hotel,
+  Waves,
+  Utensils,
+  Wrench,
+  Pill,
+  Theater,
+  Car,
+  Package,
+  Target,
 } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "sonner";
@@ -25,21 +40,21 @@ const inputCls =
 
 // ─── Dept Icon Options ────────────────────────────────────────────────────────
 const DEPT_ICONS = [
-  "🛎️",
-  "🧹",
-  "👨‍🍳",
-  "💼",
-  "🔒",
-  "👤",
-  "🏨",
-  "🧺",
-  "🍽️",
-  "🔧",
-  "💊",
-  "🎭",
-  "🚗",
-  "📦",
-  "🎯",
+  { icon: Bell, label: "Bell" },
+  { icon: Sparkles, label: "Sparkles" },
+  { icon: ChefHat, label: "Chef Hat" },
+  { icon: Briefcase, label: "Briefcase" },
+  { icon: Shield, label: "Shield" },
+  { icon: User, label: "User" },
+  { icon: Hotel, label: "Hotel" },
+  { icon: Waves, label: "Waves" },
+  { icon: Utensils, label: "Utensils" },
+  { icon: Wrench, label: "Wrench" },
+  { icon: Pill, label: "Pill" },
+  { icon: Theater, label: "Theater" },
+  { icon: Car, label: "Car" },
+  { icon: Package, label: "Package" },
+  { icon: Target, label: "Target" },
 ];
 
 // ─── Color Options for dept badges ───────────────────────────────────────────
@@ -53,6 +68,12 @@ const COLOR_OPTIONS = [
   { label: "Amber", color: "text-amber-700", bg: "bg-amber-100" },
   { label: "Gray", color: "text-gray-700", bg: "bg-gray-100" },
 ];
+
+// ─── Helper to get icon component by label ──────────────────────────────────
+const getIconByLabel = (label: string) => {
+  const found = DEPT_ICONS.find((i) => i.label === label);
+  return found ? found.icon : User; // Default to User icon
+};
 
 // ─── Department Form ──────────────────────────────────────────────────────────
 function DeptForm({
@@ -72,9 +93,12 @@ function DeptForm({
   saving: boolean;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
-  const [icon, setIcon] = useState(initial?.icon ?? "👤");
+  const [iconIndex, setIconIndex] = useState(() => {
+    const idx = DEPT_ICONS.findIndex((i) => i.label === initial?.icon);
+    return idx >= 0 ? idx : 0; // Default to first icon if not found
+  });
   const [color, setColor] = useState(
-    COLOR_OPTIONS.find((c) => c.color === initial?.color) ?? COLOR_OPTIONS[0],
+    COLOR_OPTIONS.find((c) => c.color === initial?.color) ?? COLOR_OPTIONS[0]
   );
 
   const handleSave = async () => {
@@ -82,8 +106,15 @@ function DeptForm({
       toast.error("Department name is required");
       return;
     }
-    await onSave({ name: name.trim(), icon, color: color.color, bg: color.bg });
+    await onSave({ 
+      name: name.trim(), 
+      icon: DEPT_ICONS[iconIndex].label, 
+      color: color.color, 
+      bg: color.bg 
+    });
   };
+
+  const SelectedIcon = DEPT_ICONS[iconIndex]?.icon || User;
 
   return (
     <div className="space-y-4 p-4 bg-muted/30 rounded-2xl border border-border">
@@ -107,21 +138,24 @@ function DeptForm({
           Icon
         </label>
         <div className="flex flex-wrap gap-2">
-          {DEPT_ICONS.map((ic) => (
-            <button
-              key={ic}
-              type="button"
-              onClick={() => setIcon(ic)}
-              className={clsx(
-                "w-8 h-8 rounded-lg text-lg flex items-center justify-center border-2 transition-all",
-                icon === ic
-                  ? "border-primary bg-primary/10 scale-110"
-                  : "border-border hover:border-primary/40",
-              )}
-            >
-              {ic}
-            </button>
-          ))}
+          {DEPT_ICONS.map((ic, idx) => {
+            const IconComponent = ic.icon;
+            return (
+              <button
+                key={ic.label}
+                type="button"
+                onClick={() => setIconIndex(idx)}
+                className={clsx(
+                  "w-8 h-8 rounded-lg flex items-center justify-center border-2 transition-all",
+                  iconIndex === idx
+                    ? "border-primary bg-primary/10 scale-110"
+                    : "border-border hover:border-primary/40"
+                )}
+              >
+                <IconComponent size={16} />
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -142,10 +176,11 @@ function DeptForm({
                 c.color,
                 color.label === c.label
                   ? "border-primary scale-105"
-                  : "border-transparent",
+                  : "border-transparent"
               )}
             >
-              {icon} {c.label}
+              <SelectedIcon size={12} className="inline mr-1" />
+              {c.label}
             </button>
           ))}
         </div>
@@ -158,10 +193,11 @@ function DeptForm({
           className={clsx(
             "inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full",
             color.bg,
-            color.color,
+            color.color
           )}
         >
-          {icon} {name || "Department"}
+          <SelectedIcon size={12} />
+          {name || "Department"}
         </span>
       </div>
 
@@ -395,7 +431,7 @@ export default function SettingStaffTab() {
     setSaving(false);
     if (res.ok) {
       toast.success(
-        deptForm === "add" ? "Department created" : "Department updated",
+        deptForm === "add" ? "Department created" : "Department updated"
       );
       setDeptForm(null);
     } else toast.error(res.error ?? "Failed");
@@ -404,7 +440,7 @@ export default function SettingStaffTab() {
   const handleDeleteDept = async (d: DepartmentConfig) => {
     if (
       !confirm(
-        `Delete department "${d.name}"? Staff assigned to it will lose their department.`,
+        `Delete department "${d.name}"? Staff assigned to it will lose their department.`
       )
     )
       return;
@@ -461,62 +497,66 @@ export default function SettingStaffTab() {
           </div>
         ) : (
           <div className="space-y-2">
-            {departments.map((d) => (
-              <div key={d.id}>
-                <div className="flex items-center gap-3 p-2.5 rounded-xl border border-border hover:bg-muted/30 transition-colors group">
-                  {/* Badge preview */}
-                  <span
-                    className={clsx(
-                      "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0",
-                      d.bg,
-                      d.color,
-                    )}
-                  >
-                    {d.icon} {d.name}
-                  </span>
-                  <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() =>
-                        setDeptForm(deptForm === d.id ? null : d.id)
-                      }
-                      className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                    >
-                      <Pencil size={12} />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteDept(d)}
-                      disabled={deleting === d.id}
-                      className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
-                    >
-                      {deleting === d.id ? (
-                        <Loader2 size={12} className="animate-spin" />
-                      ) : (
-                        <Trash2 size={12} />
+            {departments.map((d) => {
+              const IconComponent = getIconByLabel(d.icon || "User");
+              return (
+                <div key={d.id}>
+                  <div className="flex items-center gap-3 p-2.5 rounded-xl border border-border hover:bg-muted/30 transition-colors group">
+                    {/* Badge preview */}
+                    <span
+                      className={clsx(
+                        "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0",
+                        d.bg,
+                        d.color
                       )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Inline edit form */}
-                <AnimatePresence>
-                  {deptForm === d.id && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="overflow-hidden mt-2"
                     >
-                      <DeptForm
-                        initial={d}
-                        onSave={handleSaveDept}
-                        onCancel={() => setDeptForm(null)}
-                        saving={saving}
-                      />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            ))}
+                      <IconComponent size={12} />
+                      {d.name}
+                    </span>
+                    <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() =>
+                          setDeptForm(deptForm === d.id ? null : d.id)
+                        }
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      >
+                        <Pencil size={12} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteDept(d)}
+                        disabled={deleting === d.id}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                      >
+                        {deleting === d.id ? (
+                          <Loader2 size={12} className="animate-spin" />
+                        ) : (
+                          <Trash2 size={12} />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Inline edit form */}
+                  <AnimatePresence>
+                    {deptForm === d.id && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden mt-2"
+                      >
+                        <DeptForm
+                          initial={d}
+                          onSave={handleSaveDept}
+                          onCancel={() => setDeptForm(null)}
+                          saving={saving}
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
 
             {/* Add new form */}
             <AnimatePresence>

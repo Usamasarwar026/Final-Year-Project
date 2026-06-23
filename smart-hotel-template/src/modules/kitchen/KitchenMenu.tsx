@@ -19,6 +19,8 @@ import {
   Image as ImageIcon,
   Upload,
   CircleOff,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "sonner";
@@ -32,6 +34,109 @@ import {
 import type { FoodItem, FoodCategory } from "@/types/kitchen";
 import Image from "next/image";
 
+// Add this ABOVE the main `KitchenCategories` component (same place Rooms.tsx defines it)
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50] as const;
+type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
+
+function Pagination({
+  page,
+  totalPages,
+  total,
+  limit,
+  isFetching,
+  onPageChange,
+  onLimitChange,
+}: {
+  page: number;
+  totalPages: number;
+  total: number;
+  limit: PageSize;
+  isFetching: boolean;
+  onPageChange: (p: number) => void;
+  onLimitChange: (l: PageSize) => void;
+}) {
+  const from = total === 0 ? 0 : (page - 1) * limit + 1;
+  const to = Math.min(page * limit, total);
+
+  const navBtn = (disabled: boolean) =>
+    clsx(
+      "h-8 w-8 flex items-center justify-center rounded-lg border border-border text-xs transition-colors",
+      disabled
+        ? "text-muted-foreground/30 bg-muted/30 cursor-not-allowed"
+        : "text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer",
+    );
+
+  return (
+    <div className="px-4 py-3 border-t border-border bg-muted/20 flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">
+          {total === 0 ? (
+            "No categories"
+          ) : (
+            <>
+              {" "}
+              Showing{" "}
+              <span className="font-medium text-foreground">
+                {from}–{to}
+              </span>{" "}
+              of <span className="font-medium text-foreground">{total}</span>
+            </>
+          )}
+        </span>
+        {isFetching && (
+          <Loader2 size={11} className="animate-spin text-muted-foreground" />
+        )}
+      </div>
+
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            Rows per page
+          </span>
+          <select
+            value={limit}
+            onChange={(e) => {
+              onLimitChange(Number(e.target.value) as PageSize);
+              onPageChange(1);
+            }}
+            className="h-7 px-2 pr-6 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:border-primary/50 transition-colors appearance-none cursor-pointer"
+          >
+            {PAGE_SIZE_OPTIONS.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="w-px h-4 bg-border" />
+
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => onPageChange(page - 1)}
+            disabled={page === 1}
+            className={navBtn(page === 1)}
+          >
+            <ChevronLeft size={13} />
+          </button>
+          <span className="text-xs text-muted-foreground whitespace-nowrap px-1">
+            Page <span className="font-medium text-foreground">{page}</span> of{" "}
+            <span className="font-medium text-foreground">
+              {totalPages || 1}
+            </span>
+          </span>
+          <button
+            onClick={() => onPageChange(page + 1)}
+            disabled={page >= totalPages}
+            className={navBtn(page >= totalPages)}
+          >
+            <ChevronRight size={13} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 // ─── Image Upload Component ───────────────────────────────────────────────────
 function ImageUpload({
   currentImage,
@@ -329,15 +434,14 @@ function MenuItemFormModal({
       active: formData.active,
     };
 
+    // MenuItemFormModal.handleSubmit — remove duplicate toast + extra refetch
     try {
       if (isEditing && editingItem) {
         await updateItem.mutateAsync({ id: editingItem.id, payload });
-        toast.success("Menu item updated successfully");
       } else {
         await createItem.mutateAsync(payload);
-        toast.success("Menu item created successfully");
       }
-      onSuccess();
+      // useCreateFoodItem/useUpdateFoodItem already invalidate + toast
       onClose();
     } catch (error: any) {
       toast.error(error?.response?.data?.error || "Operation failed");
@@ -688,8 +792,11 @@ export default function KitchenMenu() {
   const [editingItem, setEditingItem] = useState<FoodItem | null>(null);
   const [deletingItem, setDeletingItem] = useState<FoodItem | null>(null);
 
-  const { data: categories = [], isLoading: categoriesLoading } =
-    useKitchenCategories();
+  const {
+    data: categories = [],
+    isLoading: categoriesLoading,
+    isFetching,
+  } = useKitchenCategories();
   const {
     data: items = [],
     isLoading: itemsLoading,
@@ -718,12 +825,12 @@ export default function KitchenMenu() {
     });
   }, [items, searchQuery]);
 
+  // Main component — handleDelete + handleFormClose
   const handleDelete = async () => {
     if (!deletingItem) return;
     try {
       await deleteItem.mutateAsync(deletingItem.id);
-      toast.success("Menu item deleted successfully");
-      refetch();
+      // useDeleteFoodItem already invalidates + toasts
     } catch (error: any) {
       toast.error(error?.response?.data?.error || "Failed to delete item");
     } finally {
@@ -734,7 +841,6 @@ export default function KitchenMenu() {
   const handleFormClose = () => {
     setShowForm(false);
     setEditingItem(null);
-    refetch();
   };
 
   // Handle edit click - FIXED
@@ -748,6 +854,21 @@ export default function KitchenMenu() {
   const totalItems = items.length;
   const availableItems = items.filter((i) => i.availability_status).length;
   const featuredItems = items.filter((i) => i.featured).length;
+  // after filteredCategories — pagination state (replace any earlier simple page state)
+
+  // after filteredItems useMemo — add pagination state
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState<PageSize>(10);
+  const PAGE_SIZE = 10;
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
+  const paginatedItems = filteredItems.slice(
+    (page - 1) * PAGE_SIZE,
+    page * PAGE_SIZE,
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, selectedCategory, showOnlyAvailable, showOnlyFeatured]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -935,8 +1056,9 @@ export default function KitchenMenu() {
                     </th>
                   </tr>
                 </thead>
+
                 <tbody>
-                  {filteredItems.map((item, idx) => (
+                  {paginatedItems.map((item, idx) => (
                     <MenuTableRow
                       key={item.id}
                       item={item}
@@ -952,20 +1074,15 @@ export default function KitchenMenu() {
               </table>
             </div>
 
-            {/* Table Footer */}
-            <div className="px-4 py-3 border-t border-border bg-muted/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-muted-foreground">
-              <div>
-                Showing {filteredItems.length} of {items.length} items
-              </div>
-              <div className="flex gap-3">
-                <span className="flex items-center gap-1">
-                  <CheckCircle size={12} /> {availableItems} available
-                </span>
-                <span className="flex items-center gap-1">
-                  <Star size={12} /> {featuredItems} featured
-                </span>
-              </div>
-            </div>
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              total={filteredItems.length}
+              limit={limit}
+              isFetching={isFetching}
+              onPageChange={setPage}
+              onLimitChange={setLimit}
+            />
           </div>
         )}
       </div>

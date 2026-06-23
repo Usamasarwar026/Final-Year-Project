@@ -1,14 +1,13 @@
 // src/modules/customers/Customers.tsx
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users,
   Search,
   X,
-  CheckCircle2,
   XCircle,
   Eye,
   UserCheck,
@@ -31,6 +30,8 @@ import {
   Building2,
   Loader2,
   RefreshCw,
+  ChevronRight,
+  ChevronLeft,
 } from "lucide-react";
 import clsx from "clsx";
 import type { Customer, UpdateCustomerPayload } from "@/types/customers";
@@ -38,6 +39,11 @@ import {
   useCustomerModule,
   useCustomerProfile,
 } from "@/hooks/useCustomerModule";
+import { toast } from "sonner";
+
+// ── Constants ─────────────────────────────────────────────────
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50] as const;
+type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
 
 // ── Booking status config ─────────────────────────────────────
 const STATUS_CONFIG: Record<
@@ -76,26 +82,6 @@ const STATUS_CONFIG: Record<
   },
 };
 
-// ── Toast ─────────────────────────────────────────────────────
-function Toast({ msg, type }: { msg: string; type: "success" | "error" }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16, x: 16 }}
-      animate={{ opacity: 1, y: 0, x: 0 }}
-      exit={{ opacity: 0, y: 16, x: 16 }}
-      className={clsx(
-        "fixed bottom-6 right-6 z-[600] flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-2xl text-sm font-medium",
-        type === "success"
-          ? "bg-emerald-500 text-white"
-          : "bg-red-500 text-white",
-      )}
-    >
-      {type === "success" ? <CheckCircle2 size={15} /> : <XCircle size={15} />}
-      {msg}
-    </motion.div>
-  );
-}
-
 // ── Avatar ────────────────────────────────────────────────────
 function Avatar({
   name,
@@ -127,7 +113,6 @@ function Avatar({
     "bg-cyan-500",
   ];
   const color = colors[name.charCodeAt(0) % colors.length];
-
   if (image) {
     return (
       <div
@@ -161,13 +146,7 @@ function Avatar({
 }
 
 // ── Status Badge ──────────────────────────────────────────────
-function CustomerBadge({
-  isActive,
-  // isVerified,
-}: {
-  isActive: boolean;
-  // isVerified: boolean;
-}) {
+function CustomerBadge({ isActive }: { isActive: boolean }) {
   if (!isActive)
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-500/10 text-red-500">
@@ -332,7 +311,6 @@ function EditForm({
           </div>
         ))}
       </div>
-
       <div className="flex gap-2 pt-1">
         <button
           onClick={onCancel}
@@ -370,31 +348,19 @@ function ProfileDrawer({
     data: UpdateCustomerPayload,
   ) => Promise<{ ok: boolean; error?: string }>;
 }) {
-  const { profile, loading, error, refresh, setProfile } =
-    useCustomerProfile(customerId);
+  const { profile, loading, error, refresh } = useCustomerProfile(customerId);
   const [tab, setTab] = useState<"overview" | "bookings" | "account">(
     "overview",
   );
   const [editing, setEditing] = useState(false);
-  const [toast, setToast] = useState<{
-    msg: string;
-    type: "success" | "error";
-  } | null>(null);
-
-  const showToast = (msg: string, type: "success" | "error" = "success") => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
-  };
 
   const handleUpdate = async (data: UpdateCustomerPayload) => {
     const res = await onUpdate(customerId, data);
     if (res.ok) {
       refresh();
       setEditing(false);
-      showToast("Customer updated successfully");
-    } else {
-      showToast(res.error ?? "Failed to update", "error");
-    }
+      toast.success("Customer updated successfully");
+    } else toast.error(res.error || "Failed to update customer");
   };
 
   const handleToggleSuspend = async () => {
@@ -402,24 +368,22 @@ function ProfileDrawer({
     const res = await onUpdate(customerId, { isActive: !profile.isActive });
     if (res.ok) {
       refresh();
-      showToast(profile.isActive ? "Customer suspended" : "Customer activated");
-    } else {
-      showToast(res.error ?? "Failed", "error");
-    }
+      toast.success(
+        profile.isActive ? "Customer suspended" : "Customer activated",
+      );
+    } else toast.error(res.error || "Failed");
   };
 
   return (
     <>
-      {/* Backdrop */}
       <motion.div
         className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
+        style={{ margin: 0, padding: 0 }}
       />
-
-      {/* Drawer */}
       <motion.div
         className="fixed right-0 top-0 bottom-0 z-[250] w-full max-w-xl bg-background border-l border-border shadow-2xl flex flex-col"
         initial={{ x: "100%" }}
@@ -427,6 +391,7 @@ function ProfileDrawer({
         exit={{ x: "100%" }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         onClick={(e) => e.stopPropagation()}
+        style={{ margin: 0, padding: 0 }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
@@ -482,10 +447,7 @@ function ProfileDrawer({
                           {profile.email}
                         </p>
                       </div>
-                      <CustomerBadge
-                        isActive={profile.isActive}
-                        // isVerified={profile.isVerified}
-                      />
+                      <CustomerBadge isActive={profile.isActive} />
                     </div>
                     {profile.phoneNumber && (
                       <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
@@ -593,7 +555,6 @@ function ProfileDrawer({
                       />
                     ) : (
                       <>
-                        {/* Info grid */}
                         <div className="space-y-2">
                           {[
                             {
@@ -657,7 +618,6 @@ function ProfileDrawer({
                           )}
                         </div>
 
-                        {/* Extended stats */}
                         <div className="grid grid-cols-2 gap-2 pt-2">
                           <StatCard
                             label="Active Bookings"
@@ -727,7 +687,6 @@ function ProfileDrawer({
                             animate={{ opacity: 1, y: 0 }}
                             className="flex gap-3 p-3 bg-muted/30 border border-border rounded-xl hover:bg-muted/50 transition-colors"
                           >
-                            {/* Room photo */}
                             <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-muted border border-border">
                               {photo ? (
                                 <Image
@@ -792,7 +751,7 @@ function ProfileDrawer({
                               </div>
                               <div className="flex items-center justify-between mt-1.5">
                                 <p className="text-xs font-bold text-foreground">
-                                  ${b.total_amount.toFixed(0)}
+                                  PKR {b.total_amount.toFixed(0)}
                                 </p>
                                 <p className="text-[10px] text-muted-foreground">
                                   #{b.booking_id} ·{" "}
@@ -818,7 +777,6 @@ function ProfileDrawer({
                 {/* ── Account Tab ── */}
                 {tab === "account" && (
                   <div className="space-y-3">
-                    {/* Account info */}
                     <div className="space-y-2">
                       {[
                         {
@@ -826,7 +784,6 @@ function ProfileDrawer({
                           value: profile.isActive ? "Active" : "Suspended",
                           good: profile.isActive,
                         },
-
                         {
                           label: "Created By",
                           value: profile.createdByAdmin
@@ -850,13 +807,6 @@ function ProfileDrawer({
                           ),
                           good: true,
                         },
-                        // {
-                        //   label: "Last Login",
-                        //   value: profile.lastLogin
-                        //     ? new Date(profile.lastLogin).toLocaleString()
-                        //     : "Never",
-                        //   good: !!profile.lastLogin,
-                        // },
                       ].map(({ label, value, good }) => (
                         <div
                           key={label}
@@ -878,13 +828,10 @@ function ProfileDrawer({
                         </div>
                       ))}
                     </div>
-
-                    {/* Actions */}
                     <div className="space-y-2 pt-2">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                         Account Actions
                       </p>
-
                       <button
                         onClick={handleToggleSuspend}
                         className={clsx(
@@ -911,20 +858,121 @@ function ProfileDrawer({
           ) : null}
         </div>
       </motion.div>
-
-      {/* Toast inside drawer */}
-      <AnimatePresence>
-        {toast && <Toast msg={toast.msg} type={toast.type} />}
-      </AnimatePresence>
     </>
   );
 }
 
+// ── Pagination Component ───────────────────────────────────────
+function Pagination({
+  page,
+  totalPages,
+  total,
+  limit,
+  isFetching,
+  onPageChange,
+  onLimitChange,
+}: {
+  page: number;
+  totalPages: number;
+  total: number;
+  limit: PageSize;
+  isFetching: boolean;
+  onPageChange: (p: number) => void;
+  onLimitChange: (l: PageSize) => void;
+}) {
+  const from = total === 0 ? 0 : (page - 1) * limit + 1;
+  const to = Math.min(page * limit, total);
+
+  const navBtn = (disabled: boolean) =>
+    clsx(
+      "h-8 w-8 flex items-center justify-center rounded-lg border border-border text-xs transition-colors",
+      disabled
+        ? "text-muted-foreground/30 bg-muted/30 cursor-not-allowed"
+        : "text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer",
+    );
+
+  return (
+    <div className="px-4 py-3 border-t border-border bg-muted/20 flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">
+          {total === 0 ? (
+            "No customers"
+          ) : (
+            <>
+              Showing{" "}
+              <span className="font-medium text-foreground">
+                {from}–{to}
+              </span>{" "}
+              of <span className="font-medium text-foreground">{total}</span>
+            </>
+          )}
+        </span>
+        {isFetching && (
+          <Loader2 size={11} className="animate-spin text-muted-foreground" />
+        )}
+      </div>
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            Rows per page
+          </span>
+          <select
+            value={limit}
+            onChange={(e) => {
+              onLimitChange(Number(e.target.value) as PageSize);
+              onPageChange(1);
+            }}
+            className="h-7 px-2 pr-6 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:border-accent/50 transition-colors appearance-none cursor-pointer"
+          >
+            {PAGE_SIZE_OPTIONS.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="w-px h-4 bg-border" />
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => onPageChange(page - 1)}
+            disabled={page === 1}
+            className={navBtn(page === 1)}
+          >
+            <ChevronLeft size={13} />
+          </button>
+          <span className="text-xs text-muted-foreground whitespace-nowrap px-1">
+            Page <span className="font-medium text-foreground">{page}</span> of{" "}
+            <span className="font-medium text-foreground">
+              {totalPages || 1}
+            </span>
+          </span>
+          <button
+            onClick={() => onPageChange(page + 1)}
+            disabled={page >= totalPages}
+            className={navBtn(page >= totalPages)}
+          >
+            <ChevronRight size={13} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── useDebounce ───────────────────────────────────────────────
+function useDebounce<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useState(() => {
+    const id = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(id);
+  });
+  return debounced;
+}
+
 // ── Main Customers Page ───────────────────────────────────────
 export default function Customers() {
-  const { customers, loading, error, refresh, updateCustomer } =
-    useCustomerModule();
-
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState<PageSize>(10);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<
     "all" | "active" | "suspended"
@@ -933,54 +981,50 @@ export default function Customers() {
     "all",
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [toast, setToast] = useState<{
-    msg: string;
-    type: "success" | "error";
-  } | null>(null);
 
-  const showToast = (msg: string, type: "success" | "error" = "success") => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
+  const debouncedSearch = useDebounce(search, 400);
+
+  const {
+    customers,
+    pagination,
+    loading,
+    isFetching,
+    error,
+    refresh,
+    updateCustomer,
+  } = useCustomerModule({
+    page,
+    limit,
+    search: debouncedSearch,
+    status: statusFilter,
+    source: sourceFilter,
+  });
+
+  // Reset to page 1 when any filter changes
+  const handleSearch = (v: string) => {
+    setSearch(v);
+    setPage(1);
+  };
+  const handleStatus = (v: "all" | "active" | "suspended") => {
+    setStatusFilter(v);
+    setPage(1);
+  };
+  const handleSource = (v: "all" | "admin" | "self") => {
+    setSourceFilter(v);
+    setPage(1);
   };
 
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return customers.filter((c) => {
-      const matchesSearch =
-        !q ||
-        c.name.toLowerCase().includes(q) ||
-        c.email.toLowerCase().includes(q) ||
-        (c.phoneNumber ?? "").includes(q) ||
-        (c.cnic ?? "").includes(q) ||
-        (c.city ?? "").toLowerCase().includes(q);
-
-      const matchesStatus =
-        statusFilter === "all" ||
-        (statusFilter === "active" && c.isActive) ||
-        (statusFilter === "suspended" && !c.isActive);
-
-      const matchesSource =
-        sourceFilter === "all" ||
-        (sourceFilter === "admin" && c.createdByAdmin) ||
-        (sourceFilter === "self" && !c.createdByAdmin);
-
-      return matchesSearch && matchesStatus && matchesSource;
-    });
-  }, [customers, search, statusFilter, sourceFilter]);
-
-  const stats = {
-    total: customers.length,
-    active: customers.filter((c) => c.isActive).length,
-    suspended: customers.filter((c) => !c.isActive).length,
-    adminCreated: customers.filter((c) => c.createdByAdmin).length,
-  };
-
-  const handleUpdate = async (id: string, data: UpdateCustomerPayload) => {
-    return updateCustomer(id, data);
-  };
+  const handleUpdate = async (id: string, data: UpdateCustomerPayload) =>
+    updateCustomer(id, data);
 
   const selCls =
     "px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:border-accent/50 transition-colors";
+
+  // Summary stats from server pagination total (accurate across all pages)
+  const total = pagination?.total ?? customers.length;
+  const active = customers.filter((c) => c.isActive).length;
+  const suspended = customers.filter((c) => !c.isActive).length;
+  const adminMade = customers.filter((c) => c.createdByAdmin).length;
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
@@ -993,11 +1037,11 @@ export default function Customers() {
           </p>
         </div>
         <button
-          onClick={refresh}
+          onClick={() => refresh()}
           className="p-2.5 rounded-xl border border-border text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           title="Refresh"
         >
-          <RefreshCw size={15} />
+          <RefreshCw size={15} className={clsx(isFetching && "animate-spin")} />
         </button>
       </div>
 
@@ -1006,25 +1050,25 @@ export default function Customers() {
         {[
           {
             label: "Total Customers",
-            value: stats.total,
+            value: total,
             icon: Users,
             color: "bg-primary",
           },
           {
             label: "Active",
-            value: stats.active,
+            value: active,
             icon: UserCheck,
             color: "bg-emerald-500",
           },
           {
             label: "Suspended",
-            value: stats.suspended,
+            value: suspended,
             icon: UserX,
             color: "bg-red-500",
           },
           {
             label: "Admin Created",
-            value: stats.adminCreated,
+            value: adminMade,
             icon: UserPlus,
             color: "bg-violet-500",
           },
@@ -1053,7 +1097,6 @@ export default function Customers() {
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
-        {/* Search */}
         <div className="relative flex-1 max-w-sm">
           <Search
             size={14}
@@ -1061,13 +1104,13 @@ export default function Customers() {
           />
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearch(e.target.value)}
             placeholder="Search name, email, CNIC, phone…"
             className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 transition-colors"
           />
           {search && (
             <button
-              onClick={() => setSearch("")}
+              onClick={() => handleSearch("")}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
               <X size={12} />
@@ -1076,7 +1119,7 @@ export default function Customers() {
         </div>
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as any)}
+          onChange={(e) => handleStatus(e.target.value as any)}
           className={selCls}
         >
           <option value="all">All Statuses</option>
@@ -1085,7 +1128,7 @@ export default function Customers() {
         </select>
         <select
           value={sourceFilter}
-          onChange={(e) => setSourceFilter(e.target.value as any)}
+          onChange={(e) => handleSource(e.target.value as any)}
           className={selCls}
         >
           <option value="all">All Sources</option>
@@ -1128,7 +1171,7 @@ export default function Customers() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
+                {customers.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="py-16 text-center">
                       <Users
@@ -1141,7 +1184,7 @@ export default function Customers() {
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((c, i) => (
+                  customers.map((c, i) => (
                     <motion.tr
                       key={c.id}
                       initial={{ opacity: 0, y: 3 }}
@@ -1167,33 +1210,28 @@ export default function Customers() {
                           </div>
                         </div>
                       </td>
-
                       {/* Contact */}
                       <td className="px-4 py-3.5 text-xs text-muted-foreground">
                         {c.phoneNumber ?? (
                           <span className="text-muted-foreground/40">—</span>
                         )}
                       </td>
-
                       {/* CNIC */}
                       <td className="px-4 py-3.5 text-xs text-muted-foreground font-mono">
                         {c.cnic ?? (
                           <span className="text-muted-foreground/40">—</span>
                         )}
                       </td>
-
                       {/* Location */}
                       <td className="px-4 py-3.5 text-xs text-muted-foreground">
                         {[c.city, c.country].filter(Boolean).join(", ") || (
                           <span className="text-muted-foreground/40">—</span>
                         )}
                       </td>
-
                       {/* Status */}
                       <td className="px-4 py-3.5">
                         <CustomerBadge isActive={c.isActive} />
                       </td>
-
                       {/* Source */}
                       <td className="px-4 py-3.5">
                         <span
@@ -1207,7 +1245,6 @@ export default function Customers() {
                           {c.createdByAdmin ? "Admin" : "Self"}
                         </span>
                       </td>
-
                       {/* Joined */}
                       <td className="px-4 py-3.5 text-xs text-muted-foreground whitespace-nowrap">
                         {new Date(c.createdAt).toLocaleDateString("en-US", {
@@ -1216,7 +1253,6 @@ export default function Customers() {
                           year: "numeric",
                         })}
                       </td>
-
                       {/* Actions */}
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-1">
@@ -1233,12 +1269,12 @@ export default function Customers() {
                                 isActive: !c.isActive,
                               });
                               if (res.ok)
-                                showToast(
+                                toast.success(
                                   c.isActive
                                     ? "Customer suspended"
                                     : "Customer activated",
                                 );
-                              else showToast(res.error ?? "Failed", "error");
+                              else toast.error(res.error ?? "Failed");
                             }}
                             className={clsx(
                               "p-1.5 rounded-lg transition-colors",
@@ -1264,15 +1300,20 @@ export default function Customers() {
           </div>
         )}
 
-        {!loading && !error && filtered.length > 0 && (
-          <div className="px-4 py-3 border-t border-border bg-muted/20 flex justify-between text-xs text-muted-foreground">
-            <span>
-              Showing {filtered.length} of {customers.length} customers
-            </span>
-            <span>
-              {stats.active} active · {stats.suspended} suspended
-            </span>
-          </div>
+        {/* Pagination */}
+        {!loading && !error && pagination && (
+          <Pagination
+            page={page}
+            totalPages={pagination.totalPages}
+            total={pagination.total}
+            limit={limit}
+            isFetching={isFetching}
+            onPageChange={setPage}
+            onLimitChange={(l) => {
+              setLimit(l);
+              setPage(1);
+            }}
+          />
         )}
       </div>
 
@@ -1286,11 +1327,6 @@ export default function Customers() {
             onUpdate={handleUpdate}
           />
         )}
-      </AnimatePresence>
-
-      {/* Toast */}
-      <AnimatePresence>
-        {toast && <Toast msg={toast.msg} type={toast.type} />}
       </AnimatePresence>
     </div>
   );

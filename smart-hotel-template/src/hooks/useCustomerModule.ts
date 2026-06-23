@@ -1,105 +1,260 @@
-// src/hooks/useCustomers.ts
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
 import api from "@/lib/axios";
 import type {
   Customer,
   CustomerProfile,
   UpdateCustomerPayload,
 } from "@/types/customers";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+
+// ── Types ─────────────────────────────────────────────────────
+export interface CustomerPagination {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface CustomerListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: "all" | "active" | "suspended";
+  source?: "all" | "admin" | "self";
+}
+
+interface CustomerListResponse {
+  customers: Customer[];
+  pagination: CustomerPagination;
+}
 
 type ApiResult<T = void> = { ok: boolean; data?: T; error?: string };
 
-// ── Customer List ─────────────────────────────────────────────
-export function useCustomerModule() {
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+// ── Query Key Factory ─────────────────────────────────────────
+export const customerKeys = {
+  all: ["customers"] as const,
+  list: (params: CustomerListParams) => ["customers", "list", params] as const,
+  profile: (id: string) => ["customers", "profile", id] as const,
+};
 
-  const fetch = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const { data } = await api.get<{ customers: Customer[] }>("/customers");
-      console.log("Fetched customers:", data.customers);
-      setCustomers(data.customers);
-    } catch (e: any) {
-      setError(e?.response?.data?.error ?? "Failed to load customers");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+// ── Type Guard ────────────────────────────────────────────────
+function isPaginatedList(val: unknown): val is CustomerListResponse {
+  return (
+    typeof val === "object" &&
+    val !== null &&
+    "customers" in val &&
+    Array.isArray((val as any).customers) &&
+    "pagination" in val
+  );
+}
 
-  useEffect(() => {
-    fetch();
-  }, [fetch]);
+// ── Customer List Hook ────────────────────────────────────────
+export function useCustomerModule(params: CustomerListParams = {}) {
+  const {
+    page = 1,
+    limit = 10,
+    search = "",
+    status = "all",
+    source = "all",
+  } = params;
 
-  const updateCustomer = async (
-    id: string,
-    payload: UpdateCustomerPayload
-  ): Promise<ApiResult<Customer>> => {
-    try {
-      const { data } = await api.patch<{ customer: Customer }>(
-        `/customers/${id}`,
-        payload
+  const queryClient = useQueryClient();
+  const queryKey = customerKeys.list({ page, limit, search, status, source });
+
+  const { data, isLoading: loading, isFetching, error: queryError, refetch } =
+    useQuery<CustomerListResponse>({
+      queryKey,
+      queryFn: async () => {
+        const { data } = await api.get<CustomerListResponse>("/customers", {
+          params: {
+            page,
+            limit,
+            ...(search.trim() ? { q: search.trim() } : {}),
+            ...(status !== "all" ? { status } : {}),
+            ...(source !== "all" ? { source } : {}),
+          },
+        });
+        return data;
+      },
+      placeholderData: keepPreviousData,
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+    });
+
+  // ── Update Mutation ───────────────────────────────────────
+  const updateMutation = useMutation({
+    mutationFn: async ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: UpdateCustomerPayload;
+    }): Promise<Customer> => {
+      const axiosResponse = await api.patch(`/customers/${id}`, payload);
+
+      const raw: unknown =
+        axiosResponse &&
+        typeof axiosResponse === "object" &&
+        "data" in axiosResponse
+          ? (axiosResponse as any).data
+          : axiosResponse;
+
+      const customer: Customer =
+        raw && typeof raw === "object" && "customer" in (raw as any)
+          ? (raw as any).customer
+          : (raw as Customer);
+
+      if (!customer?.id) {
+        throw new Error("Invalid response: customer data missing");
+      }
+
+      return customer;
+    },
+
+    // ── Optimistic update — fires BEFORE the API call ─────
+    onMutate: async ({ id, payload }) => {
+      // Cancel any in-flight refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: ["customers", "list"] });
+
+      // Snapshot all current list caches for rollback on error
+      const previousCaches = queryClient.getQueriesData<CustomerListResponse>({
+        queryKey: ["customers", "list"],
+      });
+
+      // Immediately update every cached page with the new values
+      queryClient.setQueriesData<CustomerListResponse>(
+        { queryKey: ["customers", "list"], exact: false },
+        (old) => {
+          if (!isPaginatedList(old)) return old;
+          return {
+            ...old,
+            customers: old.customers.map((c) =>
+              c.id === id ? { ...c, ...payload } : c,
+            ),
+          };
+        },
       );
-      setCustomers((prev) =>
-        prev.map((c) => (c.id === id ? data.customer : c))
+
+      return { previousCaches };
+    },
+
+    // ── On success: replace optimistic data with real server data ──
+    onSuccess: (updated) => {
+      // Write confirmed server data into all list caches
+      queryClient.setQueriesData<CustomerListResponse>(
+        { queryKey: ["customers", "list"], exact: false },
+        (old) => {
+          if (!isPaginatedList(old)) return old;
+          return {
+            ...old,
+            customers: old.customers.map((c) =>
+              c.id === updated.id ? { ...c, ...updated } : c,
+            ),
+          };
+        },
       );
-      return { ok: true, data: data.customer };
-    } catch (e: any) {
-      return {
-        ok: false,
-        error: e?.response?.data?.error ?? "Failed to update customer",
-      };
-    }
-  };
 
-  const toggleSuspend = async (
-    id: string,
-    isActive: boolean
-  ): Promise<ApiResult<Customer>> => {
-    return updateCustomer(id, { isActive });
-  };
+      // Update open profile drawer cache
+      queryClient.setQueryData<{ customer: CustomerProfile }>(
+        customerKeys.profile(updated.id),
+        (old) => {
+          if (!old?.customer) return old;
+          return { customer: { ...old.customer, ...updated } };
+        },
+      );
 
+      // Invalidate so next focus/navigation gets fresh server data
+      // (non-blocking — runs in background after UI already updated)
+      queryClient.invalidateQueries({
+        queryKey: ["customers", "list"],
+        refetchType: "none", // don't refetch right now, just mark stale
+      });
+    },
+
+    // ── On error: rollback to snapshots ───────────────────
+    onError: (_err, _vars, context) => {
+      if (context?.previousCaches) {
+        for (const [queryKey, data] of context.previousCaches) {
+          queryClient.setQueryData(queryKey, data);
+        }
+      }
+    },
+  });
+
+  const updateCustomer = useCallback(
+    async (
+      id: string,
+      payload: UpdateCustomerPayload,
+    ): Promise<ApiResult<Customer>> => {
+      try {
+        const customer = await updateMutation.mutateAsync({ id, payload });
+        return { ok: true, data: customer };
+      } catch (e: any) {
+        const msg =
+          e?.response?.data?.error ?? e?.message ?? "Failed to update customer";
+        return { ok: false, error: msg };
+      }
+    },
+    [updateMutation],
+  );
 
   return {
-    customers,
+    customers: data?.customers ?? [],
+    pagination: data?.pagination ?? null,
     loading,
-    error,
-    refresh: fetch,
+    isFetching,
+    error: queryError ? String((queryError as any)?.message) : null,
+    refresh: refetch,
     updateCustomer,
-    toggleSuspend,
-    // deleteCustomer,
   };
 }
 
-// ── Single Customer Profile ───────────────────────────────────
+// ── Single Customer Profile Hook ──────────────────────────────
 export function useCustomerProfile(id: string | null) {
-  const [profile, setProfile] = useState<CustomerProfile | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const fetch = useCallback(async () => {
-    if (!id) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const { data } = await api.get<{ customer: CustomerProfile }>(
-        `/customers/${id}`
+  const { data, isLoading: loading, error: queryError, refetch } =
+    useQuery<{ customer: CustomerProfile }>({
+      queryKey: customerKeys.profile(id ?? ""),
+      queryFn: async () => {
+        const { data } = await api.get<{ customer: CustomerProfile }>(
+          `/customers/${id}`,
+        );
+        return data;
+      },
+      enabled: !!id,
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+    });
+
+  const setProfile = useCallback(
+    (updater: (old: CustomerProfile | null) => CustomerProfile | null) => {
+      queryClient.setQueryData<{ customer: CustomerProfile }>(
+        customerKeys.profile(id ?? ""),
+        (old) => {
+          if (!old) return old;
+          const next = updater(old.customer);
+          return next ? { customer: next } : old;
+        },
       );
-      setProfile(data.customer);
-    } catch (e: any) {
-      setError(e?.response?.data?.error ?? "Failed to load profile");
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
+    },
+    [queryClient, id],
+  );
 
-  useEffect(() => {
-    fetch();
-  }, [fetch]);
-
-  return { profile, loading, error, refresh: fetch, setProfile };
+  return {
+    profile: data?.customer ?? null,
+    loading,
+    error: queryError ? String((queryError as any)?.message) : null,
+    refresh: refetch,
+    setProfile,
+  };
 }

@@ -16,6 +16,8 @@ import {
   AlertCircle,
   CircleX,
   CircleOff,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "sonner";
@@ -26,6 +28,110 @@ import {
   useDeleteCategory,
 } from "@/hooks/useKitchen";
 import type { FoodCategory } from "@/types/kitchen";
+
+// Add this ABOVE the main `KitchenCategories` component (same place Rooms.tsx defines it)
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50] as const;
+type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
+
+function Pagination({
+  page,
+  totalPages,
+  total,
+  limit,
+  isFetching,
+  onPageChange,
+  onLimitChange,
+}: {
+  page: number;
+  totalPages: number;
+  total: number;
+  limit: PageSize;
+  isFetching: boolean;
+  onPageChange: (p: number) => void;
+  onLimitChange: (l: PageSize) => void;
+}) {
+  const from = total === 0 ? 0 : (page - 1) * limit + 1;
+  const to = Math.min(page * limit, total);
+
+  const navBtn = (disabled: boolean) =>
+    clsx(
+      "h-8 w-8 flex items-center justify-center rounded-lg border border-border text-xs transition-colors",
+      disabled
+        ? "text-muted-foreground/30 bg-muted/30 cursor-not-allowed"
+        : "text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer",
+    );
+
+  return (
+    <div className="px-4 py-3 border-t border-border bg-muted/20 flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">
+          {total === 0 ? (
+            "No categories"
+          ) : (
+            <>
+              {" "}
+              Showing{" "}
+              <span className="font-medium text-foreground">
+                {from}–{to}
+              </span>{" "}
+              of <span className="font-medium text-foreground">{total}</span>
+            </>
+          )}
+        </span>
+        {isFetching && (
+          <Loader2 size={11} className="animate-spin text-muted-foreground" />
+        )}
+      </div>
+
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            Rows per page
+          </span>
+          <select
+            value={limit}
+            onChange={(e) => {
+              onLimitChange(Number(e.target.value) as PageSize);
+              onPageChange(1);
+            }}
+            className="h-7 px-2 pr-6 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:border-primary/50 transition-colors appearance-none cursor-pointer"
+          >
+            {PAGE_SIZE_OPTIONS.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="w-px h-4 bg-border" />
+
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => onPageChange(page - 1)}
+            disabled={page === 1}
+            className={navBtn(page === 1)}
+          >
+            <ChevronLeft size={13} />
+          </button>
+          <span className="text-xs text-muted-foreground whitespace-nowrap px-1">
+            Page <span className="font-medium text-foreground">{page}</span> of{" "}
+            <span className="font-medium text-foreground">
+              {totalPages || 1}
+            </span>
+          </span>
+          <button
+            onClick={() => onPageChange(page + 1)}
+            disabled={page >= totalPages}
+            className={navBtn(page >= totalPages)}
+          >
+            <ChevronRight size={13} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function CategoryRow({
   category,
@@ -117,7 +223,9 @@ function CategoryFormModal({
     if (editingCategory) {
       setName(editingCategory.name);
       setDescription(editingCategory.description || "");
-      setActive(editingCategory.active === undefined ? true : editingCategory.active);
+      setActive(
+        editingCategory.active === undefined ? true : editingCategory.active,
+      );
     } else {
       setName("");
       setDescription("");
@@ -132,6 +240,7 @@ function CategoryFormModal({
       return;
     }
 
+    // CategoryFormModal.handleSubmit — remove duplicate toast + extra refetch
     try {
       if (isEditing && editingCategory) {
         await updateCategory.mutateAsync({
@@ -139,18 +248,16 @@ function CategoryFormModal({
           payload: {
             name: name.trim(),
             description: description.trim() || undefined,
-            active: active,
+            active,
           },
         });
-        toast.success("Category updated successfully");
       } else {
         await createCategory.mutateAsync({
           name: name.trim(),
           description: description.trim() || undefined,
         });
-        toast.success("Category created successfully");
       }
-      onSuccess();
+      // useCreateCategory/useUpdateCategory already invalidate + toast
       onClose();
     } catch (error: any) {
       toast.error(error?.response?.data?.error || "Operation failed");
@@ -352,7 +459,14 @@ export default function KitchenCategories() {
     null,
   );
 
-  const { data: categories = [], isLoading, refetch } = useKitchenCategories();
+  // data fetch — grab isFetching too
+  const {
+    data: categories = [],
+    isLoading,
+    isFetching,
+    refetch,
+  } = useKitchenCategories();
+  // const { data: categories = [], isLoading, refetch } = useKitchenCategories();
   const deleteCategory = useDeleteCategory();
 
   const filteredCategories = categories.filter(
@@ -368,12 +482,12 @@ export default function KitchenCategories() {
     setShowForm(true);
   };
 
+  // Main component — handleDelete + handleFormClose
   const handleDelete = async () => {
     if (!deletingCategory) return;
     try {
       await deleteCategory.mutateAsync(deletingCategory.id);
-      toast.success("Category deleted successfully");
-      refetch();
+      // useDeleteCategory already invalidates + toasts
     } catch (error: any) {
       toast.error(error?.response?.data?.error || "Failed to delete category");
     } finally {
@@ -384,16 +498,28 @@ export default function KitchenCategories() {
   const handleFormClose = () => {
     setShowForm(false);
     setEditingCategory(null);
-    refetch();
+    // no manual refetch needed — mutation already invalidates the query
   };
 
   // Stats for header
   const activeCount = categories.filter((c) => c.active !== false).length;
-  const inactiveCount = categories.filter((c) => c.active === false).length;
   const totalItems = categories.reduce(
     (sum, c) => sum + (c.foodItems?.length || 0),
     0,
   );
+
+  // after filteredCategories — pagination state (replace any earlier simple page state)
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState<PageSize>(10);
+  const totalPages = Math.max(1, Math.ceil(filteredCategories.length / limit));
+  const paginatedCategories = filteredCategories.slice(
+    (page - 1) * limit,
+    page * limit,
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -534,8 +660,9 @@ export default function KitchenCategories() {
                     </th>
                   </tr>
                 </thead>
+
                 <tbody>
-                  {filteredCategories.map((category, idx) => (
+                  {paginatedCategories.map((category, idx) => (
                     <CategoryRow
                       key={category.id}
                       category={category}
@@ -551,33 +678,15 @@ export default function KitchenCategories() {
               </table>
             </div>
 
-            {/* Table Footer with Details */}
-            <div className="px-4 py-3 border-t border-border bg-muted/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-muted-foreground">
-              <div className="flex items-center gap-4">
-                <span>
-                  Showing {filteredCategories.length} of {categories.length}{" "}
-                  categories
-                </span>
-                {inactiveCount > 0 && (
-                  <span className="flex items-center gap-1">
-                    <AlertCircle size={12} />
-                    {inactiveCount} inactive{" "}
-                    {inactiveCount === 1 ? "category" : "categories"}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">Quick Stats:</span>
-
-                <span className="flex items-center gap-1">
-                  <CheckCircle size={12} /> Active: {activeCount}
-                </span>
-                <span>•</span>
-                <span className="flex items-center gap-1">
-                  <CircleX size={12} /> Inactive: {inactiveCount}
-                </span>
-              </div>
-            </div>
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              total={filteredCategories.length}
+              limit={limit}
+              isFetching={isFetching}
+              onPageChange={setPage}
+              onLimitChange={setLimit}
+            />
           </div>
         )}
       </div>

@@ -1,7 +1,7 @@
 import DashboardShell from "@/components/layout/DashboardShell";
-{{#if kitchen}}
+// {{#if kitchen}}
 import { CartProvider } from "@/context/CartContext";
-{{/if}}
+// {{/if}}
 
 export default function CustomerLayout({
   children,
@@ -9,12 +9,12 @@ export default function CustomerLayout({
   children: React.ReactNode;
 }) {
   return (
-    {{#if kitchen}}
+    // {{#if kitchen}}
     <CartProvider>
-      {{/if}}
+      {/* {{/if}} */}
       <DashboardShell>{children}</DashboardShell>
-      {{#if kitchen}}
+      {/* {{#if kitchen}} */}
     </CartProvider>
-    {{/if}}
+    // {{/if}}
   );
 }

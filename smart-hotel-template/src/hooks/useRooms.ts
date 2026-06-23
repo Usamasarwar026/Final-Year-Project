@@ -1,96 +1,112 @@
 // hooks/useRooms.ts
-import { useState, useEffect, useCallback } from "react";
-import type { Room } from "@/constant/constant";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { roomApiService, type RoomFilters } from '@/services/roomApiService';
+import type { Room } from '@/constant/constant';
 
-export function useRooms() {
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export const ROOMS_QUERY_KEY = 'rooms';
 
-  const fetchRooms = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/rooms");
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Failed to fetch rooms");
-      setRooms(json.rooms);
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+export function useRooms(filters: RoomFilters = {}) {
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    fetchRooms();
-  }, [fetchRooms]);
+  const roomsQuery = useQuery({
+    queryKey: [ROOMS_QUERY_KEY, filters],
+    queryFn: () => roomApiService.getRooms(filters),
+    placeholderData: keepPreviousData, // no flash on page/filter change
+    staleTime: 30_000,                 // 30s fresh — no redundant refetches
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
 
-  // ── CREATE ─────────────────────────────────────────────────
-  const createRoom = async (
-    data: Omit<Room, "room_id" | "created_at" | "updated_at">,
-  ): Promise<{ ok: boolean; error?: string }> => {
-    const res = await fetch("/api/rooms", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    const json = await res.json();
-    if (!res.ok) return { ok: false, error: json.error };
-    await fetchRooms();
-    return { ok: true };
-  };
+  const createRoomMutation = useMutation({
+    mutationFn: roomApiService.createRoom,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: [ROOMS_QUERY_KEY] });
+      toast.success(`Room ${data.room.room_number} created successfully`);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Failed to create room');
+    },
+  });
 
-  // ── UPDATE ─────────────────────────────────────────────────
-  const updateRoom = async (
-    id: number,
-    data: Partial<Room>,
-  ): Promise<{ ok: boolean; error?: string }> => {
-    const res = await fetch(`/api/rooms/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    const json = await res.json();
-    if (!res.ok) return { ok: false, error: json.error };
-    await fetchRooms();
-    return { ok: true };
-  };
+  const updateRoomMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<Room> }) =>
+      roomApiService.updateRoom(id, data),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: [ROOMS_QUERY_KEY] });
+      toast.success(`Room ${data.room.room_number} updated successfully`);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Failed to update room');
+    },
+  });
 
-  // ── DELETE ─────────────────────────────────────────────────
-  const deleteRoom = async (
-    id: number,
-  ): Promise<{ ok: boolean; error?: string }> => {
-    const res = await fetch(`/api/rooms/${id}`, { method: "DELETE" });
-    const json = await res.json();
-    if (!res.ok) return { ok: false, error: json.error };
-    await fetchRooms();
-    return { ok: true };
-  };
+  const deleteRoomMutation = useMutation({
+    mutationFn: roomApiService.deleteRoom,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [ROOMS_QUERY_KEY] });
+      toast.success('Room deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Failed to delete room');
+    },
+  });
 
-  // ── UPLOAD PHOTO ───────────────────────────────────────────
-  const uploadPhoto = async (
-    file: File,
-  ): Promise<{ ok: boolean; url?: string; error?: string }> => {
-    const formData = new FormData();
-    formData.append("file", file);
-    const res = await fetch("/api/rooms/upload", {
-      method: "POST",
-      body: formData,
-    });
-    const json = await res.json();
-    if (!res.ok) return { ok: false, error: json.error };
-    return { ok: true, url: json.url };
-  };
+  const uploadPhotoMutation = useMutation({
+    mutationFn: roomApiService.uploadPhoto,
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Failed to upload photo');
+    },
+  });
 
   return {
-    rooms,
-    loading,
-    error,
-    refetch: fetchRooms,
-    createRoom,
-    updateRoom,
-    deleteRoom,
-    uploadPhoto,
+    rooms: roomsQuery.data?.rooms || [],
+    pagination: roomsQuery.data?.pagination,
+    isLoading: roomsQuery.isLoading,
+    isFetching: roomsQuery.isFetching,
+    error: roomsQuery.error,
+
+    createRoom: async (data: Omit<Room, 'room_id' | 'created_at' | 'updated_at'>) => {
+      try {
+        const result = await createRoomMutation.mutateAsync(data);
+        return { ok: true, room: result.room };
+      } catch {
+        return { ok: false };
+      }
+    },
+
+    updateRoom: async (id: number, data: Partial<Room>) => {
+      try {
+        const result = await updateRoomMutation.mutateAsync({ id, data });
+        return { ok: true, room: result.room };
+      } catch {
+        return { ok: false };
+      }
+    },
+
+    deleteRoom: async (id: number) => {
+      try {
+        await deleteRoomMutation.mutateAsync(id);
+        return { ok: true };
+      } catch {
+        return { ok: false };
+      }
+    },
+
+    uploadPhoto: async (file: File) => {
+      try {
+        const result = await uploadPhotoMutation.mutateAsync(file);
+        return { ok: true, url: result.url };
+      } catch (error: any) {
+        return { ok: false, error: error.response?.data?.error || 'Upload failed' };
+      }
+    },
+
+    isCreating: createRoomMutation.isPending,
+    isUpdating: updateRoomMutation.isPending,
+    isDeleting: deleteRoomMutation.isPending,
+    isUploading: uploadPhotoMutation.isPending,
+
+    refetch: () => roomsQuery.refetch(),
   };
 }

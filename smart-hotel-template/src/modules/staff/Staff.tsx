@@ -26,8 +26,6 @@ import {
   Loader2,
   Info,
   Star,
-  ToggleLeft,
-  ToggleRight,
   ClipboardList,
   Copy,
   RefreshCw,
@@ -37,6 +35,9 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  ToggleLeft,
+  ToggleRight,
+  Power,
 } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "sonner";
@@ -45,12 +46,11 @@ import {
   useAttendance,
   useDepartments,
   useShifts,
+  type StaffFilters,
 } from "@/hooks/useStaff";
 import {
   ATTENDANCE_STATUSES,
   ATTENDANCE_CONFIG,
-  MODULE_PERMISSIONS,
-  DEPT_DEFAULT_PERMISSIONS,
   DEPT_FALLBACK,
   type StaffUser,
   type AttendanceStatus,
@@ -58,7 +58,12 @@ import {
   type DepartmentConfig,
   type ShiftConfig,
 } from "@/types/staff";
+import {
+  MODULE_PERMISSIONS,
+  DEPT_DEFAULT_PERMISSIONS,
+} from "@/lib/staffPermissions";
 import SettingStaffTab from "./SettingStaffTab";
+import { useDebounce } from "@/hooks/useDebounce";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 const fmt = (d?: string | null) =>
@@ -98,6 +103,106 @@ const fmtTime = (d?: string | null) =>
       })
     : null;
 
+// ─── Page size ────────────────────────────────────────────────────────────────
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50] as const;
+type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
+
+// ─── Pagination Component ─────────────────────────────────────────────────────
+function Pagination({
+  page,
+  totalPages,
+  total,
+  limit,
+  isFetching,
+  onPageChange,
+  onLimitChange,
+}: {
+  page: number;
+  totalPages: number;
+  total: number;
+  limit: PageSize;
+  isFetching: boolean;
+  onPageChange: (p: number) => void;
+  onLimitChange: (l: PageSize) => void;
+}) {
+  const from = total === 0 ? 0 : (page - 1) * limit + 1;
+  const to = Math.min(page * limit, total);
+  const navBtn = (disabled: boolean) =>
+    clsx(
+      "h-8 w-8 flex items-center justify-center rounded-lg border border-border text-xs transition-colors",
+      disabled
+        ? "text-muted-foreground/30 bg-muted/30 cursor-not-allowed"
+        : "text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer",
+    );
+
+  return (
+    <div className="px-4 py-3 border-t border-border bg-muted/20 flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">
+          {total === 0 ? (
+            "No staff"
+          ) : (
+            <>
+              Showing{" "}
+              <span className="font-medium text-foreground">
+                {from}–{to}
+              </span>{" "}
+              of <span className="font-medium text-foreground">{total}</span>
+            </>
+          )}
+        </span>
+        {isFetching && (
+          <Loader2 size={11} className="animate-spin text-muted-foreground" />
+        )}
+      </div>
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            Rows per page
+          </span>
+          <select
+            value={limit}
+            onChange={(e) => {
+              onLimitChange(Number(e.target.value) as PageSize);
+              onPageChange(1);
+            }}
+            className="h-7 px-2 pr-6 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none appearance-none cursor-pointer"
+          >
+            {PAGE_SIZE_OPTIONS.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="w-px h-4 bg-border" />
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => onPageChange(page - 1)}
+            disabled={page === 1}
+            className={navBtn(page === 1)}
+          >
+            <ChevronLeft size={13} />
+          </button>
+          <span className="text-xs text-muted-foreground whitespace-nowrap px-1">
+            Page <span className="font-medium text-foreground">{page}</span> of{" "}
+            <span className="font-medium text-foreground">
+              {totalPages || 1}
+            </span>
+          </span>
+          <button
+            onClick={() => onPageChange(page + 1)}
+            disabled={page >= totalPages}
+            className={navBtn(page >= totalPages)}
+          >
+            <ChevronRight size={13} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Badges ───────────────────────────────────────────────────────────────────
 function DeptBadge({ dept }: { dept?: DepartmentConfig | null }) {
   if (!dept)
@@ -105,7 +210,6 @@ function DeptBadge({ dept }: { dept?: DepartmentConfig | null }) {
   const fb = DEPT_FALLBACK[dept.name] ?? DEPT_FALLBACK._default;
   const bg = dept.bg || fb.bg;
   const color = dept.color || fb.color;
-  const icon = dept.icon || fb.icon;
   return (
     <span
       className={clsx(
@@ -114,7 +218,7 @@ function DeptBadge({ dept }: { dept?: DepartmentConfig | null }) {
         color,
       )}
     >
-      <span>{icon}</span> {dept.name}
+      <Building2 size={9} /> {dept.name}
     </span>
   );
 }
@@ -141,9 +245,73 @@ function AttBadge({ status }: { status?: string | null }) {
         c.text,
       )}
     >
-      <span className={clsx("w-1.5 h-1.5 rounded-full", c.dot)} />
-      {c.label}
+      <span className={clsx("w-1.5 h-1.5 rounded-full", c.dot)} /> {c.label}
     </span>
+  );
+}
+
+// ─── Toggle Switch ────────────────────────────────────────────────────────────
+function ToggleSwitch({
+  on,
+  onChange,
+  loading,
+  activeColor = "bg-primary",
+  size = "default",
+}: {
+  on: boolean;
+  onChange: () => void;
+  loading?: boolean;
+  activeColor?: string;
+  size?: "default" | "small";
+}) {
+  // Size configurations
+  const sizes = {
+    default: {
+      container: "h-6 w-11",
+      knob: "h-5 w-5",
+      knobTranslate: "translate-x-5",
+      spinner: 14,
+    },
+    small: {
+      container: "h-5 w-9",
+      knob: "h-3.5 w-3.5",
+      knobTranslate: "translate-x-4",
+      spinner: 12,
+    },
+  };
+
+  const config = sizes[size];
+
+  return (
+    <button
+      type="button"
+      onClick={onChange}
+      disabled={loading}
+      className={clsx(
+        "relative inline-flex items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gold/30 disabled:opacity-50",
+        config.container,
+        on ? activeColor : "bg-muted-foreground",
+      )}
+    >
+      <div
+        className={clsx(
+          "absolute flex items-center justify-center transition-all duration-200",
+          config.knob,
+          on ? config.knobTranslate : "translate-x-0.5",
+        )}
+      >
+        {loading ? (
+          <Loader2 size={config.spinner} className="animate-spin text-white" />
+        ) : (
+          <div
+            className={clsx(
+              "w-full h-full rounded-full shadow-md transition-colors duration-200",
+              on ? "bg-white" : "bg-white border-2 border-muted-foreground/50",
+            )}
+          />
+        )}
+      </div>
+    </button>
   );
 }
 
@@ -162,11 +330,7 @@ function StatCard({
   sub?: string;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-background border border-border rounded-2xl p-4 flex items-center gap-3.5"
-    >
+    <div className="bg-background border border-border rounded-2xl p-4 flex items-center gap-3.5">
       <div
         className={clsx(
           "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
@@ -184,7 +348,7 @@ function StatCard({
           <p className="text-[10px] text-muted-foreground/70 mt-0.5">{sub}</p>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -204,19 +368,13 @@ function PermissionPicker({
         ? selected.filter((k) => k !== key)
         : [...selected, key],
     );
-  const setDefs = () => {
-    if (deptName) onChange(DEPT_DEFAULT_PERMISSIONS[deptName] ?? []);
-  };
-  const clearAll = () => onChange([]);
-  const selectAll = () => onChange(MODULE_PERMISSIONS.map((p) => p.key));
-
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 flex-wrap">
         {deptName && (
           <button
             type="button"
-            onClick={setDefs}
+            onClick={() => onChange(DEPT_DEFAULT_PERMISSIONS[deptName] ?? [])}
             className="text-[11px] px-2.5 py-1 rounded-lg bg-primary/10 text-primary font-medium hover:bg-primary/20 transition-colors flex items-center gap-1"
           >
             <Star size={10} /> {deptName} defaults
@@ -224,14 +382,14 @@ function PermissionPicker({
         )}
         <button
           type="button"
-          onClick={selectAll}
+          onClick={() => onChange(MODULE_PERMISSIONS.map((p) => p.key))}
           className="text-[11px] px-2.5 py-1 rounded-lg bg-muted text-muted-foreground font-medium hover:bg-muted/70 transition-colors"
         >
           Select all
         </button>
         <button
           type="button"
-          onClick={clearAll}
+          onClick={() => onChange([])}
           className="text-[11px] px-2.5 py-1 rounded-lg bg-muted text-muted-foreground font-medium hover:bg-muted/70 transition-colors"
         >
           Clear all
@@ -240,7 +398,6 @@ function PermissionPicker({
           {selected.length} selected
         </span>
       </div>
-
       <div
         className="space-y-2 max-h-64 overflow-y-auto pr-1"
         style={{ scrollbarWidth: "thin" }}
@@ -464,7 +621,6 @@ function CreateStaffModal({
   const { createStaff } = useStaff();
   const { departments, loading: dLoading } = useDepartments();
   const { shifts, loading: sLoading } = useShifts();
-
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -474,7 +630,6 @@ function CreateStaffModal({
     staff: StaffUser;
   } | null>(null);
 
-  // Step 1
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -483,8 +638,6 @@ function CreateStaffModal({
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [country, setCountry] = useState("Pakistan");
-
-  // Step 2
   const [deptId, setDeptId] = useState<number | "">("");
   const [shiftId, setShiftId] = useState<number | "">("");
   const [designation, setDesignation] = useState("");
@@ -492,18 +645,22 @@ function CreateStaffModal({
     new Date().toISOString().split("T")[0],
   );
   const [salary, setSalary] = useState("");
-
-  // Step 3
   const [permissions, setPermissions] = useState<string[]>([]);
+
+  // CreateStaffModal mein — existing commented useEffect ki jagah yeh add karo
 
   const selectedDept = departments.find((d) => d.id === Number(deptId));
   const selectedShift = shifts.find((s) => s.id === Number(shiftId));
 
-  // Auto-set default permissions when dept changes
+  // ← YEH ADD KARO — department change hone par default permissions set karo
   useEffect(() => {
-    if (selectedDept)
-      setPermissions(DEPT_DEFAULT_PERMISSIONS[selectedDept.name] ?? []);
-  }, [deptId]); // eslint-disable-line
+    if (selectedDept) {
+      const defaults = DEPT_DEFAULT_PERMISSIONS[selectedDept.name] ?? [];
+      setPermissions(defaults);
+    } else {
+      setPermissions([]);
+    }
+  }, [deptId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const validate = (s: number) => {
     const e: Record<string, string> = {};
@@ -598,7 +755,10 @@ function CreateStaffModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+    <div
+      className="fixed inset-0 z-[300] flex items-center justify-center p-4"
+      style={{ margin: 0, padding: 0 }}
+    >
       <motion.div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         initial={{ opacity: 0 }}
@@ -614,7 +774,6 @@ function CreateStaffModal({
         transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center">
@@ -641,13 +800,11 @@ function CreateStaffModal({
           <StepIndicator current={step} />
         </div>
 
-        {/* Body */}
         <div
           className="overflow-y-auto flex-1 px-5 pb-2"
           style={{ scrollbarWidth: "thin" }}
         >
           <AnimatePresence mode="wait">
-            {/* STEP 1 */}
             {step === 1 && (
               <motion.div
                 key="s1"
@@ -769,7 +926,6 @@ function CreateStaffModal({
               </motion.div>
             )}
 
-            {/* STEP 2 */}
             {step === 2 && (
               <motion.div
                 key="s2"
@@ -795,20 +951,19 @@ function CreateStaffModal({
                         setDeptId(e.target.value ? Number(e.target.value) : "")
                       }
                     >
-                      <option value="">— Select Department —</option>
+                      <option value="">Select Department</option>
                       {dLoading ? (
                         <option disabled>Loading…</option>
                       ) : (
                         departments.map((d) => (
                           <option key={d.id} value={d.id}>
-                            {d.icon} {d.name}
+                            {d.name}
                           </option>
                         ))
                       )}
                     </select>
                   </div>
                 </Field>
-
                 <Field label="Designation" required error={errors.designation}>
                   <div className="relative">
                     <Briefcase
@@ -831,7 +986,6 @@ function CreateStaffModal({
                     />
                   </div>
                 </Field>
-
                 <Field label="Shift" required error={errors.shiftId}>
                   <div className="relative">
                     <Clock
@@ -849,7 +1003,7 @@ function CreateStaffModal({
                         setShiftId(e.target.value ? Number(e.target.value) : "")
                       }
                     >
-                      <option value="">— Select Shift —</option>
+                      <option value="">Select Shift</option>
                       {sLoading ? (
                         <option disabled>Loading…</option>
                       ) : (
@@ -862,7 +1016,6 @@ function CreateStaffModal({
                     </select>
                   </div>
                 </Field>
-
                 <Field label="Joining Date">
                   <div className="relative">
                     <Calendar
@@ -877,7 +1030,6 @@ function CreateStaffModal({
                     />
                   </div>
                 </Field>
-
                 <div className="col-span-2">
                   <Field label="Basic Monthly Salary (PKR)">
                     <div className="relative">
@@ -896,7 +1048,6 @@ function CreateStaffModal({
                     </div>
                   </Field>
                 </div>
-
                 {selectedShift && (
                   <div className="col-span-2 p-3 rounded-xl border border-border bg-muted/30 flex items-center gap-2.5 text-xs">
                     <Clock
@@ -916,7 +1067,6 @@ function CreateStaffModal({
               </motion.div>
             )}
 
-            {/* STEP 3 */}
             {step === 3 && (
               <motion.div
                 key="s3"
@@ -930,10 +1080,20 @@ function CreateStaffModal({
                   <p className="text-[11px] text-blue-700">
                     Default permissions for{" "}
                     <strong>
-                      {selectedDept?.name ?? "selected department"}
+                      {selectedDept ? (
+                        <>
+                          <strong>{selectedDept.name}</strong> For department{" "}
+                          <strong>
+                            {DEPT_DEFAULT_PERMISSIONS[selectedDept.name]
+                              ?.length ?? 0}
+                          </strong>{" "}
+                          default permissions are pre-selected.
+                        </>
+                      ) : (
+                        "NO department select "
+                      )}
                     </strong>{" "}
-                    pre-selected. Staff dashboard + attendance is always
-                    accessible.
+                    pre-selected.
                   </p>
                 </div>
                 <PermissionPicker
@@ -946,7 +1106,6 @@ function CreateStaffModal({
           </AnimatePresence>
         </div>
 
-        {/* Footer */}
         <div className="flex gap-3 px-5 py-4 border-t border-border shrink-0">
           <button
             type="button"
@@ -968,7 +1127,7 @@ function CreateStaffModal({
               type="button"
               onClick={handleSubmit}
               disabled={saving}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-60 transition-opacity"
             >
               {saving ? (
                 <>
@@ -987,6 +1146,7 @@ function CreateStaffModal({
   );
 }
 
+// still working on this , now pending
 // ─── Attendance Dropdown ──────────────────────────────────────────────────────
 function AttendancePicker({
   staff,
@@ -1001,16 +1161,34 @@ function AttendancePicker({
 }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [position, setPosition] = useState<"top" | "bottom">("bottom");
   const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const h = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node))
+      if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false);
+      }
     };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, []);
+
+  useEffect(() => {
+    if (open && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const dropdownHeight = 220;
+
+      setPosition(
+        spaceBelow < dropdownHeight && spaceAbove > spaceBelow
+          ? "top"
+          : "bottom",
+      );
+    }
+  }, [open]);
 
   const handle = async (s: AttendanceStatus) => {
     setLoading(true);
@@ -1020,45 +1198,100 @@ function AttendancePicker({
   };
 
   const current = staff.staffProfile?.attendance_status;
+  const currentConfig = current
+    ? ATTENDANCE_CONFIG[current as AttendanceStatus]
+    : null;
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative inline-block">
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setOpen((p) => !p)}
-        className="flex items-center gap-1 hover:opacity-80 transition-opacity"
+        className={clsx(
+          "flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-200 text-xs font-medium group",
+          currentConfig
+            ? clsx(
+                currentConfig.bg,
+                currentConfig.text,
+                "border",
+                currentConfig.border,
+                "hover:opacity-80",
+              )
+            : "bg-muted/50 text-muted-foreground border border-dashed border-muted-foreground/30 hover:bg-muted hover:border-muted-foreground/50",
+        )}
       >
-        <AttBadge status={current} />
-        {loading ? (
-          <Loader2 size={10} className="animate-spin text-muted-foreground" />
+        {currentConfig ? (
+          <>
+            <span
+              className={clsx("w-1.5 h-1.5 rounded-full", currentConfig.dot)}
+            />
+            <span>{currentConfig.label}</span>
+            <ChevronDown
+              size={12}
+              className={clsx(
+                "transition-transform duration-200",
+                open && "rotate-180",
+              )}
+            />
+          </>
         ) : (
-          <ChevronDown size={10} className="text-muted-foreground" />
+          <>
+            <span className="text-[10px] font-medium">Mark Attendance</span>
+            <ChevronDown
+              size={12}
+              className="transition-transform duration-200"
+            />
+          </>
+        )}
+        {loading && (
+          <Loader2 size={12} className="animate-spin text-muted-foreground" />
         )}
       </button>
+
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: -4, scale: 0.97 }}
+            initial={{
+              opacity: 0,
+              y: position === "top" ? 4 : -4,
+              scale: 0.95,
+            }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -4, scale: 0.97 }}
-            className="absolute left-0 top-full mt-1 bg-background border border-border rounded-xl shadow-xl z-50 overflow-hidden w-36"
+            exit={{ opacity: 0, y: position === "top" ? 4 : -4, scale: 0.95 }}
+            transition={{ duration: 0.15 }}
+            className={clsx(
+              "absolute z-[9999] min-w-[160px] bg-background border border-border rounded-xl shadow-lg overflow-hidden",
+              position === "top" ? "bottom-full mb-1" : "top-full mt-1",
+            )}
           >
-            {ATTENDANCE_STATUSES.map((s) => {
-              const c = ATTENDANCE_CONFIG[s];
-              return (
-                <button
-                  key={s}
-                  onClick={() => handle(s)}
-                  className={clsx(
-                    "w-full flex items-center gap-2 px-3 py-2 text-xs font-medium hover:bg-muted/60 transition-colors",
-                    current === s && "bg-muted/40",
-                  )}
-                >
-                  <span className={clsx("w-1.5 h-1.5 rounded-full", c.dot)} />{" "}
-                  {c.label}
-                </button>
-              );
-            })}
+            <div className="p-1">
+              {ATTENDANCE_STATUSES.map((s) => {
+                const c = ATTENDANCE_CONFIG[s];
+                const isActive = current === s;
+                return (
+                  <button
+                    key={s}
+                    onClick={() => handle(s)}
+                    className={clsx(
+                      "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-150",
+                      isActive
+                        ? clsx(c.bg, c.text)
+                        : "text-foreground hover:bg-muted/60",
+                    )}
+                  >
+                    <span className={clsx("w-2 h-2 rounded-full", c.dot)} />
+                    <span className="flex-1 text-left">{c.label}</span>
+                    {isActive && (
+                      <CheckCircle2
+                        size={12}
+                        className="text-primary shrink-0"
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1066,14 +1299,14 @@ function AttendancePicker({
   );
 }
 
-// ─── Attendance Calendar (monthly view) ──────────────────────────────────────
+// ─── Attendance Calendar ──────────────────────────────────────────────────────
 function AttendanceCalendar({
   logs,
 }: {
   logs: { date: string; status: AttendanceStatus }[];
 }) {
+  console.log("logs", logs);
   const [month, setMonth] = useState(() => new Date());
-
   const year = month.getFullYear();
   const mon = month.getMonth();
   const first = new Date(year, mon, 1).getDay();
@@ -1082,43 +1315,40 @@ function AttendanceCalendar({
   const logMap = useMemo(() => {
     const m: Record<string, AttendanceStatus> = {};
     logs.forEach((l) => {
-      const d = l.date.split("T")[0];
-      m[d] = l.status;
+      m[l.date.split("T")[0]] = l.status;
     });
     return m;
   }, [logs]);
+  console.log("log maps", logMap);
 
-  const prevMonth = () =>
-    setMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1));
-  const nextMonth = () =>
-    setMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1));
-
-  const monthLabel = month.toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
   const today = new Date().toISOString().split("T")[0];
 
   return (
     <div className="space-y-3">
-      {/* Nav */}
       <div className="flex items-center justify-between">
         <button
-          onClick={prevMonth}
+          onClick={() =>
+            setMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))
+          }
           className="p-1.5 rounded-lg hover:bg-muted transition-colors"
         >
           <ChevronLeft size={14} className="text-muted-foreground" />
         </button>
-        <p className="text-xs font-semibold text-foreground">{monthLabel}</p>
+        <p className="text-xs font-semibold text-foreground">
+          {month.toLocaleDateString("en-US", {
+            month: "long",
+            year: "numeric",
+          })}
+        </p>
         <button
-          onClick={nextMonth}
+          onClick={() =>
+            setMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))
+          }
           className="p-1.5 rounded-lg hover:bg-muted transition-colors"
         >
           <ChevronRight size={14} className="text-muted-foreground" />
         </button>
       </div>
-
-      {/* Day headers */}
       <div className="grid grid-cols-7 gap-1">
         {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
           <div
@@ -1129,21 +1359,16 @@ function AttendanceCalendar({
           </div>
         ))}
       </div>
-
-      {/* Days grid */}
       <div className="grid grid-cols-7 gap-1">
-        {/* Empty cells */}
         {Array.from({ length: first }).map((_, i) => (
           <div key={`e${i}`} />
         ))}
-        {/* Day cells */}
         {Array.from({ length: days }, (_, i) => {
           const day = i + 1;
           const dateStr = `${year}-${String(mon + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
           const status = logMap[dateStr];
           const isToday = dateStr === today;
           const cfg = status ? ATTENDANCE_CONFIG[status] : null;
-
           return (
             <div
               key={day}
@@ -1162,8 +1387,6 @@ function AttendanceCalendar({
           );
         })}
       </div>
-
-      {/* Legend */}
       <div className="flex flex-wrap gap-2 pt-1">
         {ATTENDANCE_STATUSES.map((s) => {
           const c = ATTENDANCE_CONFIG[s];
@@ -1202,6 +1425,15 @@ function PermissionViewer({
   const [editing, setEditing] = useState(false);
   const [perms, setPerms] = useState(permissions);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setPerms(permissions); // Jab parent se naya permissions array aaye
+  }, [permissions]);
+  useEffect(() => {
+    if (!editing) {
+      setPerms(permissions);
+    }
+  }, [permissions]);
 
   const save = async () => {
     setSaving(true);
@@ -1267,7 +1499,6 @@ function PermissionViewer({
           <Edit3 size={11} /> Edit
         </button>
       </div>
-
       {granted.length === 0 ? (
         <div className="py-8 text-center">
           <Shield size={20} className="mx-auto text-muted-foreground/30 mb-2" />
@@ -1328,9 +1559,7 @@ function StaffDetailPanel({
   onUpdate: () => void;
 }) {
   const { updateStaff } = useStaff();
-  const { logs, markAttendance, refresh } = useAttendance(
-    staff.staffProfile?.staff_id,
-  );
+  const { logs, markAttendance } = useAttendance(staff.staffProfile?.staff_id);
   const [editNotes, setEditNotes] = useState(
     staff.staffProfile?.performance_notes ?? "",
   );
@@ -1368,8 +1597,8 @@ function StaffDetailPanel({
       exit={{ x: "100%" }}
       transition={{ type: "spring", damping: 30, stiffness: 300 }}
       className="fixed right-0 top-0 h-screen w-full max-w-md bg-background border-l border-border shadow-2xl z-[200] flex flex-col"
+      style={{ margin: 0, padding: 0 }}
     >
-      {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
         <p className="font-semibold text-foreground text-sm">Staff Details</p>
         <button
@@ -1380,7 +1609,6 @@ function StaffDetailPanel({
         </button>
       </div>
 
-      {/* Profile header */}
       <div className="px-5 py-4 border-b border-border shrink-0">
         <div className="flex items-start gap-4">
           <div
@@ -1421,7 +1649,6 @@ function StaffDetailPanel({
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-1 p-2 border-b border-border shrink-0">
         {(["info", "attendance", "permissions"] as const).map((t) => (
           <button
@@ -1443,7 +1670,6 @@ function StaffDetailPanel({
         className="flex-1 overflow-y-auto px-5 py-4"
         style={{ scrollbarWidth: "thin" }}
       >
-        {/* INFO */}
         {activeTab === "info" && (
           <div className="space-y-4">
             <section>
@@ -1482,7 +1708,6 @@ function StaffDetailPanel({
                 ))}
               </div>
             </section>
-
             <section>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                 Employment
@@ -1497,17 +1722,13 @@ function StaffDetailPanel({
                     label: "Shift",
                     value: sp?.shift
                       ? `${sp.shift.name} (${sp.shift.start_time}–${sp.shift.end_time})`
-                      : "—",
+                      : "Flexible",
                   },
                   {
                     label: "Monthly Salary",
                     value: sp?.basic_salary
                       ? `PKR ${Number(sp.basic_salary).toLocaleString()}`
-                      : "—",
-                  },
-                  {
-                    label: "Last Login",
-                    value: staff.lastLogin ? fmt(staff.lastLogin) : "Never",
+                      : "PKR 0",
                   },
                 ].map(({ label, value }) => (
                   <div key={label} className="bg-muted/40 rounded-xl p-2.5">
@@ -1519,7 +1740,6 @@ function StaffDetailPanel({
                 ))}
               </div>
             </section>
-
             <section>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                 Performance Notes
@@ -1534,23 +1754,26 @@ function StaffDetailPanel({
               <button
                 onClick={saveNotes}
                 disabled={saving}
-                className="mt-2 flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 disabled:opacity-60 transition-colors"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
               >
                 {saving ? (
-                  <Loader2 size={11} className="animate-spin" />
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Saving…</span>
+                  </>
                 ) : (
-                  <CheckCircle2 size={11} />
+                  <>
+                    <CheckCircle2 size={16} />
+                    <span>Save Notes</span>
+                  </>
                 )}
-                {saving ? "Saving…" : "Save notes"}
               </button>
             </section>
           </div>
         )}
 
-        {/* ATTENDANCE */}
         {activeTab === "attendance" && (
           <div className="space-y-4">
-            {/* Summary chips */}
             <div className="grid grid-cols-4 gap-2">
               {[
                 {
@@ -1587,11 +1810,7 @@ function StaffDetailPanel({
                 </div>
               ))}
             </div>
-
-            {/* Calendar */}
             <AttendanceCalendar logs={logs} />
-
-            {/* Recent list */}
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                 Recent Records · {logs.length} total
@@ -1656,7 +1875,6 @@ function StaffDetailPanel({
           </div>
         )}
 
-        {/* PERMISSIONS */}
         {activeTab === "permissions" && (
           <PermissionViewer
             permissions={staff.permissions}
@@ -1671,62 +1889,71 @@ function StaffDetailPanel({
 
 // ─── Main AdminStaff Page ─────────────────────────────────────────────────────
 export default function Staff() {
+  // ── Pagination + filter state ────────────────────────────────────────────
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState<PageSize>(10);
+  const [search, setSearch] = useState("");
+  const [deptFilter, setDeptFilter] = useState<number | "">("");
+  const [shiftFilter, setShiftFilter] = useState<number | "">("");
+  const [attFilter, setAttFilter] = useState("");
+  const [activeTab, setActiveTab] = useState<"staff" | "settings">("staff");
+  const [showCreate, setShowCreate] = useState(false);
+  const [viewStaff, setViewStaff] = useState<StaffUser | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [activatingId, setActivatingId] = useState<string | null>(null);
+
+  const debouncedSearch = useDebounce(search, 400);
+
+  const filters: StaffFilters = {
+    page,
+    limit,
+    search: debouncedSearch,
+    dept: deptFilter,
+    shift: shiftFilter,
+    att: attFilter,
+  };
+
   const {
     staff,
+    pagination,
     loading,
+    isFetching,
     error,
     refresh,
     updateStaff,
     toggleDuty,
     deactivateStaff,
     activateStaff,
-  } = useStaff();
+  } = useStaff(filters);
+
   const { markAttendance } = useAttendance();
   const { departments } = useDepartments();
   const { shifts } = useShifts();
 
-  const [activeTab, setActiveTab] = useState<"staff" | "settings">("staff");
-  const [search, setSearch] = useState("");
-  const [deptFilter, setDeptFilter] = useState<number | "">("");
-  const [shiftFilter, setShiftFilter] = useState<number | "">("");
-  const [attFilter, setAttFilter] = useState("");
-  const [showCreate, setShowCreate] = useState(false);
-  const [viewStaff, setViewStaff] = useState<StaffUser | null>(null);
-
-  const stats = useMemo(
-    () => ({
-      total: staff.length,
-      onDuty: staff.filter((s) => s.staffProfile?.is_on_duty).length,
-      present: staff.filter(
-        (s) => s.staffProfile?.attendance_status === "Present",
-      ).length,
-      absent: staff.filter(
-        (s) => s.staffProfile?.attendance_status === "Absent",
-      ).length,
-      inactive: staff.filter((s) => !s.isActive).length,
-    }),
-    [staff],
-  );
-
-  // Filter — compare dept/shift by ID
-  const filtered = useMemo(
-    () =>
-      staff.filter((s) => {
-        const q = search.toLowerCase();
-        const sp = s.staffProfile;
-        return (
-          (!q ||
-            s.name.toLowerCase().includes(q) ||
-            s.email.toLowerCase().includes(q) ||
-            (s.employeeId ?? "").toLowerCase().includes(q) ||
-            (sp?.designation ?? "").toLowerCase().includes(q)) &&
-          (!deptFilter || sp?.department_id === Number(deptFilter)) &&
-          (!shiftFilter || sp?.shift_id === Number(shiftFilter)) &&
-          (!attFilter || sp?.attendance_status === attFilter)
-        );
-      }),
-    [staff, search, deptFilter, shiftFilter, attFilter],
-  );
+  const handleSearch = (v: string) => {
+    setSearch(v);
+    setPage(1);
+  };
+  const handleDept = (v: number | "") => {
+    setDeptFilter(v);
+    setPage(1);
+  };
+  const handleShift = (v: number | "") => {
+    setShiftFilter(v);
+    setPage(1);
+  };
+  const handleAtt = (v: string) => {
+    setAttFilter(v);
+    setPage(1);
+  };
+  const clearFilters = () => {
+    setSearch("");
+    setDeptFilter("");
+    setShiftFilter("");
+    setAttFilter("");
+    setPage(1);
+  };
+  const hasFilters = !!(search || deptFilter || shiftFilter || attFilter);
 
   const handleAttendance = async (
     staffId: number,
@@ -1734,15 +1961,15 @@ export default function Staff() {
     status: AttendanceStatus,
   ) => {
     const res = await markAttendance(staffId, userId, status);
-    if (res.ok) {
-      toast.success(`Marked ${status}`);
-      refresh();
-    } else toast.error(res.error ?? "Failed");
+    if (res.ok) toast.success(`Marked ${status}`);
+    else toast.error(res.error ?? "Failed");
   };
 
   const handleToggleDuty = async (s: StaffUser) => {
     const next = !s.staffProfile?.is_on_duty;
+    setTogglingId(s.id);
     const res = await toggleDuty(s.id, next);
+    setTogglingId(null);
     if (res.ok)
       toast.success(
         next ? `${s.name} is now on duty` : `${s.name} is off duty`,
@@ -1750,31 +1977,50 @@ export default function Staff() {
     else toast.error(res.error ?? "Failed");
   };
 
+  // ─── Update the handleDeactivate function ──────────────────────────────────
   const handleDeactivate = async (s: StaffUser) => {
-    if (!confirm(`Deactivate ${s.name}? They will lose system access.`)) return;
+    setActivatingId(s.id);
     const res = await deactivateStaff(s.id);
-    if (res.ok) toast.success("Staff deactivated");
-    else toast.error(res.error ?? "Failed");
-  };
-
-  const handleActivate = async (s: StaffUser) => {
-    if (!confirm(`Activate ${s.name}?`)) return;
-
-    const res = await activateStaff(s.id);
-
+    setActivatingId(null);
     if (res.ok) {
-      toast.success("Staff activated");
+      toast.success(`${s.name} has been deactivated`);
+      refresh();
     } else {
-      toast.error(res.error ?? "Failed");
+      toast.error(res.error ?? "Failed to deactivate staff");
     }
   };
-  const clearFilters = () => {
-    setSearch("");
-    setDeptFilter("");
-    setShiftFilter("");
-    setAttFilter("");
+
+  // ─── Update the handleActivate function ────────────────────────────────────
+  const handleActivate = async (s: StaffUser) => {
+    setActivatingId(s.id);
+    const res = await activateStaff(s.id);
+    setActivatingId(null);
+    if (res.ok) {
+      toast.success(`${s.name} has been activated`);
+      refresh();
+    } else {
+      toast.error(res.error ?? "Failed to activate staff");
+    }
   };
-  const hasFilters = !!(search || deptFilter || shiftFilter || attFilter);
+
+  useEffect(() => {
+    if (!viewStaff) return;
+    const fresh = staff.find((s) => s.id === viewStaff.id);
+    if (fresh && JSON.stringify(fresh) !== JSON.stringify(viewStaff)) {
+      setViewStaff(fresh);
+    }
+  }, [staff]);
+
+  // Stats from server total
+  const total = pagination?.total ?? 0;
+  const onDuty = staff.filter((s) => s.staffProfile?.is_on_duty).length;
+  const present = staff.filter(
+    (s) => s.staffProfile?.attendance_status === "Present",
+  ).length;
+  const absent = staff.filter(
+    (s) => s.staffProfile?.attendance_status === "Absent",
+  ).length;
+  const inactive = staff.filter((s) => !s.isActive).length;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
@@ -1790,11 +2036,17 @@ export default function Staff() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={refresh}
+            onClick={() => refresh()}
             className="p-2.5 rounded-xl border border-border hover:bg-muted transition-colors"
             title="Refresh"
           >
-            <RefreshCw size={15} className="text-muted-foreground" />
+            <RefreshCw
+              size={15}
+              className={clsx(
+                "text-muted-foreground",
+                isFetching && "animate-spin",
+              )}
+            />
           </button>
           <button
             onClick={() => setShowCreate(true)}
@@ -1840,32 +2092,32 @@ export default function Staff() {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               <StatCard
                 label="Total Staff"
-                value={stats.total}
+                value={total}
                 icon={Users}
                 color="bg-primary"
               />
               <StatCard
                 label="On Duty Now"
-                value={stats.onDuty}
+                value={onDuty}
                 icon={UserCheck}
                 color="bg-green-600"
                 sub="Currently working"
               />
               <StatCard
                 label="Present Today"
-                value={stats.present}
+                value={present}
                 icon={CheckCircle2}
                 color="bg-teal-600"
               />
               <StatCard
                 label="Absent Today"
-                value={stats.absent}
+                value={absent}
                 icon={UserX}
                 color="bg-red-500"
               />
               <StatCard
                 label="Inactive"
-                value={stats.inactive}
+                value={inactive}
                 icon={AlertCircle}
                 color="bg-gray-500"
               />
@@ -1880,13 +2132,13 @@ export default function Staff() {
                 />
                 <input
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => handleSearch(e.target.value)}
                   placeholder="Search name, ID, role…"
                   className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
                 />
                 {search && (
                   <button
-                    onClick={() => setSearch("")}
+                    onClick={() => handleSearch("")}
                     className="absolute right-2.5 top-1/2 -translate-y-1/2"
                   >
                     <X
@@ -1896,26 +2148,24 @@ export default function Staff() {
                   </button>
                 )}
               </div>
-
               <select
                 value={deptFilter}
                 onChange={(e) =>
-                  setDeptFilter(e.target.value ? Number(e.target.value) : "")
+                  handleDept(e.target.value ? Number(e.target.value) : "")
                 }
                 className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:border-primary/50 transition-colors"
               >
                 <option value="">All Departments</option>
                 {departments.map((d) => (
                   <option key={d.id} value={d.id}>
-                    {d.icon} {d.name}
+                    {d.name}
                   </option>
                 ))}
               </select>
-
               <select
                 value={shiftFilter}
                 onChange={(e) =>
-                  setShiftFilter(e.target.value ? Number(e.target.value) : "")
+                  handleShift(e.target.value ? Number(e.target.value) : "")
                 }
                 className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:border-primary/50 transition-colors"
               >
@@ -1926,10 +2176,9 @@ export default function Staff() {
                   </option>
                 ))}
               </select>
-
               <select
                 value={attFilter}
-                onChange={(e) => setAttFilter(e.target.value)}
+                onChange={(e) => handleAtt(e.target.value)}
                 className="px-3 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:border-primary/50 transition-colors"
               >
                 <option value="">All Attendance</option>
@@ -1939,7 +2188,6 @@ export default function Staff() {
                   </option>
                 ))}
               </select>
-
               {hasFilters && (
                 <button
                   onClick={clearFilters}
@@ -1970,15 +2218,28 @@ export default function Staff() {
                   />
                   <p className="text-sm text-red-500">{error}</p>
                   <button
-                    onClick={refresh}
+                    onClick={() => refresh()}
                     className="text-xs text-primary mt-2 hover:underline"
                   >
                     Retry
                   </button>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm overflow-y-auto">
+                <div className="overflow-x-auto relative">
+                  {isFetching && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-[1px]">
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background border border-border shadow-sm">
+                        <Loader2
+                          size={13}
+                          className="animate-spin text-muted-foreground"
+                        />
+                        <span className="text-xs text-muted-foreground">
+                          Updating…
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  <table className="w-full text-sm">
                     <thead className="border-b border-border bg-muted/40">
                       <tr>
                         {[
@@ -2002,9 +2263,9 @@ export default function Staff() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filtered.length === 0 ? (
+                      {staff.length === 0 ? (
                         <tr>
-                          <td colSpan={8} className="py-16 text-center">
+                          <td colSpan={9} className="py-16 text-center">
                             <Users
                               size={28}
                               className="mx-auto mb-2.5 text-muted-foreground/20"
@@ -2025,7 +2286,7 @@ export default function Staff() {
                           </td>
                         </tr>
                       ) : (
-                        filtered.map((s, i) => {
+                        staff.map((s, i) => {
                           const sp = s.staffProfile;
                           return (
                             <motion.tr
@@ -2034,7 +2295,7 @@ export default function Staff() {
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: i * 0.02 }}
                               className={clsx(
-                                "border-t border-border hover:bg-muted/20 transition-colors cursor-default",
+                                "border-t border-border hover:bg-muted/20 transition-colors",
                                 !s.isActive && "opacity-50",
                               )}
                             >
@@ -2069,7 +2330,6 @@ export default function Staff() {
                                   </div>
                                 </div>
                               </td>
-
                               {/* Dept */}
                               <td className="px-4 py-3.5">
                                 <div className="space-y-1">
@@ -2079,26 +2339,23 @@ export default function Staff() {
                                   </p>
                                 </div>
                               </td>
-
                               {/* Shift */}
-                              <td className="px-4 py-3.5 w-full">
+                              <td className="px-4 py-3.5">
                                 <ShiftBadge shift={sp?.shift} />
                               </td>
-
                               {/* Salary */}
                               <td className="px-4 py-3.5">
                                 <p className="text-xs font-medium text-foreground">
                                   {sp?.basic_salary
                                     ? `PKR ${Number(sp.basic_salary).toLocaleString()}`
-                                    : "—"}
+                                    : "PKR 0"}
                                 </p>
-                                {sp?.basic_salary && (
-                                  <p className="text-[9px] text-muted-foreground">
-                                    / month
-                                  </p>
-                                )}
+                                {/* {sp?.basic_salary && ( */}
+                                <p className="text-[9px] text-muted-foreground">
+                                  / month
+                                </p>
+                                {/* )} */}
                               </td>
-
                               {/* Attendance */}
                               <td className="px-4 py-3.5">
                                 {sp ? (
@@ -2108,42 +2365,39 @@ export default function Staff() {
                                   />
                                 ) : (
                                   <span className="text-[10px] text-muted-foreground">
-                                    —
+                                    Mark Attandence
                                   </span>
                                 )}
                               </td>
-                              <td>
+                              {/* Status badge */}
+                              <td className="px-4 py-3.5">
                                 <span
-                                  className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  className={clsx(
+                                    "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold",
                                     s.isActive
-                                      ? "bg-green-100 text-green-700"
-                                      : "bg-red-100 text-red-700"
-                                  }`}
+                                      ? "bg-emerald-500/10 text-emerald-600"
+                                      : "bg-red-500/10 text-red-600",
+                                  )}
                                 >
+                                  <span
+                                    className={clsx(
+                                      "w-1.5 h-1.5 rounded-full",
+                                      s.isActive
+                                        ? "bg-emerald-500"
+                                        : "bg-red-500",
+                                    )}
+                                  />
                                   {s.isActive ? "Active" : "Inactive"}
                                 </span>
                               </td>
-
                               {/* On Duty Toggle */}
                               <td className="px-4 py-3.5">
-                                <button
-                                  onClick={() => handleToggleDuty(s)}
-                                  className="transition-opacity hover:opacity-70"
-                                >
-                                  {sp?.is_on_duty ? (
-                                    <ToggleRight
-                                      size={22}
-                                      className="text-green-500"
-                                    />
-                                  ) : (
-                                    <ToggleLeft
-                                      size={22}
-                                      className="text-muted-foreground/40"
-                                    />
-                                  )}
-                                </button>
+                                <ToggleSwitch
+                                  on={sp?.is_on_duty ?? false}
+                                  onChange={() => handleToggleDuty(s)}
+                                  loading={togglingId === s.id}
+                                />
                               </td>
-
                               {/* Joined */}
                               <td className="px-4 py-3.5">
                                 <p className="text-[10px] text-muted-foreground">
@@ -2152,7 +2406,6 @@ export default function Staff() {
                                     : "—"}
                                 </p>
                               </td>
-
                               {/* Actions */}
                               <td className="px-4 py-3.5">
                                 <div className="flex items-center gap-1">
@@ -2166,18 +2419,34 @@ export default function Staff() {
                                   {s.isActive ? (
                                     <button
                                       onClick={() => handleDeactivate(s)}
-                                      className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
+                                      disabled={activatingId === s.id}
+                                      className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
                                       title="Deactivate"
                                     >
-                                      <Trash2 size={13} />
+                                      {activatingId === s.id ? (
+                                        <Loader2
+                                          size={13}
+                                          className="animate-spin"
+                                        />
+                                      ) : (
+                                        <Power size={13} />
+                                      )}
                                     </button>
                                   ) : (
                                     <button
                                       onClick={() => handleActivate(s)}
-                                      className="p-1.5 rounded-lg text-muted-foreground hover:text-green-500 hover:bg-green-500/10"
+                                      disabled={activatingId === s.id}
+                                      className="p-1.5 rounded-lg text-muted-foreground hover:text-green-500 hover:bg-green-500/10 transition-colors disabled:opacity-50"
                                       title="Activate"
                                     >
-                                      <RefreshCw size={13} />
+                                      {activatingId === s.id ? (
+                                        <Loader2
+                                          size={13}
+                                          className="animate-spin"
+                                        />
+                                      ) : (
+                                        <RefreshCw size={13} />
+                                      )}
                                     </button>
                                   )}
                                 </div>
@@ -2191,19 +2460,19 @@ export default function Staff() {
                 </div>
               )}
 
-              {!loading && !error && filtered.length > 0 && (
-                <div className="px-4 py-3 border-t border-border bg-muted/10 flex justify-between items-center text-xs text-muted-foreground">
-                  <span>
-                    Showing{" "}
-                    <strong className="text-foreground">
-                      {filtered.length}
-                    </strong>{" "}
-                    of {staff.length} staff
-                  </span>
-                  <span>
-                    {stats.onDuty} on duty · {stats.present} present today
-                  </span>
-                </div>
+              {!loading && !error && pagination && (
+                <Pagination
+                  page={page}
+                  totalPages={pagination.totalPages}
+                  total={pagination.total}
+                  limit={limit}
+                  isFetching={isFetching}
+                  onPageChange={setPage}
+                  onLimitChange={(l) => {
+                    setLimit(l);
+                    setPage(1);
+                  }}
+                />
               )}
             </div>
           </motion.div>
@@ -2226,7 +2495,7 @@ export default function Staff() {
         {showCreate && (
           <CreateStaffModal
             onClose={() => setShowCreate(false)}
-            onCreated={(s, pwd, empId) => {
+            onCreated={(s) => {
               toast.success(`${s.name} added successfully`);
               refresh();
             }}
@@ -2244,6 +2513,7 @@ export default function Staff() {
               exit={{ opacity: 0 }}
               className="fixed inset-0 bg-black/30 z-[190]"
               onClick={() => setViewStaff(null)}
+              style={{ margin: 0, padding: 0 }}
             />
             <StaffDetailPanel
               staff={viewStaff}

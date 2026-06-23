@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
 import { motion } from "framer-motion";
+import { useState } from "react";
 import {
 {{#if rooms,booking}}
   Bed,
@@ -46,6 +48,13 @@ import {
   Cell,
 } from "recharts";
 {{/if}}
+
+// ─── Axios Instance ────────────────────────────────────────────
+const apiClient = axios.create({
+  baseURL: "/api",
+  timeout: 15_000,
+  headers: { "Content-Type": "application/json" },
+});
 
 // ─── Types ────────────────────────────────────────────────────
 interface DashboardData {
@@ -133,33 +142,34 @@ interface DashboardData {
 const COLORS = ["#10b981", "#3b82f6", "#f43f5e", "#f59e0b"];
 {{/if}}
 
+// ─── Query Key (ek jagah define, galti nahi hogi) ─────────────
+const DASHBOARD_QUERY_KEY = ["admin", "dashboard"] as const;
+
+// ─── Fetcher function ─────────────────────────────────────────
+const fetchDashboard = async (): Promise<DashboardData> => {
+  const { data } = await apiClient.get<DashboardData>("/admin/dashboard");
+  return data;
+};
+
 export default function AdminDashboard() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetching,
+  } = useQuery<DashboardData, Error>({
+    queryKey: DASHBOARD_QUERY_KEY,
+    queryFn: fetchDashboard,
+    staleTime: 60_000,          // 1 min tak cached data use hoga, API call nahi
+    refetchOnWindowFocus: false, // tab switch pe call nahi hogi
+    retry: 2,                   // fail hone par 2 baar retry
+  });
+
 {{#if billing}}
   const [revenueDays, setRevenueDays] = useState<7 | 30>(7);
 {{/if}}
-
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await fetch("/api/admin/dashboard");
-      if (!res.ok) throw new Error("Failed to fetch dashboard metrics");
-      const json = await res.json();
-      setData(json);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "An unexpected error occurred");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
 
 {{#if billing}}
   const formatCurrency = (val: number) => {
@@ -182,7 +192,7 @@ export default function AdminDashboard() {
   };
 {{/if}}
 
-  if (loading && !data) {
+  if (isLoading) {
     return (
       <div className="space-y-6 p-6">
         <div className="flex items-center justify-between">
@@ -205,16 +215,18 @@ export default function AdminDashboard() {
     );
   }
 
-  if (error) {
+  if (isError) {
     return (
       <div className="p-6 max-w-lg mx-auto mt-20 text-center space-y-4">
         <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto text-red-500">
           <AlertTriangle className="w-8 h-8" />
         </div>
         <h2 className="text-xl font-semibold text-gray-800">Failed to Load Dashboard</h2>
-        <p className="text-gray-500 text-sm">{error}</p>
+        <p className="text-gray-500 text-sm">
+          {error?.message ?? "An unexpected error occurred"}
+        </p>
         <button
-          onClick={fetchDashboardData}
+          onClick={() => refetch()}
           className="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition"
         >
           <RefreshCw className="w-4 h-4" /> Retry
@@ -243,7 +255,6 @@ export default function AdminDashboard() {
   const filteredRevenueTrend = charts.revenueTrend.slice(-revenueDays);
 {{/if}}
 
-  // KPI cards — modules ke hisaab se build hote hain
   const kpis = [
 {{#if rooms}}
     { label: "Total Rooms", value: summary.totalRooms, icon: Hotel, bg: "bg-indigo-50 border-indigo-100", iconColor: "text-indigo-600" },
@@ -276,17 +287,16 @@ export default function AdminDashboard() {
             As of: {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
           </span>
           <button
-            onClick={fetchDashboardData}
-            disabled={loading}
+            onClick={() => refetch()}
+            disabled={isFetching}
             className="p-2 text-gray-600 hover:text-sky-600 hover:bg-sky-50 rounded-xl border border-gray-200 bg-white transition disabled:opacity-50"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`} />
           </button>
         </div>
       </div>
 
-      {/* KPI Cards — runtime check: agar kpis empty hai to grid hi mat dikhao.
-          Yeh normal React conditional hai (kpis.length ek runtime value hai). */}
+      {/* KPI Cards */}
       {kpis.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {kpis.map((kpi, idx) => {

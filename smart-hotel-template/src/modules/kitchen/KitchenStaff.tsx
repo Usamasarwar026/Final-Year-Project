@@ -515,7 +515,7 @@ export default function KitchenStaff() {
 
                       return (
                         <tr
-                          key={staffMember.staff_id}
+                          key={staffMember.user_id}
                           className="border-t border-border hover:bg-muted/20 transition-colors"
                         >
                           {/* Staff Info */}

@@ -221,11 +221,9 @@ export const MODULE_FILES: Record<ModuleId, Record<TierId, string[]>> = {
   authentication: {
     basic: [
       "src/app/(auth)/login/page.tsx",
-      "src/app/(auth)/signup/page.tsx",
       "src/app/(auth)/forgetPassword/page.tsx",
       "src/app/(auth)/resetPassword/page.tsx",
       "src/modules/auth/loginForm/LoginForm.tsx",
-      "src/modules/auth/signupForm/SignupForm.tsx",
       "src/modules/auth/ForgetForm/ForgetForm.tsx",
       "src/modules/auth/resetForm/ResetForm.tsx",
       "src/app/api/forget/route.ts",
@@ -278,6 +276,8 @@ export const MODULE_FILES: Record<ModuleId, Record<TierId, string[]>> = {
       "src/app/api/rooms/upload/route.ts",
       "src/services/roomService.ts",
       "src/services/roomApiService.ts",
+      "src/hooks/useDebounce.ts",
+      "src/hooks/useDashboard.ts",
     ],
     intermediate: [
       "src/app/admin/rooms/page.tsx",
@@ -290,6 +290,8 @@ export const MODULE_FILES: Record<ModuleId, Record<TierId, string[]>> = {
       "src/app/api/rooms/[id]/route.ts",
       "src/app/api/rooms/upload/route.ts",
       "src/services/roomService.ts",
+      "src/services/roomApiService.ts",
+      "src/hooks/useDebounce.ts",
     ],
     advanced: [
       "src/app/admin/rooms/page.tsx",
@@ -302,6 +304,8 @@ export const MODULE_FILES: Record<ModuleId, Record<TierId, string[]>> = {
       "src/app/api/rooms/[id]/route.ts",
       "src/app/api/rooms/upload/route.ts",
       "src/services/roomService.ts",
+      "src/services/roomApiService.ts",
+      "src/hooks/useDebounce.ts",
     ],
   },
   booking: {
@@ -314,6 +318,8 @@ export const MODULE_FILES: Record<ModuleId, Record<TierId, string[]>> = {
       "src/hooks/useBookings.ts",
       "src/types/bookings.ts",
       "src/services/bookingService.ts",
+      "src/hooks/useDebounce.ts",
+      "src/hooks/useDashboard.ts",
       
     ],
     intermediate: [
@@ -351,6 +357,8 @@ export const MODULE_FILES: Record<ModuleId, Record<TierId, string[]>> = {
       "src/hooks/useCustomers.ts",
       "src/hooks/useCustomerModule.ts",
       "src/types/customers.ts",
+      "src/hooks/useDebounce.ts",
+      "src/hooks/useDashboard.ts",
     ],
     intermediate: [
       "src/app/admin/customer/page.tsx",
@@ -397,6 +405,7 @@ export const MODULE_FILES: Record<ModuleId, Record<TierId, string[]>> = {
       "src/modules/dashboard/staff/StaffDashboard.tsx",
       "src/modules/dashboard/staff/StaffDetails.tsx",
       "src/modules/attandance/Attandance.tsx",
+
       "src/app/api/staff/route.ts",
       "src/app/api/staff/attendance/route.ts",
       "src/app/api/staff/me/route.ts",
@@ -406,6 +415,7 @@ export const MODULE_FILES: Record<ModuleId, Record<TierId, string[]>> = {
       "src/app/api/staff/shifts/route.ts",
       "src/app/api/staff/[id]/route.ts",
       "src/app/api/staff/[id]/activate/route.ts",
+      "src/lib/staffPermissions.ts",
       "src/hooks/useStaff.ts",
       "src/types/staff.ts",
     ],
@@ -433,6 +443,7 @@ export const MODULE_FILES: Record<ModuleId, Record<TierId, string[]>> = {
       "src/app/api/staff/[id]/activate/route.ts",
       "src/app/api/staff/inventory/route.ts",
       "src/app/api/staff/inventory/wastage/route.ts",
+      "src/lib/staffPermissions.ts",
       "src/hooks/useStaff.ts",
       "src/types/staff.ts",
     ],

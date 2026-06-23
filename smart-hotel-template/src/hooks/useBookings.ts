@@ -1,125 +1,255 @@
 // src/hooks/useBookings.ts
-import { useState, useEffect, useCallback } from "react";
-import type {
-  Booking,
-  CreateBookingPayload,
-  BookingStatus,
-} from "@/types/bookings";
+import type { Booking, BookingStatus, CreateBookingPayload } from "@/types/bookings";
 import api from "@/lib/axios";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+
+export interface BookingFilters {
+  page?:   number;
+  limit?:  number;
+  search?: string;
+  status?: BookingStatus | "All";
+}
+
+interface BookingListResponse {
+  bookings: Booking[];
+  pagination: {
+    total:      number;
+    page:       number;
+    limit:      number;
+    totalPages: number;
+  };
+}
 
 type ApiResult<T = void> = { ok: boolean; data?: T; error?: string };
 
-export function useBookings() {
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export const bookingKeys = {
+  all:  ["bookings"] as const,
+  list: (filters: BookingFilters) => ["bookings", "list", filters] as const,
+};
 
-  const fetch = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const { data } = await api.get<{ bookings: Booking[] }>("/bookings");
-      setBookings(data.bookings);
-    } catch (e: any) {
-      setError(e?.response?.data?.error ?? "Failed to load bookings");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+function isPaginatedList(val: unknown): val is BookingListResponse {
+  return (
+    typeof val === "object" &&
+    val !== null &&
+    "bookings" in val &&
+    Array.isArray((val as any).bookings) &&
+    "pagination" in val
+  );
+}
 
-  useEffect(() => {
-    fetch();
-  }, [fetch]);
+export function useBookings(filters: BookingFilters = {}) {
+  const { page = 1, limit = 10, search = "", status = "All" } = filters;
+  const queryClient = useQueryClient();
 
-  const createBooking = async (
-    payload: CreateBookingPayload,
-  ): Promise<ApiResult<Booking>> => {
-    try {
-      const { data } = await api.post<{ booking: Booking }>(
-        "/bookings",
-        payload,
+  const { data, isLoading: loading, isFetching, error: queryError, refetch } =
+    useQuery<BookingListResponse>({
+      queryKey: bookingKeys.list({ page, limit, search, status }),
+      queryFn: async () => {
+        const { data } = await api.get<BookingListResponse>("/bookings", {
+          params: {
+            page,
+            limit,
+            ...(search.trim() ? { q: search.trim() } : {}),
+            ...(status !== "All" ? { status } : {}),
+          },
+        });
+        return data;
+      },
+      placeholderData: keepPreviousData,
+      staleTime: 20_000,
+      gcTime:    5 * 60_000,
+      refetchOnWindowFocus: false,
+    });
+
+  // ── Update Status Mutation — with optimistic update ───────────────────
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: number; status: BookingStatus }) => {
+      const { data } = await api.patch<{ booking: Booking }>(`/bookings/${id}`, { status });
+      return data.booking;
+    },
+
+    onMutate: async ({ id, status }) => {
+      // Cancel in-flight refetches
+      await queryClient.cancelQueries({ queryKey: ["bookings", "list"] });
+
+      // Snapshot all list caches for rollback
+      const previousCaches = queryClient.getQueriesData<BookingListResponse>({
+        queryKey: ["bookings", "list"],
+      });
+
+      // Optimistically update every cached page immediately
+      queryClient.setQueriesData<BookingListResponse>(
+        { queryKey: ["bookings", "list"], exact: false },
+        (old) => {
+          if (!isPaginatedList(old)) return old;
+          return {
+            ...old,
+            bookings: old.bookings.map((b) =>
+              b.booking_id === id ? { ...b, status } : b,
+            ),
+          };
+        },
       );
-      setBookings((prev) => [data.booking, ...prev]);
-      return { ok: true, data: data.booking };
-    } catch (e: any) {
-      return {
-        ok: false,
-        error: e?.response?.data?.error ?? "Failed to create booking",
-      };
-    }
-  };
 
+      return { previousCaches };
+    },
+
+    onSuccess: (updated) => {
+      // Replace optimistic data with confirmed server data
+      queryClient.setQueriesData<BookingListResponse>(
+        { queryKey: ["bookings", "list"], exact: false },
+        (old) => {
+          if (!isPaginatedList(old)) return old;
+          return {
+            ...old,
+            bookings: old.bookings.map((b) =>
+              b.booking_id === updated.booking_id ? { ...b, ...updated } : b,
+            ),
+          };
+        },
+      );
+      // Mark stale — background refetch on next navigation
+      queryClient.invalidateQueries({
+        queryKey: ["bookings", "list"],
+        refetchType: "none",
+      });
+    },
+
+    onError: (_err, _vars, context) => {
+      // Rollback to snapshots
+      if (context?.previousCaches) {
+        for (const [queryKey, data] of context.previousCaches) {
+          queryClient.setQueryData(queryKey, data);
+        }
+      }
+    },
+  });
+
+  // ── Delete Mutation ───────────────────────────────────────────────────
+  const deleteBookingMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await api.delete(`/bookings/${id}`);
+      return id;
+    },
+
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["bookings", "list"] });
+
+      const previousCaches = queryClient.getQueriesData<BookingListResponse>({
+        queryKey: ["bookings", "list"],
+      });
+
+      queryClient.setQueriesData<BookingListResponse>(
+        { queryKey: ["bookings", "list"], exact: false },
+        (old) => {
+          if (!isPaginatedList(old)) return old;
+          return {
+            ...old,
+            bookings: old.bookings.filter((b) => b.booking_id !== id),
+            pagination: {
+              ...old.pagination,
+              total: Math.max(0, old.pagination.total - 1),
+            },
+          };
+        },
+      );
+
+      return { previousCaches };
+    },
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["bookings", "list"],
+        refetchType: "none",
+      });
+    },
+
+    onError: (_err, _vars, context) => {
+      if (context?.previousCaches) {
+        for (const [queryKey, data] of context.previousCaches) {
+          queryClient.setQueryData(queryKey, data);
+        }
+      }
+    },
+  });
+
+  // ── Public API ────────────────────────────────────────────────────────
   const updateStatus = async (
     id: number,
     status: BookingStatus,
   ): Promise<ApiResult<Booking>> => {
     try {
-      const { data } = await api.patch<{ booking: Booking }>(
-        `/bookings/${id}`,
-        { status },
-      );
-      setBookings((prev) =>
-        prev.map((b) => (b.booking_id === id ? data.booking : b)),
-      );
-      return { ok: true, data: data.booking };
+      const booking = await updateStatusMutation.mutateAsync({ id, status });
+      return { ok: true, data: booking };
     } catch (e: any) {
-      return {
-        ok: false,
-        error: e?.response?.data?.error ?? "Failed to update booking",
-      };
+      return { ok: false, error: e?.response?.data?.error ?? "Failed to update" };
     }
-  };
-
-  const cancelBooking = async (id: number): Promise<ApiResult<Booking>> => {
-    return updateStatus(id, "Cancelled");
   };
 
   const deleteBooking = async (id: number): Promise<ApiResult<void>> => {
     try {
-      await api.delete(`/bookings/${id}`);
-      setBookings((prev) => prev.filter((b) => b.booking_id !== id));
+      await deleteBookingMutation.mutateAsync(id);
       return { ok: true };
     } catch (e: any) {
-      return {
-        ok: false,
-        error: e?.response?.data?.error ?? "Failed to delete booking",
-      };
+      return { ok: false, error: e?.response?.data?.error ?? "Failed to delete" };
+    }
+  };
+
+  const createBooking = async (
+    payload: CreateBookingPayload,
+  ): Promise<ApiResult<Booking>> => {
+    try {
+      const { data } = await api.post<{ booking: Booking }>("/bookings", payload);
+      // Invalidate so list refetches with new booking
+      queryClient.invalidateQueries({ queryKey: bookingKeys.all });
+      return { ok: true, data: data.booking };
+    } catch (e: any) {
+      return { ok: false, error: e?.response?.data?.error ?? "Failed to create booking" };
     }
   };
 
   return {
-    bookings,
+    bookings:   data?.bookings   ?? [],
+    pagination: data?.pagination ?? null,
     loading,
-    error,
-    refresh: fetch,
+    isFetching,
+    error: queryError ? String((queryError as any)?.message) : null,
+    refresh: refetch,
     createBooking,
     updateStatus,
-    cancelBooking,
+    cancelBooking: (id: number) => updateStatus(id, "Cancelled"),
     deleteBooking,
+    // Per-row loading states
+    updatingId:     updateStatusMutation.isPending ? updateStatusMutation.variables?.id     : null,
+    updatingStatus: updateStatusMutation.isPending ? updateStatusMutation.variables?.status : null,
+    isDeleting:     deleteBookingMutation.isPending,
+    deletingId:     deleteBookingMutation.isPending ? deleteBookingMutation.variables : null,
   };
 }
 
-// Hook for fetching available rooms for given dates
+// ── Available Rooms Hook ───────────────────────────────────────────────────
 export function useAvailableRooms(checkIn: string, checkOut: string) {
-  const [rooms, setRooms] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { data, isLoading: loading, error } = useQuery({
+    queryKey: ["available-rooms", checkIn, checkOut],
+    queryFn:  async () => {
+      const { data } = await api.get(
+        `/bookings/available-rooms?checkIn=${checkIn}&checkOut=${checkOut}`,
+      );
+      return data.rooms ?? [];
+    },
+    enabled:              !!checkIn && !!checkOut && checkIn < checkOut,
+    staleTime:            60_000,
+    refetchOnWindowFocus: false,
+  });
 
-  useEffect(() => {
-    if (!checkIn || !checkOut || checkIn >= checkOut) {
-      setRooms([]);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    api
-      .get(`/bookings/available-rooms?checkIn=${checkIn}&checkOut=${checkOut}`)
-      .then(({ data }) => setRooms(data.rooms))
-      .catch((e) =>
-        setError(e?.response?.data?.error ?? "Failed to fetch rooms"),
-      )
-      .finally(() => setLoading(false));
-  }, [checkIn, checkOut]);
-
-  return { rooms, loading, error };
+  return {
+    rooms: data ?? [],
+    loading,
+    error: error ? String((error as any)?.message) : null,
+  };
 }

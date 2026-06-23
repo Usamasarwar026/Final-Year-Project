@@ -65,13 +65,13 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   // Compute stats
   const totalBookings = bookings.length;
   const completedStays = bookings.filter(
-    (b) => b.status === "CheckedOut"
+    (b) => b.status === "CheckedOut",
   ).length;
   const cancelledBookings = bookings.filter(
-    (b) => b.status === "Cancelled"
+    (b) => b.status === "Cancelled",
   ).length;
   const activeBookings = bookings.filter((b) =>
-    ["Pending", "Confirmed", "CheckedIn"].includes(b.status as string)
+    ["Pending", "Confirmed", "CheckedIn"].includes(b.status as string),
   ).length;
   const totalSpent = bookings
     .filter((b) => b.status !== "Cancelled")
@@ -87,12 +87,14 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   // Serialize recent bookings (latest 10)
   const recentBookings = bookings.slice(0, 10).map((b) => ({
     booking_id: Number(b.booking_id),
-    check_in_date: b.check_in_date instanceof Date
-      ? b.check_in_date.toISOString().split("T")[0]
-      : b.check_in_date,
-    check_out_date: b.check_out_date instanceof Date
-      ? b.check_out_date.toISOString().split("T")[0]
-      : b.check_out_date,
+    check_in_date:
+      b.check_in_date instanceof Date
+        ? b.check_in_date.toISOString().split("T")[0]
+        : b.check_in_date,
+    check_out_date:
+      b.check_out_date instanceof Date
+        ? b.check_out_date.toISOString().split("T")[0]
+        : b.check_out_date,
     status: b.status,
     total_nights: b.total_nights,
     total_amount: Number(b.total_amount),
@@ -136,6 +138,8 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
+  
+
 
   const user = await prisma.user.findUnique({
     where: { id, role: "CUSTOMER" },
@@ -165,7 +169,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     if (conflict)
       return NextResponse.json(
         { error: "Email already in use" },
-        { status: 409 }
+        { status: 409 },
       );
   }
 
@@ -190,8 +194,9 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
   // Trigger Notifications for Customer Profile Update
   try {
-    const { createNotification } = await import("@/services/notificationService");
-    
+    const { createNotification } =
+      await import("@/services/notificationService");
+
     await createNotification({
       title: "Customer Profile Updated",
       message: `Profile details for guest ${updated.name} have been updated by ${session.user.name || "Admin"}.`,
@@ -214,32 +219,11 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       sender_user_id: session.user.id,
     });
   } catch (notifErr) {
-    console.error("[PATCH /api/customers/[id]] Notification trigger failed:", notifErr);
+    console.error(
+      "[PATCH /api/customers/[id]] Notification trigger failed:",
+      notifErr,
+    );
   }
 
   return NextResponse.json({ customer: serializeCustomer(updated) });
 }
-
-// DELETE /api/customers/:id — admin only
-// export async function DELETE(req: NextRequest, { params }: Ctx) {
-//   const session = await getServerSession(authOptions);
-//   if (!session?.user)
-//     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-//   const role = (session.user as any).role as string;
-//   if (role !== "ADMIN")
-//     return NextResponse.json({ error: "Admin only" }, { status: 403 });
-
-//   const { id } = await params;
-
-//   const user = await prisma.user.findUnique({
-//     where: { id, role: "CUSTOMER" },
-//   });
-//   if (!user)
-//     return NextResponse.json({ error: "Customer not found" }, { status: 404 });
-
-//   // Soft delete via deactivation OR hard delete — using hard delete here
-//   await prisma.user.delete({ where: { id } });
-
-//   return NextResponse.json({ success: true });
-// }

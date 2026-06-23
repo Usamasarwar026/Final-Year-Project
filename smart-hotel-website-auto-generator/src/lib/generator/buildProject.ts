@@ -14,6 +14,7 @@ import { BASE_PACKAGES, MODULE_PACKAGES, DEV_PACKAGES } from "./packageMapping";
 import { processTemplate, processModuleBlocks, buildVars } from "./templateEngine";
 import { buildSchema } from "./schemaBuilder";
 import buildSeedFile from "./buildSeedFile";
+import { buildStaffPermissionsFile } from "./buildStaffPermissions";
 
 // ─── Path Configuration ───────────────────────────────────────
 const GENERATOR_ROOT = process.cwd();
@@ -184,6 +185,13 @@ function addFile(
   console.log("[generator] Building Prisma schema...");
   const schema = buildSchema(modules, tier);
   root.file("prisma/schema.prisma", schema);
+  
+  if (modules.includes("staff")) {
+  root.file(
+    "src/lib/staffPermissions.ts",
+    buildStaffPermissionsFile(modules),
+  );
+}
 
   // ── 5. .env file ─────────────────────────────────────────────
   root.file(".env", buildEnvTemplate(websiteName, modules, tier));
@@ -289,7 +297,7 @@ function buildEnvTemplate(
 DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DBNAME?schema=public"
 
 # ── NextAuth ──────────────────────────────────────────────────
-NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET="change-me-in-production"
 ${
   needsEmail
@@ -527,7 +535,6 @@ function buildFullNavConfig(modules: ModuleId[], tier: TierId): string {
   ];
   const staffItems: string[] = [
     `  { label: "Dashboard", href: "/staff/dashboard", icon: LayoutDashboard },`,
-    `  { label: "Attendance", href: "/staff/attendance", icon: ClipboardCheck },`,
   ];
   const customerItems: string[] = [
     `  { label: "Dashboard", href: "/customer/dashboard", icon: LayoutDashboard },`,
@@ -607,9 +614,8 @@ function buildFullNavConfig(modules: ModuleId[], tier: TierId): string {
     customer:     { label: "Customer", href: "/staff/customer", icon: "UserRound", permission: "customer" },
     housekeeping: { label: "House Keeping", href: "/staff/housekeeping", icon: "Brush", permission: "housekeeping" },
     billing:      { label: "Billing", href: "/staff/billing", icon: "CreditCard", permission: "billing" },
-    reports:      { label: "Reports", href: "/staff/reports", icon: "BarChart3", permission: "reports" },
+    // reports:      { label: "Reports", href: "/staff/reports", icon: "BarChart3", permission: "reports" },
     inventory:    { label: "Inventory", href: "/staff/inventory", icon: "Package", permission: "inventory" },
-    
     kitchen: {
       label: "Kitchen",
       href: "/staff/kitchen",
@@ -626,6 +632,64 @@ function buildFullNavConfig(modules: ModuleId[], tier: TierId): string {
         { label: "Reports", href: "/staff/kitchen/reports", icon: "TrendingUp", permission: "KITCHEN_REPORTS" },
       ],
     },
+    reports:  {
+    label: "Reports",
+    href: "/staff/reports",
+    icon: "BarChart3",
+    permission: "REPORTS_ACCESS", // parent guard
+    children: [
+      {
+        label: "KPI Dashboard",
+        href: "/staff/reports",
+        icon: "LayoutDashboard",
+        permission: "REPORTS_ACCESS",
+      },
+      {
+        label: "Revenue",
+        href: "/staff/reports/revenue",
+        icon: "DollarSign",
+        permission: "REPORTS_REVENUE",
+      },
+      {
+        label: "Occupancy",
+        href: "/staff/reports/occupancy",
+        icon: "BedDouble",
+        permission: "REPORTS_OCCUPANCY",
+      },
+      {
+        label: "Staff Performance",
+        href: "/staff/reports/staff-performance",
+        icon: "Users",
+        permission: "REPORTS_STAFF",
+      },
+      {
+        label: "Inventory",
+        href: "/staff/reports/inventory",
+        icon: "Package",
+        permission: "REPORTS_INVENTORY",
+      },
+      {
+        label: "Bookings",
+        href: "/staff/reports/bookings",
+        icon: "CalendarCheck",
+        permission: "REPORTS_BOOKINGS",
+      },
+      {
+        label: "Guests",
+        href: "/staff/reports/guests",
+        icon: "UserPlus",
+        permission: "REPORTS_GUESTS",
+      },
+      {
+        label: "Scheduled Reports",
+        href: "/staff/reports/scheduled",
+        icon: "Clock",
+        permission: "REPORTS_SCHEDULED",
+      },
+    ],
+  },
+    
+    
   };
 
   const customerMap: Partial<Record<ModuleId, string>> = {
@@ -708,6 +772,7 @@ import {
   UserPlus,
   Clock,
   type LucideIcon,
+  
 } from "lucide-react";
 
 export type NavItem = {

@@ -27,7 +27,12 @@ import {
 } from "lucide-react";
 import { Printer } from "lucide-react";
 import clsx from "clsx";
-import { useKitchenOrders, useUpdateOrderStatus } from "@/hooks/useKitchen";
+import {
+  useKitchenOrders,
+  useUpdateOrderStatus,
+  useDeliveryStaff,
+  KITCHEN_KEYS,
+} from "@/hooks/useKitchen";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ORDER_STATUS_CONFIG,
@@ -747,7 +752,6 @@ export default function KitchenOrders() {
   const [loadingOrderId, setLoadingOrderId] = useState<number | null>(null);
 
   const queryClient = useQueryClient();
-  
 
   const {
     data: orders = [],
@@ -777,6 +781,14 @@ export default function KitchenOrders() {
 
   const updateStatus = useUpdateOrderStatus();
 
+  // Was hitting "/kitchen/delivery" (wrong/non-existent route) and reused
+  // the "delivery-staff" cache key with a different queryFn than the
+  // Deliveries page — caused stale/empty staff lists. Fixed via shared hook.
+  const { data: allDeliveryStaff = [] } = useDeliveryStaff();
+  const staffs = allDeliveryStaff.filter(
+    (s: DeliveryStaff) => s.is_active && s.is_on_duty,
+  );
+
   // FIX: No inline onSuccess toast — the hook already fires one.
   // We only add side-effects here: refetch + invalidate delivery-staff cache.
   const handleStatusChange = (id: number, status: string, staffId?: number) => {
@@ -790,7 +802,9 @@ export default function KitchenOrders() {
         onSettled: () => {
           setLoadingOrderId(null);
           refetch();
-          queryClient.invalidateQueries({ queryKey: ["delivery-staff"] });
+          queryClient.invalidateQueries({
+            queryKey: KITCHEN_KEYS.deliveryStaff,
+          });
         },
       },
     );

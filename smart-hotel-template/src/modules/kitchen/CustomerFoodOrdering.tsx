@@ -379,6 +379,7 @@ export default function CustomerFoodOrdering() {
               exit={{ opacity: 0 }}
               onClick={() => setIsCartOpen(false)}
               className="fixed inset-0 z-50 bg-black backdrop-blur-[1px]"
+               style={{margin: 0, padding: 0}}
             />
             <motion.div
               initial={{ x: "100%" }}
@@ -386,7 +387,8 @@ export default function CustomerFoodOrdering() {
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 26, stiffness: 220 }}
               className="fixed right-0 top-0 bottom-0 z-50 w-full sm:max-w-md bg-background border-l border-border shadow-2xl flex flex-col justify-between"
-            >
+               style={{margin: 0, padding: 0}}
+           >
               {/* Drawer Header */}
               <div className="p-4 border-b border-border flex justify-between items-center bg-muted/40">
                 <div className="flex items-center gap-2">
@@ -464,7 +466,7 @@ export default function CustomerFoodOrdering() {
                           : "bg-background border-border text-muted-foreground hover:bg-muted/40"
                       }`}
                     >
-                      🛎️ Room Delivery
+                       Room Delivery
                     </button>
                     <button
                       type="button"
@@ -475,7 +477,7 @@ export default function CustomerFoodOrdering() {
                           : "bg-background border-border text-muted-foreground hover:bg-muted/40"
                       }`}
                     >
-                      🍽️ Restaurant/Table
+                       Restaurant/Table
                     </button>
                   </div>
                   {orderType === "RoomService" ? (
@@ -586,7 +588,7 @@ function ActiveOrderCard({ order }: { order: any }) {
           </div>
           <div className="flex gap-2 mt-1">
             <span className="px-2.5 py-0.5 bg-primary/5 text-primary text-[10px] font-bold rounded-md uppercase tracking-wider">
-              {order.order_type === "RoomService" ? `🛎️ Room ${order.room_number}` : `🍽️ Table ${order.table_number}`}
+              {order.order_type === "RoomService" ? ` Room ${order.room_number}` : ` Table ${order.table_number}`}
             </span>
             <span className={`px-2.5 py-0.5 text-[10px] font-bold rounded-md uppercase tracking-wider ${
               ORDER_STATUS_CONFIG[order.status as keyof typeof ORDER_STATUS_CONFIG]?.bg

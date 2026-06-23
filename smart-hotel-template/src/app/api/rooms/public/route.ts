@@ -1,12 +1,36 @@
-// app/api/rooms/public/route.ts
 import { NextResponse } from "next/server";
-import { getAllRooms } from "@/services/roomService";
+import { prisma } from "@/database/db";
 
 export async function GET() {
   try {
-    const rooms = await getAllRooms();
-    return NextResponse.json({ rooms });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    const rooms = await prisma.room.findMany({
+      where: {
+        is_active: true,
+        status: "Available",
+      },
+      orderBy: [
+        { floor: "asc" },
+        { room_number: "asc" },
+      ],
+    });
+
+    return NextResponse.json(
+      {
+        success: true,
+        rooms,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("[PUBLIC_ROOMS]", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        rooms: [],
+        message: "Failed to fetch rooms",
+      },
+      { status: 500 }
+    );
   }
 }

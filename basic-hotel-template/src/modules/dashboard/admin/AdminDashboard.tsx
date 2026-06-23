@@ -33,6 +33,7 @@ import {
   Bar,
 } from "recharts";
 import { useDashboard } from "@/hooks/useDashboard";
+import { useMemo } from "react";
 
 // ── Status badge colours ──────────────────────────────────────
 const STATUS_COLORS: Record<string, string> = {
@@ -124,6 +125,10 @@ function ChartSkeleton({ height = 280 }: { height?: number }) {
 // ── Main page ─────────────────────────────────────────────────
 export default function AdminDashboard() {
   const { data, isLoading, isFetching, error, dataUpdatedAt, refresh } = useDashboard();
+    const today = useMemo(
+    () => new Intl.DateTimeFormat("en-GB").format(new Date()),
+    [],
+  );
 
   // KPI cards defined separately so they always render (with skeleton when loading)
   const kpiCards = [
@@ -167,12 +172,12 @@ export default function AdminDashboard() {
           {dataUpdatedAt ? (
             <span className="text-xs px-3 py-1.5 bg-gray-100 rounded-lg flex items-center gap-1 text-gray-600">
               <Clock className="w-3.5 h-3.5" />
-              Updated {new Date(dataUpdatedAt).toLocaleTimeString()}
+              Updated {today}
             </span>
           ) : (
             <span className="text-xs px-3 py-1.5 bg-gray-100 rounded-lg flex items-center gap-1 text-gray-600">
               <Clock className="w-3.5 h-3.5" />
-              {new Date().toLocaleDateString()}
+              {today}
             </span>
           )}
 

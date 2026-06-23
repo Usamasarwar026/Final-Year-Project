@@ -41,6 +41,8 @@ import {
 } from "@/types/bookings";
 import { toast } from "sonner";
 import { useDebounce } from "@/hooks/useDebounce";
+import { ConfirmDialog } from "../rooms/components/ConfirmDialog";
+import api from "@/lib/axios";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 const today = () => new Date().toISOString().split("T")[0];
@@ -157,8 +159,7 @@ function Pagination({
               <span className="font-medium text-foreground">
                 {from}–{to}
               </span>{" "}
-              of{" "}
-              <span className="font-medium text-foreground">{total}</span>
+              of <span className="font-medium text-foreground">{total}</span>
             </>
           )}
         </span>
@@ -351,7 +352,9 @@ function BookingDetailModal({
               <p className="text-[10px] uppercase tracking-wider text-amber-600 font-semibold mb-1">
                 Special Requests
               </p>
-              <p className="text-sm text-foreground">{booking.special_requests}</p>
+              <p className="text-sm text-foreground">
+                {booking.special_requests}
+              </p>
             </div>
           )}
 
@@ -381,8 +384,7 @@ function BookingDetailModal({
             Close
           </button>
           {actions.map((a) => {
-            const isThisAction =
-              isThisUpdating && updatingStatus === a.next;
+            const isThisAction = isThisUpdating && updatingStatus === a.next;
             return (
               <button
                 key={a.next}
@@ -885,13 +887,55 @@ function CreateCustomerPanel({
   };
 
   const fields = [
-    { k: "name", label: "Full Name *", type: "text", placeholder: "John Smith", icon: Users },
-    { k: "email", label: "Email", type: "email", placeholder: "john@email.com", icon: Mail },
-    { k: "phoneNumber", label: "Phone Number *", type: "tel", placeholder: "+92 300 1234567", icon: Phone },
-    { k: "cnic", label: "CNIC", type: "text", placeholder: "35202-1234567-1", icon: CreditCard },
-    { k: "city", label: "City", type: "text", placeholder: "Lahore", icon: MapPin },
-    { k: "country", label: "Country", type: "text", placeholder: "Pakistan", icon: MapPin },
-    { k: "emergencyContact", label: "Emergency Contact", type: "tel", placeholder: "+92 300 1111111", icon: Phone },
+    {
+      k: "name",
+      label: "Full Name *",
+      type: "text",
+      placeholder: "John Smith",
+      icon: Users,
+    },
+    {
+      k: "email",
+      label: "Email",
+      type: "email",
+      placeholder: "john@email.com",
+      icon: Mail,
+    },
+    {
+      k: "phoneNumber",
+      label: "Phone Number *",
+      type: "tel",
+      placeholder: "+92 300 1234567",
+      icon: Phone,
+    },
+    {
+      k: "cnic",
+      label: "CNIC",
+      type: "text",
+      placeholder: "35202-1234567-1",
+      icon: CreditCard,
+    },
+    {
+      k: "city",
+      label: "City",
+      type: "text",
+      placeholder: "Lahore",
+      icon: MapPin,
+    },
+    {
+      k: "country",
+      label: "Country",
+      type: "text",
+      placeholder: "Pakistan",
+      icon: MapPin,
+    },
+    {
+      k: "emergencyContact",
+      label: "Emergency Contact",
+      type: "tel",
+      placeholder: "+92 300 1111111",
+      icon: Phone,
+    },
   ] as const;
 
   return (
@@ -1056,35 +1100,30 @@ function CreateBookingModal({
 
     setSaving(true);
     try {
-      const res = await fetch("/api/bookings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          room_id: selectedRoom.room_id,
-          check_in_date: checkIn,
-          check_out_date: checkOut,
-          special_requests: specialReqs || undefined,
-          customer_id: selectedCust.customer_id,
-          source: "ADMIN",
-        }),
+      const { data } = await api.post("/bookings", {
+        room_id: selectedRoom.room_id,
+        check_in_date: checkIn,
+        check_out_date: checkOut,
+        special_requests: specialReqs || undefined,
+        customer_id: selectedCust.customer_id,
+        source: "ADMIN",
       });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error ?? "Failed to create booking");
-      } else {
-        toast.success(`Booking #${data.booking.booking_id} created!`);
-        onCreated(data.booking);
-        onClose();
-      }
-    } catch {
-      toast.error("Network error");
+
+      toast.success(`Booking #${data.booking.booking_id} created!`);
+      onCreated(data.booking);
+      onClose();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error ?? "Failed to create booking");
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+    <div
+      className="fixed inset-0 z-[300] flex items-center justify-center p-4"
+      style={{ margin: 0, padding: 0 }}
+    >
       <motion.div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         initial={{ opacity: 0 }}
@@ -1179,7 +1218,9 @@ function CreateBookingModal({
                         <span className="flex items-center gap-1">
                           <CalendarCheck size={10} />
                           {selectedCust.bookings?.length ?? 0} previous booking
-                          {(selectedCust.bookings?.length ?? 0) !== 1 ? "s" : ""}
+                          {(selectedCust.bookings?.length ?? 0) !== 1
+                            ? "s"
+                            : ""}
                         </span>
                       </div>
                     </motion.div>
@@ -1342,7 +1383,10 @@ export default function AdminBookings() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState<PageSize>(10);
   const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState<BookingStatus | "All">("All");
+  const [filterStatus, setFilterStatus] = useState<BookingStatus | "All">(
+    "All",
+  );
+  const [deleteTarget, setDeleteTarget] = useState<Booking | null>(null);
 
   // Debounce search so API isn't hit on every keystroke
   const debouncedSearch = useDebounce(search, 400);
@@ -1385,12 +1429,19 @@ export default function AdminBookings() {
     if (res.ok) toast.success(`Booking ${status}`);
     else toast.error(res.error);
   };
+  const handleDelete = (booking: Booking) => {
+    setDeleteTarget(booking);
+  };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Delete this booking?")) return;
-    const res = await deleteBooking(id);
-    if (res.ok) toast.success("Booking deleted");
-    else toast.error(res.error);
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    const res = await deleteBooking(deleteTarget.booking_id);
+    if (res.ok) {
+      toast.success("Booking deleted");
+      setDeleteTarget(null);
+    } else {
+      toast.error(res.error);
+    }
   };
 
   // Stats from current page data (server handles filtering, these reflect visible rows)
@@ -1674,7 +1725,7 @@ export default function AdminBookings() {
                               <Eye size={13} />
                             </button>
                             <button
-                              onClick={() => handleDelete(b.booking_id)}
+                              onClick={() => handleDelete(b)}
                               disabled={isDeleting || isRowUpdating}
                               className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-40"
                             >
@@ -1739,6 +1790,15 @@ export default function AdminBookings() {
           />
         )}
       </AnimatePresence>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Delete Booking"
+        message={`Are you sure you want to delete Booking #${deleteTarget?.booking_id} for ${deleteTarget?.user?.name}? This action cannot be undone.`}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+        loading={isDeleting}
+      />
     </div>
   );
 }

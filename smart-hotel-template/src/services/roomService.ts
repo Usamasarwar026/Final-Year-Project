@@ -36,6 +36,41 @@ export async function getRoomById(id: number): Promise<Room | null> {
   return row ? toRoom(row) : null;
 }
 
+// Get rooms with pagination
+export async function getRoomsPaginated(
+  skip = 0,
+  take = 10,
+  where: any = {},
+  orderBy: any = { room_number: "asc" },
+): Promise<{ rooms: Room[]; total: number }> {
+  const [rooms, total] = await Promise.all([
+    prisma.room.findMany({
+      where,
+      skip,
+      take,
+      orderBy,
+    }),
+    prisma.room.count({ where }),
+  ]);
+
+  return {
+    rooms: rooms.map(toRoom),
+    total,
+  };
+}
+
+// Get room stats
+export async function getRoomStats() {
+  const [total, available, occupied, maintenance] = await Promise.all([
+    prisma.room.count(),
+    prisma.room.count({ where: { status: "Available" } }),
+    prisma.room.count({ where: { status: "Occupied" } }),
+    prisma.room.count({ where: { status: "Maintenance" } }),
+  ]);
+
+  return { total, available, occupied, maintenance };
+}
+
 export async function createRoom(
   data: Omit<Room, "room_id" | "created_at" | "updated_at">,
 ): Promise<Room> {
@@ -58,8 +93,7 @@ export async function createRoom(
 
   // Trigger Notification for Admin & Staff
   try {
-    const { createNotification } =
-      await import("./notificationService");
+    const { createNotification } = await import("./notificationService");
     await createNotification({
       title: "New Room Added",
       message: `Room ${data.room_number} (${data.room_type}) has been added to floor ${data.floor}.`,
@@ -108,8 +142,7 @@ export async function updateRoom(
   // Trigger Notification for Room Status Change
   if (data.status !== undefined) {
     try {
-      const { createNotification } =
-        await import("./notificationService");
+      const { createNotification } = await import("./notificationService");
       const isMaintenance = data.status === "Maintenance";
 
       await createNotification({
@@ -161,8 +194,7 @@ export async function deleteRoom(id: number): Promise<boolean> {
 
     // Trigger Notification for Admin
     try {
-      const { createNotification } =
-        await import("./notificationService");
+      const { createNotification } = await import("./notificationService");
       await createNotification({
         title: "Room Deleted",
         message: `Room ${room.room_number} has been deleted.`,
@@ -181,5 +213,3 @@ export async function deleteRoom(id: number): Promise<boolean> {
     throw error;
   }
 }
-
-
