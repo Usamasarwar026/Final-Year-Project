@@ -47,14 +47,10 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import api from "@/lib/axios";
 {{/if}}
 
-// ─── Axios Instance ────────────────────────────────────────────
-const apiClient = axios.create({
-  baseURL: "/api",
-  timeout: 15_000,
-  headers: { "Content-Type": "application/json" },
-});
+
 
 // ─── Types ────────────────────────────────────────────────────
 interface DashboardData {
@@ -147,7 +143,7 @@ const DASHBOARD_QUERY_KEY = ["admin", "dashboard"] as const;
 
 // ─── Fetcher function ─────────────────────────────────────────
 const fetchDashboard = async (): Promise<DashboardData> => {
-  const { data } = await apiClient.get<DashboardData>("/admin/dashboard");
+  const { data } = await api.get<DashboardData>("/admin/dashboard");
   return data;
 };
 
@@ -278,7 +274,7 @@ export default function AdminDashboard() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Admin Operations Dashboard</h1>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Admin Dashboard</h1>
           <p className="text-sm text-gray-500 mt-1">Real-time operational overview and financial health.</p>
         </div>
         <div className="flex items-center gap-3">

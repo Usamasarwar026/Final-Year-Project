@@ -282,7 +282,6 @@ export default function Topbar() {
               <div className="py-1.5">
                 {[
                   { icon: UserRound, label: "Profile",  href: `${BASE}/profile`  },
-                  { icon: Settings,  label: "Settings", href: `${BASE}/settings` },
                 ].map(({ icon: Icon, label, href }) => (
                   <button
                     key={href}

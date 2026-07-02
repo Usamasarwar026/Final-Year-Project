@@ -11,7 +11,11 @@ import {
 } from "./moduleFiles";
 import { resolveDependencies } from "./moduleDependencies";
 import { BASE_PACKAGES, MODULE_PACKAGES, DEV_PACKAGES } from "./packageMapping";
-import { processTemplate, processModuleBlocks, buildVars } from "./templateEngine";
+import {
+  processTemplate,
+  processModuleBlocks,
+  buildVars,
+} from "./templateEngine";
 import { buildSchema } from "./schemaBuilder";
 import buildSeedFile from "./buildSeedFile";
 import { buildStaffPermissionsFile } from "./buildStaffPermissions";
@@ -37,9 +41,31 @@ function getTemplateRoot(tier: TierId): string {
 
 // ─── Binary file extensions ───────────────────────────────────
 const BINARY_EXTENSIONS = new Set([
-  ".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".svg", ".ico",
-  ".bmp", ".tiff", ".tif", ".woff", ".woff2", ".ttf", ".otf", ".eot",
-  ".pdf", ".zip", ".tar", ".gz", ".mp4", ".mp3", ".wav", ".ogg", ".webm",
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".gif",
+  ".webp",
+  ".avif",
+  ".svg",
+  ".ico",
+  ".bmp",
+  ".tiff",
+  ".tif",
+  ".woff",
+  ".woff2",
+  ".ttf",
+  ".otf",
+  ".eot",
+  ".pdf",
+  ".zip",
+  ".tar",
+  ".gz",
+  ".mp4",
+  ".mp3",
+  ".wav",
+  ".ogg",
+  ".webm",
 ]);
 
 function isBinaryFile(filePath: string): boolean {
@@ -66,7 +92,7 @@ type BuildInput = {
 
 export async function buildProjectZip({
   websiteName,
-   adminName,
+  adminName,
   adminEmail,
   adminPassword,
   modules: rawModules,
@@ -77,85 +103,103 @@ export async function buildProjectZip({
   // Resolve dependencies
   const modules = resolveDependencies(rawModules);
 
-
-
-  
   console.log(`\n========== GENERATOR DEBUG ==========`);
   console.log(`[generator] Tier: ${tier}`);
-  console.log(`[generator] Raw modules: ${rawModules.join(', ')}`);
-  console.log(`[generator] Resolved modules: ${modules.join(', ')}`);
+  console.log(`[generator] Raw modules: ${rawModules.join(", ")}`);
+  console.log(`[generator] Resolved modules: ${modules.join(", ")}`);
   console.log(`[generator] Modules count: ${modules.length}`);
   console.log(`=====================================\n`);
 
   const zip = new JSZip();
-  const vars = buildVars(websiteName,adminName, adminEmail, adminPassword);
+  const vars = buildVars(websiteName, adminName, adminEmail, adminPassword);
   const slug = vars.WEBSITE_SLUG;
   const root = zip.folder(slug)!;
   const copiedFiles = new Set<string>();
 
+  function addFile(
+    filePath: string,
+    sourceRoot: string = templateRoot,
+  ): boolean {
+    if (copiedFiles.has(filePath)) return true;
 
-function addFile(
-  filePath: string,
-  sourceRoot: string = templateRoot,
-): boolean {
-  if (copiedFiles.has(filePath)) return true;
+    const fullPath = path.join(sourceRoot, filePath);
 
-  const fullPath = path.join(sourceRoot, filePath);
+    if (!fs.existsSync(fullPath)) {
+      console.warn(`[generator] MISSING: ${filePath}`);
+      return false;
+    }
 
-  if (!fs.existsSync(fullPath)) {
-    console.warn(`[generator] MISSING: ${filePath}`);
-    return false;
+    if (isBinaryFile(filePath)) {
+      const buffer = fs.readFileSync(fullPath);
+      root.file(filePath, buffer, { binary: true });
+    } else {
+      let content = fs.readFileSync(fullPath, "utf-8");
+
+      // DEBUG: Log for dashboard files
+      if (
+        filePath.includes("AdminDashboard") ||
+        filePath.includes("dashboard/route")
+      ) {
+        console.log(
+          `\n[generator] ========== Processing: ${filePath} ==========`,
+        );
+        console.log("[generator] Modules:", modules);
+        console.log("[generator] Tier:", tier);
+        console.log(
+          "[generator] Original contains {{#if}}:",
+          content.includes("{{#if"),
+        );
+
+        // Show first few lines for debugging
+        const lines = content.split("\n");
+        const firstLines = lines.slice(0, 5).join("\n");
+        console.log("[generator] First 5 lines:\n", firstLines);
+      }
+
+      // Step 1: Process module blocks FIRST
+      if (content.includes("{{#if")) {
+        const beforeLength = content.length;
+        console.log(`[generator] Processing {{#if}} blocks...`);
+        content = processModuleBlocks(content, modules, tier);
+        const afterLength = content.length;
+        console.log(
+          `[generator] After processing: ${beforeLength} -> ${afterLength} chars`,
+        );
+        console.log(
+          "[generator] Still has {{#if}}:",
+          content.includes("{{#if"),
+        );
+      }
+
+      // Step 2: Process template variables
+      if (content.includes("{{")) {
+        console.log("[generator] Processing template variables...");
+        content = processTemplate(content, vars);
+      }
+
+      // DEBUG: Verify result
+      if (
+        filePath.includes("AdminDashboard") ||
+        filePath.includes("dashboard/route")
+      ) {
+        console.log(
+          "[generator] Final check - has {{#if}}:",
+          content.includes("{{#if"),
+        );
+        const finalLines = content.split("\n").slice(0, 10).join("\n");
+        console.log(
+          "[generator] First 10 lines after processing:\n",
+          finalLines,
+        );
+        console.log("[generator] ========== Done ==========\n");
+      }
+
+      root.file(filePath, content);
+    }
+
+    copiedFiles.add(filePath);
+    return true;
   }
-
-  if (isBinaryFile(filePath)) {
-    const buffer = fs.readFileSync(fullPath);
-    root.file(filePath, buffer, { binary: true });
-  } else {
-    let content = fs.readFileSync(fullPath, "utf-8");
-
-    // DEBUG: Log for dashboard files
-    if (filePath.includes('AdminDashboard') || filePath.includes('dashboard/route')) {
-      console.log(`\n[generator] ========== Processing: ${filePath} ==========`);
-      console.log('[generator] Modules:', modules);
-      console.log('[generator] Tier:', tier);
-      console.log('[generator] Original contains {{#if}}:', content.includes('{{#if'));
-      
-      // Show first few lines for debugging
-      const lines = content.split('\n');
-      const firstLines = lines.slice(0, 5).join('\n');
-      console.log('[generator] First 5 lines:\n', firstLines);
-    }
-
-    // Step 1: Process module blocks FIRST
-    if (content.includes('{{#if')) {
-      const beforeLength = content.length;
-      console.log(`[generator] Processing {{#if}} blocks...`);
-      content = processModuleBlocks(content, modules, tier);
-      const afterLength = content.length;
-      console.log(`[generator] After processing: ${beforeLength} -> ${afterLength} chars`);
-      console.log('[generator] Still has {{#if}}:', content.includes('{{#if'));
-    }
-
-    // Step 2: Process template variables
-    if (content.includes('{{')) {
-      console.log('[generator] Processing template variables...');
-      content = processTemplate(content, vars);
-    }
-
-    // DEBUG: Verify result
-    if (filePath.includes('AdminDashboard') || filePath.includes('dashboard/route')) {
-      console.log('[generator] Final check - has {{#if}}:', content.includes('{{#if'));
-      const finalLines = content.split('\n').slice(0, 10).join('\n');
-      console.log('[generator] First 10 lines after processing:\n', finalLines);
-      console.log('[generator] ========== Done ==========\n');
-    }
-
-    root.file(filePath, content);
-  }
-
-  copiedFiles.add(filePath);
-  return true;
-}
   // ── Helper: list se files add karo ───────────────────────────
   function addFiles(filePaths: string[], sourceRoot: string) {
     for (const filePath of filePaths) {
@@ -185,13 +229,13 @@ function addFile(
   console.log("[generator] Building Prisma schema...");
   const schema = buildSchema(modules, tier);
   root.file("prisma/schema.prisma", schema);
-  
+
   if (modules.includes("staff")) {
-  root.file(
-    "src/lib/staffPermissions.ts",
-    buildStaffPermissionsFile(modules),
-  );
-}
+    root.file(
+      "src/lib/staffPermissions.ts",
+      buildStaffPermissionsFile(modules),
+    );
+  }
 
   // ── 5. .env file ─────────────────────────────────────────────
   root.file(".env", buildEnvTemplate(websiteName, modules, tier));
@@ -199,12 +243,24 @@ function addFile(
   // ── 6. package.json (dynamic) ────────────────────────────────
   root.file("package.json", buildPackageJson(slug, modules));
 
-   root.file("prisma/seed.ts", buildSeedFile(adminName, adminEmail, adminPassword, tier));
+  root.file(
+    "prisma/seed.ts",
+    buildSeedFile(adminName, adminEmail, adminPassword, tier),
+  );
 
   // ── 7. README ────────────────────────────────────────────────
   root.file(
     "README.md",
-    buildReadme(websiteName, slug, modules, rawModules, tier),
+    buildReadme(
+      websiteName,
+      slug,
+      modules,
+      rawModules,
+      tier,
+      adminName,
+      adminEmail,
+      adminPassword,
+    ),
   );
 
   // ── 8. nav.config.ts (tier + module specific) ────────────────
@@ -287,46 +343,43 @@ function buildEnvTemplate(
 ): string {
   const needsCloudinary = modules.includes("rooms");
   const needsEmail = modules.includes("authentication");
-  const needsStaff = modules.includes("staff");
 
   return `# ${websiteName} — Environment Variables
 # Generated by HotelGen · ${new Date().toLocaleDateString()}
 # Tier: ${tier}
 
-# ── Database ──────────────────────────────────────────────────
+
+# Replace the Databade url with your original POSTGRESQL URL neon db 
 DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DBNAME?schema=public"
 
-# ── NextAuth ──────────────────────────────────────────────────
+# NextAuth URL
 NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET="change-me-in-production"
+
+# paste the JWT Secret in the below string
+#if you don't know about this please view the README.md file to generate this secret
+NEXTAUTH_SECRET="paste-here-nextauthp-secret"
 ${
   needsEmail
     ? `
-# ── Email (password reset) ────────────────────────────────────
-EMAIL_USER=""
-EMAIL_PASS=""
+# SMTP Credentials 
+# if you don't no about this please view the read the README.md file to get these SMTP Credientials
+EMAIL_USER="your_email@gmail.com"
+EMAIL_PASS="your_app_password"
 `
     : ""
 }
 ${
   needsCloudinary
     ? `
-# ── Cloudinary (image uploads) ────────────────────────────────
-CLOUDINARY_CLOUD_NAME=""
-CLOUDINARY_API_KEY=""
-CLOUDINARY_API_SECRET=""
+# ------Cloudinary Credientials (for image uploads) ------------------------
+# if you don't know about this how can we get these credientials please check the README.md file to get these credentials
+CLOUDINARY_CLOUD_NAME=paste here cloudinary name without string
+CLOUDINARY_API_KEY=paste here api key without string
+CLOUDINARY_API_SECRET=paste here api secret without string
 `
     : ""
 }
-${
-  needsStaff
-    ? `
-# ── Staff Features ────────────────────────────────────────────
-# Additional staff-related configurations
-`
-    : ""
-}
-# ── App ───────────────────────────────────────────────────────
+# ---- Website Name -------------------------
 NEXT_PUBLIC_APP_NAME="${websiteName}"
 `;
 }
@@ -416,27 +469,106 @@ function buildPackageJson(slug: string, modules: ModuleId[]): string {
 }
 
 // ─── README.md ────────────────────────────────────────────────
+// function buildReadme(
+//   websiteName: string,
+//   slug: string,
+//   resolvedModules: ModuleId[],
+//   rawModules: ModuleId[],
+//   tier: TierId,
+//   adminName: string,
+//   adminEmail: string,
+//   adminPassword: string,
+// ): string {
+//   const autoAdded = resolvedModules.filter(
+//     (m) => !rawModules.includes(m) && m !== "authentication",
+//   );
+
+//   const tierGuide = {
+//     basic: `## Basic Tier
+// - No staff management
+// - Simple role system (Admin only)
+// - Basic booking flow`,
+//     intermediate: `## Intermediate Tier
+// - Full staff management
+// - Housekeeping operations
+// - Billing system
+// - Role-based access control`,
+//     advanced: `## Advanced Tier
+// - All modules included
+// - Inventory management
+// - Kitchen operations
+// - Advanced analytics and reports`,
+//   };
+
+//   return `# ${websiteName}
+
+// Generated by HotelGen · ${new Date().toLocaleDateString()}
+// **Tier:** ${tier.toUpperCase()}
+
+// ${tierGuide[tier]}
+
+// ## Selected Modules
+// ${rawModules.map((m) => `- ✅ ${m}`).join("\n")}
+// ${autoAdded.length > 0 ? `\n## Auto-included Dependencies\n${autoAdded.map((m) => `- 🔗 ${m}`).join("\n")}` : ""}
+
+// ## Quick Start
+// \`\`\`bash
+// cp .env
+// # Edit .env with your credentials
+
+// npm install
+// npx prisma generate
+// npx prisma migrate dev --name init
+// npm run dev
+// \`\`\`
+
+// Visit: http://localhost:3000
+
+// ## Default Admin Credentials
+// After running \`npm run seed\`, you can login with:
+// - **Email:** ${adminEmail}
+// - **Password:** ${adminPassword}
+// - **Name:** ${adminName}
+
+//  **Important:** Please change these credentials after first login for security purposes.
+// `;
+// }
+
+// ─── README.md ────────────────────────────────────────────────
 function buildReadme(
   websiteName: string,
   slug: string,
   resolvedModules: ModuleId[],
   rawModules: ModuleId[],
   tier: TierId,
+  adminName: string,
+  adminEmail: string,
+  adminPassword: string,
 ): string {
   const autoAdded = resolvedModules.filter(
     (m) => !rawModules.includes(m) && m !== "authentication",
   );
+
+  // Show Cloudinary section only if any module requires image uploads.
+  // Replace these module names with the actual ones used in your project.
+  const hasCloudinary =
+    resolvedModules.includes("rooms") ||
+    resolvedModules.includes("staff") ||
+    resolvedModules.includes("gallery") ||
+    resolvedModules.includes("inventory");
 
   const tierGuide = {
     basic: `## Basic Tier
 - No staff management
 - Simple role system (Admin only)
 - Basic booking flow`,
+
     intermediate: `## Intermediate Tier
 - Full staff management
 - Housekeeping operations
 - Billing system
 - Role-based access control`,
+
     advanced: `## Advanced Tier
 - All modules included
 - Inventory management
@@ -446,33 +578,196 @@ function buildReadme(
 
   return `# ${websiteName}
 
-Generated by HotelGen · ${new Date().toLocaleDateString()}
+Generated by **HotelGen** · ${new Date().toLocaleDateString()}
+
 **Tier:** ${tier.toUpperCase()}
+
+---
 
 ${tierGuide[tier]}
 
+---
+
 ## Selected Modules
+
 ${rawModules.map((m) => `- ✅ ${m}`).join("\n")}
-${autoAdded.length > 0 ? `\n## Auto-included Dependencies\n${autoAdded.map((m) => `- 🔗 ${m}`).join("\n")}` : ""}
+
+${
+  autoAdded.length
+    ? `
+
+## Auto-included Dependencies
+
+${autoAdded.map((m) => `- 🔗 ${m}`).join("\n")}
+`
+    : ""
+}
+
+---
+
+# FinalYearProject
 
 ## Quick Start
+
+Clone the project and install the dependencies.
+
 \`\`\`bash
-cp .env .env.local
-# Edit .env.local with your credentials
+cp .env.example .env
+
+# Update the .env file with your credentials
 
 npm install
 npx prisma generate
 npx prisma migrate dev --name init
+npm run seed
 npm run dev
 \`\`\`
 
-Visit: http://localhost:3000
+Open your browser and visit:
 
-## Default Credentials
-After seeding (\`npm run seed\`):
-- **Admin:** admin@hotel.com / admin123
-${tier !== "basic" ? "- **Staff:** staff@hotel.com / staff123" : ""}
-- **Customer:** Sign up via /signup
+http://localhost:3000
+
+---
+
+## Getting Started
+
+Run the development server:
+
+\`\`\`bash
+npm run dev
+
+# or
+
+yarn dev
+
+# or
+
+pnpm dev
+
+# or
+
+bun dev
+\`\`\`
+
+Then open:
+
+http://localhost:3000
+
+---
+
+## Environment Variables
+
+Configure all required environment variables inside your \`.env\` file before running the application.
+
+---
+
+## Generate the JWT Secret
+
+NextAuth requires a secure random secret.
+
+Generate one using either of the following commands:
+
+\`\`\`bash
+npx auth secret
+\`\`\`
+
+or
+
+\`\`\`bash
+openssl rand -base64 32
+\`\`\`
+
+Then add it to your \`.env\` file.
+
+Example:
+
+\`\`\`env
+NEXTAUTH_SECRET=your_generated_secret
+\`\`\`
+
+---
+
+## Email Configuration (Gmail)
+
+Provide the following credentials:
+
+\`\`\`env
+EMAIL_USER=yourgmail@gmail.com
+EMAIL_PASS=your_16_character_app_password
+\`\`\`
+
+### Generate a Gmail App Password
+
+1. Open your Google Account.
+2. Navigate to **Security**.
+3. Enable **2-Step Verification**.
+4. Search for **App Passwords**.
+5. Create a new App Password for **Mail**.
+6. Copy the generated password.
+7. Add it to your \`.env\` file.
+
+${
+  hasCloudinary
+    ? `
+
+---
+
+## Cloudinary Configuration
+
+To enable image uploads, provide the following credentials in your \`.env\` file.
+
+\`\`\`env
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+\`\`\`
+
+### How to Get Cloudinary Credentials
+
+1. Create an account on Cloudinary.
+2. Sign in to the Cloudinary Dashboard.
+3. Copy the following values:
+   - Cloud Name
+   - API Key
+   - API Secret
+4. Add them to your \`.env\` file.
+`
+    : ""
+}
+
+---
+
+## Default Admin Credentials
+
+After running:
+
+\`\`\`bash
+npm run seed
+\`\`\`
+
+Login using the following credentials:
+
+| Field | Value |
+|------|-------|
+| **Name** | ${adminName} |
+| **Email** | ${adminEmail} |
+| **Password** | ${adminPassword} |
+
+> **Important:** Please change these credentials immediately after your first login for security purposes.
+
+---
+
+## Deploy on Vercel
+
+The easiest way to deploy this Next.js application is using the **Vercel Platform**.
+
+### Deploy
+
+https://vercel.com/new
+
+### Next.js Deployment Documentation
+
+https://nextjs.org/docs/app/building-your-application/deploying
 `;
 }
 
@@ -490,8 +785,8 @@ function buildBasicNavConfig(modules: ModuleId[]): string {
   ];
 
   const adminMap: Partial<Record<ModuleId, string>> = {
-    rooms:    `  { label: "Rooms", href: "/admin/rooms", icon: BedDouble },`,
-    booking:  `  { label: "Booking", href: "/admin/booking", icon: CalendarCheck },`,
+    rooms: `  { label: "Rooms", href: "/admin/rooms", icon: BedDouble },`,
+    booking: `  { label: "Booking", href: "/admin/booking", icon: CalendarCheck },`,
     customer: `  { label: "Customer", href: "/admin/customer", icon: UserRound },`,
   };
 
@@ -552,28 +847,65 @@ function buildFullNavConfig(modules: ModuleId[], tier: TierId): string {
     href: string;
     icon: string;
     permission: string;
-    children?: Array<{ label: string; href: string; icon: string; permission: string }>;
+    children?: Array<{
+      label: string;
+      href: string;
+      icon: string;
+      permission: string;
+    }>;
   };
 
   const adminMap: Partial<Record<ModuleId, AdminEntry>> = {
-    rooms:    { label: "Rooms", href: "/admin/rooms", icon: "BedDouble" },
-    booking:  { label: "Booking", href: "/admin/booking", icon: "CalendarCheck" },
+    rooms: { label: "Rooms", href: "/admin/rooms", icon: "BedDouble" },
+    booking: {
+      label: "Booking",
+      href: "/admin/booking",
+      icon: "CalendarCheck",
+    },
     customer: { label: "Customer", href: "/admin/customer", icon: "UserRound" },
-    staff:    { label: "Staff Management", href: "/admin/staff", icon: "Users" },
-    housekeeping: { label: "House Keeping", href: "/admin/housekeeping", icon: "Brush" },
-    billing:  { label: "Billing", href: "/admin/billing", icon: "CreditCard" },
+    staff: { label: "Staff Management", href: "/admin/staff", icon: "Users" },
+    housekeeping: {
+      label: "House Keeping",
+      href: "/admin/housekeeping",
+      icon: "Brush",
+    },
+    billing: { label: "Billing", href: "/admin/billing", icon: "CreditCard" },
     kitchen: {
       label: "Kitchen Management",
       href: "/admin/kitchen",
       icon: "ChefHat",
       children: [
-        { label: "Dashboard", href: "/admin/kitchen/dashboard", icon: "LayoutDashboard" },
+        {
+          label: "Dashboard",
+          href: "/admin/kitchen/dashboard",
+          icon: "LayoutDashboard",
+        },
         { label: "Orders", href: "/admin/kitchen/orders", icon: "Utensils" },
-        { label: "Menu Management", href: "/admin/kitchen/menu", icon: "MenuSquare" },
-        { label: "Categories", href: "/admin/kitchen/categories", icon: "Tags" },
-        { label: "Kitchen Staff", href: "/admin/kitchen/staff", icon: "UsersRound" },
-        { label: "Delivery Assignments", href: "/admin/kitchen/deliveries", icon: "Bike" },
-        { label: "Reports", href: "/admin/kitchen/reports", icon: "TrendingUp" },
+        {
+          label: "Menu Management",
+          href: "/admin/kitchen/menu",
+          icon: "MenuSquare",
+        },
+        {
+          label: "Categories",
+          href: "/admin/kitchen/categories",
+          icon: "Tags",
+        },
+        {
+          label: "Kitchen Staff",
+          href: "/admin/kitchen/staff",
+          icon: "UsersRound",
+        },
+        {
+          label: "Delivery Assignments",
+          href: "/admin/kitchen/deliveries",
+          icon: "Bike",
+        },
+        {
+          label: "Reports",
+          href: "/admin/kitchen/reports",
+          icon: "TrendingUp",
+        },
       ],
     },
     inventory: {
@@ -581,14 +913,38 @@ function buildFullNavConfig(modules: ModuleId[], tier: TierId): string {
       href: "/admin/inventory",
       icon: "Package",
       children: [
-        { label: "Dashboard", href: "/admin/inventory", icon: "LayoutDashboard" },
-        { label: "Stock Items", href: "/admin/inventory/items", icon: "Package" },
-        { label: "Categories", href: "/admin/inventory/categories", icon: "Tags" },
+        {
+          label: "Dashboard",
+          href: "/admin/inventory",
+          icon: "LayoutDashboard",
+        },
+        {
+          label: "Stock Items",
+          href: "/admin/inventory/items",
+          icon: "Package",
+        },
+        {
+          label: "Categories",
+          href: "/admin/inventory/categories",
+          icon: "Tags",
+        },
         { label: "Vendors", href: "/admin/inventory/vendors", icon: "Truck" },
-        { label: "Purchase Orders", href: "/admin/inventory/purchase-orders", icon: "ShoppingCart" },
-        { label: "Stock Receiving", href: "/admin/inventory/stock-receiving", icon: "ClipboardCheck" },
+        {
+          label: "Purchase Orders",
+          href: "/admin/inventory/purchase-orders",
+          icon: "ShoppingCart",
+        },
+        {
+          label: "Stock Receiving",
+          href: "/admin/inventory/stock-receiving",
+          icon: "ClipboardCheck",
+        },
         { label: "Wastage", href: "/admin/inventory/wastage", icon: "Brush" },
-        { label: "Reports", href: "/admin/inventory/reports", icon: "BarChart3" },
+        {
+          label: "Reports",
+          href: "/admin/inventory/reports",
+          icon: "BarChart3",
+        },
       ],
     },
     reports: {
@@ -596,112 +952,215 @@ function buildFullNavConfig(modules: ModuleId[], tier: TierId): string {
       href: "/admin/reports",
       icon: "BarChart3",
       children: [
-        { label: "KPI Dashboard", href: "/admin/reports", icon: "LayoutDashboard" },
-        { label: "Revenue", href: "/admin/reports/revenue", icon: "DollarSign" },
-        { label: "Occupancy", href: "/admin/reports/occupancy", icon: "BedDouble" },
-        { label: "Staff Performance", href: "/admin/reports/staff-performance", icon: "Users" },
-        { label: "Inventory", href: "/admin/reports/inventory", icon: "Package" },
-        { label: "Bookings", href: "/admin/reports/bookings", icon: "CalendarCheck" },
+        {
+          label: "KPI Dashboard",
+          href: "/admin/reports",
+          icon: "LayoutDashboard",
+        },
+        {
+          label: "Revenue",
+          href: "/admin/reports/revenue",
+          icon: "DollarSign",
+        },
+        {
+          label: "Occupancy",
+          href: "/admin/reports/occupancy",
+          icon: "BedDouble",
+        },
+        {
+          label: "Staff Performance",
+          href: "/admin/reports/staff-performance",
+          icon: "Users",
+        },
+        {
+          label: "Inventory",
+          href: "/admin/reports/inventory",
+          icon: "Package",
+        },
+        {
+          label: "Bookings",
+          href: "/admin/reports/bookings",
+          icon: "CalendarCheck",
+        },
         { label: "Guests", href: "/admin/reports/guests", icon: "UserPlus" },
-        { label: "Scheduled Reports", href: "/admin/reports/scheduled", icon: "Clock" },
+        {
+          label: "Scheduled Reports",
+          href: "/admin/reports/scheduled",
+          icon: "Clock",
+        },
       ],
     },
   };
 
   const staffMap: Partial<Record<ModuleId, StaffEntry>> = {
-    booking:      { label: "Booking", href: "/staff/booking", icon: "CalendarCheck", permission: "booking" },
-    rooms:        { label: "Rooms", href: "/staff/rooms", icon: "BedDouble", permission: "rooms" },
-    customer:     { label: "Customer", href: "/staff/customer", icon: "UserRound", permission: "customer" },
-    housekeeping: { label: "House Keeping", href: "/staff/housekeeping", icon: "Brush", permission: "housekeeping" },
-    billing:      { label: "Billing", href: "/staff/billing", icon: "CreditCard", permission: "billing" },
+    booking: {
+      label: "Booking",
+      href: "/staff/booking",
+      icon: "CalendarCheck",
+      permission: "booking",
+    },
+    rooms: {
+      label: "Rooms",
+      href: "/staff/rooms",
+      icon: "BedDouble",
+      permission: "rooms",
+    },
+    customer: {
+      label: "Customer",
+      href: "/staff/customer",
+      icon: "UserRound",
+      permission: "customer",
+    },
+    housekeeping: {
+      label: "House Keeping",
+      href: "/staff/housekeeping",
+      icon: "Brush",
+      permission: "housekeeping",
+    },
+    billing: {
+      label: "Billing",
+      href: "/staff/billing",
+      icon: "CreditCard",
+      permission: "billing",
+    },
     // reports:      { label: "Reports", href: "/staff/reports", icon: "BarChart3", permission: "reports" },
-    inventory:    { label: "Inventory", href: "/staff/inventory", icon: "Package", permission: "inventory" },
+    inventory: {
+      label: "Inventory",
+      href: "/staff/inventory",
+      icon: "Package",
+      permission: "inventory",
+    },
     kitchen: {
       label: "Kitchen",
       href: "/staff/kitchen",
       icon: "ChefHat",
       permission: "KITCHEN_ACCESS",
       children: [
-        { label: "Dashboard", href: "/staff/kitchen/dashboard", icon: "LayoutDashboard", permission: "KITCHEN_ACCESS" },
-        { label: "Orders", href: "/staff/kitchen/orders", icon: "Utensils", permission: "KITCHEN_ORDER_PROCESS" },
-        { label: "Menu Management", href: "/staff/kitchen/menu", icon: "MenuSquare", permission: "KITCHEN_MENU_MANAGE" },
-        { label: "Categories", href: "/staff/kitchen/categories", icon: "Tags", permission: "KITCHEN_CATEGORIES_MANAGE" },
-        { label: "Kitchen Staff", href: "/staff/kitchen/staff", icon: "UsersRound", permission: "KITCHEN_STAFF_MANAGE" },
-        { label: "Delivery Assignments", href: "/staff/kitchen/deliveries", icon: "Bike", permission: "DELIVERY_ASSIGN" },
-        { label: "My Deliveries", href: "/staff/kitchen/my-deliveries", icon: "Truck", permission: "DELIVERY_ACCESS" },
-        { label: "Reports", href: "/staff/kitchen/reports", icon: "TrendingUp", permission: "KITCHEN_REPORTS" },
+        {
+          label: "Dashboard",
+          href: "/staff/kitchen/dashboard",
+          icon: "LayoutDashboard",
+          permission: "KITCHEN_ACCESS",
+        },
+        {
+          label: "Orders",
+          href: "/staff/kitchen/orders",
+          icon: "Utensils",
+          permission: "KITCHEN_ORDER_PROCESS",
+        },
+        {
+          label: "Menu Management",
+          href: "/staff/kitchen/menu",
+          icon: "MenuSquare",
+          permission: "KITCHEN_MENU_MANAGE",
+        },
+        {
+          label: "Categories",
+          href: "/staff/kitchen/categories",
+          icon: "Tags",
+          permission: "KITCHEN_CATEGORIES_MANAGE",
+        },
+        {
+          label: "Kitchen Staff",
+          href: "/staff/kitchen/staff",
+          icon: "UsersRound",
+          permission: "KITCHEN_STAFF_MANAGE",
+        },
+        {
+          label: "Delivery Assignments",
+          href: "/staff/kitchen/deliveries",
+          icon: "Bike",
+          permission: "DELIVERY_ASSIGN",
+        },
+        {
+          label: "My Deliveries",
+          href: "/staff/kitchen/my-deliveries",
+          icon: "Truck",
+          permission: "DELIVERY_ACCESS",
+        },
+        {
+          label: "Reports",
+          href: "/staff/kitchen/reports",
+          icon: "TrendingUp",
+          permission: "KITCHEN_REPORTS",
+        },
       ],
     },
-    reports:  {
-    label: "Reports",
-    href: "/staff/reports",
-    icon: "BarChart3",
-    permission: "REPORTS_ACCESS", // parent guard
-    children: [
-      {
-        label: "KPI Dashboard",
-        href: "/staff/reports",
-        icon: "LayoutDashboard",
-        permission: "REPORTS_ACCESS",
-      },
-      {
-        label: "Revenue",
-        href: "/staff/reports/revenue",
-        icon: "DollarSign",
-        permission: "REPORTS_REVENUE",
-      },
-      {
-        label: "Occupancy",
-        href: "/staff/reports/occupancy",
-        icon: "BedDouble",
-        permission: "REPORTS_OCCUPANCY",
-      },
-      {
-        label: "Staff Performance",
-        href: "/staff/reports/staff-performance",
-        icon: "Users",
-        permission: "REPORTS_STAFF",
-      },
-      {
-        label: "Inventory",
-        href: "/staff/reports/inventory",
-        icon: "Package",
-        permission: "REPORTS_INVENTORY",
-      },
-      {
-        label: "Bookings",
-        href: "/staff/reports/bookings",
-        icon: "CalendarCheck",
-        permission: "REPORTS_BOOKINGS",
-      },
-      {
-        label: "Guests",
-        href: "/staff/reports/guests",
-        icon: "UserPlus",
-        permission: "REPORTS_GUESTS",
-      },
-      {
-        label: "Scheduled Reports",
-        href: "/staff/reports/scheduled",
-        icon: "Clock",
-        permission: "REPORTS_SCHEDULED",
-      },
-    ],
-  },
-    
-    
+    reports: {
+      label: "Reports",
+      href: "/staff/reports",
+      icon: "BarChart3",
+      permission: "REPORTS_ACCESS", // parent guard
+      children: [
+        {
+          label: "KPI Dashboard",
+          href: "/staff/reports",
+          icon: "LayoutDashboard",
+          permission: "REPORTS_ACCESS",
+        },
+        {
+          label: "Revenue",
+          href: "/staff/reports/revenue",
+          icon: "DollarSign",
+          permission: "REPORTS_REVENUE",
+        },
+        {
+          label: "Occupancy",
+          href: "/staff/reports/occupancy",
+          icon: "BedDouble",
+          permission: "REPORTS_OCCUPANCY",
+        },
+        {
+          label: "Staff Performance",
+          href: "/staff/reports/staff-performance",
+          icon: "Users",
+          permission: "REPORTS_STAFF",
+        },
+        {
+          label: "Inventory",
+          href: "/staff/reports/inventory",
+          icon: "Package",
+          permission: "REPORTS_INVENTORY",
+        },
+        {
+          label: "Bookings",
+          href: "/staff/reports/bookings",
+          icon: "CalendarCheck",
+          permission: "REPORTS_BOOKINGS",
+        },
+        {
+          label: "Guests",
+          href: "/staff/reports/guests",
+          icon: "UserPlus",
+          permission: "REPORTS_GUESTS",
+        },
+        {
+          label: "Scheduled Reports",
+          href: "/staff/reports/scheduled",
+          icon: "Clock",
+          permission: "REPORTS_SCHEDULED",
+        },
+      ],
+    },
   };
 
   const customerMap: Partial<Record<ModuleId, string>> = {
-    booking:      `  { label: "My Bookings", href: "/customer/booking", icon: CalendarCheck },`,
-    kitchen:      `  { label: "Order Food", href: "/customer/kitchen", icon: ShoppingCart },`,
-    billing:      `  { label: "Billing", href: "/customer/billing", icon: CreditCard },`,
+    booking: `  { label: "My Bookings", href: "/customer/booking", icon: CalendarCheck },`,
+    kitchen: `  { label: "Order Food", href: "/customer/kitchen", icon: ShoppingCart },`,
+    billing: `  { label: "Billing", href: "/customer/billing", icon: CreditCard },`,
     housekeeping: `  { label: "Room Service", href: "/customer/housekeeping", icon: Brush },`,
   };
 
   const ORDER: ModuleId[] = [
-    "booking", "rooms", "customer", "staff", "kitchen",
-    "inventory", "housekeeping", "billing", "reports",
+    "booking",
+    "rooms",
+    "customer",
+    "staff",
+    "kitchen",
+    "inventory",
+    "housekeeping",
+    "billing",
+    "reports",
   ];
 
   // Build admin nav
@@ -712,13 +1171,18 @@ function buildFullNavConfig(modules: ModuleId[], tier: TierId): string {
 
     if (item.children && item.children.length > 0) {
       const childrenStr = item.children
-        .map((c) => `      { label: "${c.label}", href: "${c.href}", icon: ${c.icon} }`)
+        .map(
+          (c) =>
+            `      { label: "${c.label}", href: "${c.href}", icon: ${c.icon} }`,
+        )
         .join(",\n");
       adminItems.push(
         `  {\n    label: "${item.label}",\n    href: "${item.href}",\n    icon: ${item.icon},\n    children: [\n${childrenStr}\n    ]\n  },`,
       );
     } else {
-      adminItems.push(`  { label: "${item.label}", href: "${item.href}", icon: ${item.icon} },`);
+      adminItems.push(
+        `  { label: "${item.label}", href: "${item.href}", icon: ${item.icon} },`,
+      );
     }
   }
 
@@ -730,13 +1194,18 @@ function buildFullNavConfig(modules: ModuleId[], tier: TierId): string {
 
     if (item.children && item.children.length > 0) {
       const childrenStr = item.children
-        .map((c) => `      { label: "${c.label}", href: "${c.href}", icon: ${c.icon}, permission: "${c.permission}" }`)
+        .map(
+          (c) =>
+            `      { label: "${c.label}", href: "${c.href}", icon: ${c.icon}, permission: "${c.permission}" }`,
+        )
         .join(",\n");
       staffItems.push(
         `  {\n    label: "${item.label}",\n    href: "${item.href}",\n    icon: ${item.icon},\n    permission: "${item.permission}",\n    children: [\n${childrenStr}\n    ]\n  },`,
       );
     } else {
-      staffItems.push(`  { label: "${item.label}", href: "${item.href}", icon: ${item.icon}, permission: "${item.permission}" },`);
+      staffItems.push(
+        `  { label: "${item.label}", href: "${item.href}", icon: ${item.icon}, permission: "${item.permission}" },`,
+      );
     }
   }
 

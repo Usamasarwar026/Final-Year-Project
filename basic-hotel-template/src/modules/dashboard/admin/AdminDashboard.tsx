@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   Users,
   DollarSign,
-  Wrench,
   Calendar,
   AlertTriangle,
   TrendingUp,
@@ -16,7 +15,6 @@ import {
   Clock,
   Bell,
   ArrowRight,
-  Loader2,
 } from "lucide-react";
 import {
   AreaChart,
@@ -66,12 +64,12 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-// ── Skeleton primitives ───────────────────────────────────────
+// ── Skeleton primitives 
 function Skeleton({ className }: { className?: string }) {
   return <div className={`animate-pulse rounded bg-gray-100 ${className ?? ""}`} />;
 }
 
-// ── KPI card — always visible, skeleton while loading ─────────
+// ── KPI card — always visible, skeleton while loading 
 function KpiCard({
   label,
   value,

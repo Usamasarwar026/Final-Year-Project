@@ -5,7 +5,7 @@ export type TemplateVars = {
   WEBSITE_SLUG: string;
   ADMIN_NAME: string;
   ADMIN_EMAIL: string;
-  ADMIN_PASSWORD: string; //  Actually seed file mein use hoga, template mein nahi
+  ADMIN_PASSWORD: string; //  Actually used in seed file, not in template
   [key: string]: string;
 };
 

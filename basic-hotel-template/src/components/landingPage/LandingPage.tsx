@@ -42,11 +42,6 @@ export default function LandingPage() {
     retry: 1,
   });
 
- 
-  if (isError) {
-    return <div className="text-center py-20">Failed to load rooms.</div>;
-  }
-
   // ── handlers ──────────────────────────────────────────
   const handleBookNow = async () => {
     const res = await signIn("credentials", { redirect: false });
@@ -90,7 +85,6 @@ export default function LandingPage() {
             >
               Login
             </Link>
-            
           </div>
         </div>
       </motion.header>
@@ -152,6 +146,11 @@ export default function LandingPage() {
           <div className="flex flex-col items-center gap-3 py-20">
             <div className="w-7 h-7 rounded-full border-2 border-muted-foreground/20 border-t-primary animate-spin" />
             <p className="text-sm text-muted-foreground">Loading rooms…</p>
+          </div>
+        ) : isError ? (
+          <div className="text-center py-20">
+            <h3>Rooms are temporarily unavailable.</h3>
+            <p>Please try again later.</p>
           </div>
         ) : (
           <>
