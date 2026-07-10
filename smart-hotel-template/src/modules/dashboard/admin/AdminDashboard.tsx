@@ -158,9 +158,6 @@ export default function AdminDashboard() {
   } = useQuery<DashboardData, Error>({
     queryKey: DASHBOARD_QUERY_KEY,
     queryFn: fetchDashboard,
-    staleTime: 60_000,          // 1 min tak cached data use hoga, API call nahi
-    refetchOnWindowFocus: false, // tab switch pe call nahi hogi
-    retry: 2,                   // fail hone par 2 baar retry
   });
 
 {{#if billing}}

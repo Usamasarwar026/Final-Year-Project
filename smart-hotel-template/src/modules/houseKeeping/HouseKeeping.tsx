@@ -70,13 +70,7 @@ const fmt = (d?: string | null) =>
         year: "numeric",
       })
     : "—";
-const fmtTime = (d?: string | null) =>
-  d
-    ? new Date(d).toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "—";
+
 const fmtDateTime = (d?: string | null) =>
   d
     ? new Date(d).toLocaleString("en-GB", {
@@ -1536,11 +1530,11 @@ function LaundryTab() {
                     const sc = LAUNDRY_STATUS_CONFIG[r.status];
                     return (
                       <tr
-                        key={r.laundry_id}
+                        key={r.text_id}
                         className="border-t border-border hover:bg-muted/20 transition-colors"
                       >
                         <td className="px-4 py-3 text-xs font-mono text-muted-foreground">
-                          #{r.laundry_id}
+                          #{r.text_id}
                         </td>
                         <td className="px-4 py-3 text-xs font-semibold text-foreground">
                           Room {r.room?.room_number ?? "—"}
@@ -1578,9 +1572,9 @@ function LaundryTab() {
                             {r.status === "Pending" && (
                               <button
                                 onClick={() =>
-                                  handleStatus(r.laundry_id, "Sent")
+                                  handleStatus(r.text_id, "Sent")
                                 }
-                                disabled={updating === r.laundry_id}
+                                disabled={updating === r.text_id}
                                 className="px-2 py-1 rounded-lg bg-blue-600 text-white text-[10px] font-medium hover:opacity-90 disabled:opacity-60"
                               >
                                 Sent
@@ -1589,9 +1583,9 @@ function LaundryTab() {
                             {r.status === "Sent" && (
                               <button
                                 onClick={() =>
-                                  handleStatus(r.laundry_id, "Returned")
+                                  handleStatus(r.text_id, "Returned")
                                 }
-                                disabled={updating === r.laundry_id}
+                                disabled={updating === r.text_id}
                                 className="px-2 py-1 rounded-lg bg-green-600 text-white text-[10px] font-medium hover:opacity-90 disabled:opacity-60"
                               >
                                 Returned
@@ -1600,7 +1594,7 @@ function LaundryTab() {
                             <button
                               onClick={async () => {
                                 if (!confirm("Delete?")) return;
-                                const res = await deleteRecord(r.laundry_id);
+                                const res = await deleteRecord(r.text_id);
                                 if (!res.ok) toast.error(res.error ?? "Failed");
                               }}
                               className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-colors"

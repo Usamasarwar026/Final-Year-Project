@@ -4,9 +4,22 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import {
-  CreditCard, Search, X, Eye, Printer, DollarSign,
-  TrendingUp, AlertTriangle, CheckCircle2, Calendar,
-  Loader2, Plus, Info, ChevronDown, Check, Download
+  CreditCard,
+  Search,
+  X,
+  Eye,
+  Printer,
+  DollarSign,
+  TrendingUp,
+  AlertTriangle,
+  CheckCircle2,
+  Calendar,
+  Loader2,
+  Plus,
+  Info,
+  ChevronDown,
+  Check,
+  Download,
 } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "sonner";
@@ -15,18 +28,46 @@ import { useSession } from "next-auth/react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmtDate = (d: string) =>
-  new Date(d).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
+  new Date(d).toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 
 // ─── StatusBadge ──────────────────────────────────────────────────────────────
 function PaymentStatusBadge({ status }: { status: string }) {
-  const configs: Record<string, { bg: string; text: string; dot: string; label: string }> = {
-    Paid: { bg: "bg-emerald-100 dark:bg-emerald-900/30", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-500", label: "Paid" },
-    Partial: { bg: "bg-amber-100 dark:bg-amber-900/30", text: "text-amber-700 dark:text-amber-400", dot: "bg-amber-500", label: "Partial" },
-    Unpaid: { bg: "bg-rose-100 dark:bg-rose-900/30", text: "text-rose-700 dark:text-rose-400", dot: "bg-rose-500", label: "Unpaid" },
+  const configs: Record<
+    string,
+    { bg: string; text: string; dot: string; label: string }
+  > = {
+    Paid: {
+      bg: "bg-emerald-100 dark:bg-emerald-900/30",
+      text: "text-emerald-700 dark:text-emerald-400",
+      dot: "bg-emerald-500",
+      label: "Paid",
+    },
+    Partial: {
+      bg: "bg-amber-100 dark:bg-amber-900/30",
+      text: "text-amber-700 dark:text-amber-400",
+      dot: "bg-amber-500",
+      label: "Partial",
+    },
+    Unpaid: {
+      bg: "bg-rose-100 dark:bg-rose-900/30",
+      text: "text-rose-700 dark:text-rose-400",
+      dot: "bg-rose-500",
+      label: "Unpaid",
+    },
   };
   const c = configs[status] || configs["Unpaid"];
   return (
-    <span className={clsx("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold", c.bg, c.text)}>
+    <span
+      className={clsx(
+        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold",
+        c.bg,
+        c.text,
+      )}
+    >
       <span className={clsx("w-1.5 h-1.5 rounded-full", c.dot)} />
       {c.label}
     </span>
@@ -34,7 +75,13 @@ function PaymentStatusBadge({ status }: { status: string }) {
 }
 
 // ─── StatCard ─────────────────────────────────────────────────────────────────
-function StatCard({ label, value, color, icon: Icon, prefix = "" }: {
+function StatCard({
+  label,
+  value,
+  color,
+  icon: Icon,
+  prefix = "",
+}: {
   label: string;
   value: string | number;
   color: string;
@@ -43,14 +90,22 @@ function StatCard({ label, value, color, icon: Icon, prefix = "" }: {
 }) {
   return (
     <div className="bg-background border border-border rounded-2xl p-5 flex items-center gap-4 shadow-sm">
-      <div className={clsx("w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm", color)}>
+      <div
+        className={clsx(
+          "w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm",
+          color,
+        )}
+      >
         <Icon size={20} className="text-white" />
       </div>
       <div>
         <p className="text-2xl font-bold text-foreground leading-none">
-          {prefix}{value}
+          {prefix}
+          {value}
         </p>
-        <p className="text-xs text-muted-foreground mt-1.5 font-medium">{label}</p>
+        <p className="text-xs text-muted-foreground mt-1.5 font-medium">
+          {label}
+        </p>
       </div>
     </div>
   );
@@ -63,7 +118,11 @@ interface PaymentModalProps {
   onSuccess: () => void;
 }
 
-function RecordPaymentModal({ invoice, onClose, onSuccess }: PaymentModalProps) {
+function RecordPaymentModal({
+  invoice,
+  onClose,
+  onSuccess,
+}: PaymentModalProps) {
   const [amount, setAmount] = useState<string>(invoice.balance_due.toFixed(2));
   const [method, setMethod] = useState<string>("Cash");
   const [notes, setNotes] = useState<string>("");
@@ -77,7 +136,9 @@ function RecordPaymentModal({ invoice, onClose, onSuccess }: PaymentModalProps) 
       return toast.error("Please enter a valid payment amount");
     }
     if (payAmt > invoice.balance_due) {
-      return toast.error(`Payment amount cannot exceed balance due (PKR ${invoice.balance_due.toFixed(2)})`);
+      return toast.error(
+        `Payment amount cannot exceed balance due (PKR ${invoice.balance_due.toFixed(2)})`,
+      );
     }
 
     setLoading(true);
@@ -102,10 +163,17 @@ function RecordPaymentModal({ invoice, onClose, onSuccess }: PaymentModalProps) 
       <div className="relative bg-background border border-border rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
         <div className="flex justify-between items-center">
           <div>
-            <h3 className="font-bold text-lg text-foreground">Record Payment</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Invoice {invoice.invoice_number}</p>
+            <h3 className="font-bold text-lg text-foreground">
+              Record Payment
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Invoice {invoice.invoice_number}
+            </p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-muted text-muted-foreground transition-colors">
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-xl hover:bg-muted text-muted-foreground transition-colors"
+          >
             <X size={16} />
           </button>
         </div>
@@ -113,25 +181,39 @@ function RecordPaymentModal({ invoice, onClose, onSuccess }: PaymentModalProps) 
         <div className="bg-muted/55 rounded-xl p-3.5 space-y-1.5 text-xs border border-border">
           <div className="flex justify-between">
             <span className="text-muted-foreground font-medium">Guest:</span>
-            <span className="font-semibold text-foreground">{invoice.guest?.name}</span>
+            <span className="font-semibold text-foreground">
+              {invoice.guest?.name}
+            </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground font-medium">Total Invoice Amount:</span>
-            <span className="font-semibold text-foreground">PKR {invoice.total_amount.toFixed(2)}</span>
+            <span className="text-muted-foreground font-medium">
+              Total Invoice Amount:
+            </span>
+            <span className="font-semibold text-foreground">
+              PKR {invoice.total_amount.toFixed(2)}
+            </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground font-medium">Amount Already Paid:</span>
-            <span className="font-semibold text-emerald-600">PKR ${invoice.amount_paid.toFixed(2)}</span>
+            <span className="text-muted-foreground font-medium">
+              Amount Already Paid:
+            </span>
+            <span className="font-semibold text-emerald-600">
+              PKR ${invoice.amount_paid.toFixed(2)}
+            </span>
           </div>
           <div className="flex justify-between border-t border-border pt-1.5 font-bold text-sm">
             <span className="text-foreground">Remaining Balance:</span>
-            <span className="text-accent">${invoice.balance_due.toFixed(2)}</span>
+            <span className="text-accent">
+              ${invoice.balance_due.toFixed(2)}
+            </span>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Payment Amount (PKR) *</label>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+              Payment Amount (PKR) *
+            </label>
             <input
               type="number"
               step="0.01"
@@ -143,7 +225,9 @@ function RecordPaymentModal({ invoice, onClose, onSuccess }: PaymentModalProps) 
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Payment Method *</label>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+              Payment Method *
+            </label>
             <select
               value={method}
               onChange={(e) => setMethod(e.target.value)}
@@ -151,17 +235,22 @@ function RecordPaymentModal({ invoice, onClose, onSuccess }: PaymentModalProps) 
             >
               <option value="Cash">💵 Cash (Offline Counter)</option>
               <option value="Card">💳 Credit/Debit Card (Manual Log)</option>
-              <option value="BankTransfer">🏦 Bank Transfer (Manual Log)</option>
+              <option value="BankTransfer">
+                🏦 Bank Transfer (Manual Log)
+              </option>
               <option value="JazzCash">📱 JazzCash (Manual Record)</option>
               <option value="EasyPaisa">📱 EasyPaisa (Manual Record)</option>
             </select>
             <span className="text-[10px] text-muted-foreground mt-1.5 block leading-normal">
-              Note: This form registers offline receipts manually. No online payment gateways will be charged.
+              Note: This form registers offline receipts manually. No online
+              payment gateways will be charged.
             </span>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Notes (Optional)</label>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+              Notes (Optional)
+            </label>
             <textarea
               rows={2}
               value={notes}
@@ -184,7 +273,11 @@ function RecordPaymentModal({ invoice, onClose, onSuccess }: PaymentModalProps) 
               disabled={loading}
               className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-60 transition-opacity"
             >
-              {loading ? <Loader2 size={14} className="animate-spin" /> : <DollarSign size={14} />}
+              {loading ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <DollarSign size={14} />
+              )}
               Record
             </button>
           </div>
@@ -217,11 +310,15 @@ function GenerateInvoiceModal({ onClose, onSuccess }: GenerateModalProps) {
         const { data } = await api.get<{ bookings: any[] }>("/bookings");
         // Also fetch all invoices to filter
         const invRes = await api.get<{ invoices: any[] }>("/billing");
-        const invoicedBookingIds = new Set(invRes.data.invoices.map((i) => i.booking_id));
+        const invoicedBookingIds = new Set(
+          invRes.data.invoices.map((i) => i.booking_id),
+        );
 
         // Filter bookings that do not have an invoice, and status is CheckedIn, CheckedOut, or Confirmed
         const available = data.bookings.filter(
-          (b) => !invoicedBookingIds.has(b.booking_id) && ["Confirmed", "CheckedIn", "CheckedOut"].includes(b.status)
+          (b) =>
+            !invoicedBookingIds.has(b.booking_id) &&
+            ["Confirmed", "CheckedIn", "CheckedOut"].includes(b.status),
         );
         setBookings(available);
       } catch (err) {
@@ -261,25 +358,38 @@ function GenerateInvoiceModal({ onClose, onSuccess }: GenerateModalProps) {
       <div className="relative bg-background border border-border rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
         <div className="flex justify-between items-center">
           <div>
-            <h3 className="font-bold text-lg text-foreground">Generate Invoice</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Manually create invoice for a booking</p>
+            <h3 className="font-bold text-lg text-foreground">
+              Generate Invoice
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Manually create invoice for a booking
+            </p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-muted text-muted-foreground transition-colors">
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-xl hover:bg-muted text-muted-foreground transition-colors"
+          >
             <X size={16} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Select Active Booking *</label>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+              Select Active Booking *
+            </label>
             {loadingBookings ? (
               <div className="py-2 flex items-center gap-2 text-xs text-muted-foreground">
-                <Loader2 size={13} className="animate-spin" /> Loading available stays...
+                <Loader2 size={13} className="animate-spin" /> Loading available
+                stays...
               </div>
             ) : bookings.length === 0 ? (
               <div className="p-3 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 rounded-xl text-xs border border-amber-100 flex items-start gap-2">
                 <Info size={14} className="mt-0.5 shrink-0" />
-                <span>No active stays require invoice generation (all bookings either already have an invoice or are not confirmed).</span>
+                <span>
+                  No active stays require invoice generation (all bookings
+                  either already have an invoice or are not confirmed).
+                </span>
               </div>
             ) : (
               <select
@@ -291,7 +401,8 @@ function GenerateInvoiceModal({ onClose, onSuccess }: GenerateModalProps) {
                 <option value="">Select Booking stay...</option>
                 {bookings.map((b) => (
                   <option key={b.booking_id} value={b.booking_id}>
-                    #{b.booking_id} - {b.user?.name} (Room {b.room?.room_number} · {b.status})
+                    #{b.booking_id} - {b.user?.name} (Room {b.room?.room_number}{" "}
+                    · {b.status})
                   </option>
                 ))}
               </select>
@@ -300,7 +411,9 @@ function GenerateInvoiceModal({ onClose, onSuccess }: GenerateModalProps) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Tax (%)</label>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                Tax (%)
+              </label>
               <input
                 type="number"
                 min="0"
@@ -311,7 +424,9 @@ function GenerateInvoiceModal({ onClose, onSuccess }: GenerateModalProps) {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Discount (%)</label>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                Discount (%)
+              </label>
               <input
                 type="number"
                 min="0"
@@ -336,7 +451,11 @@ function GenerateInvoiceModal({ onClose, onSuccess }: GenerateModalProps) {
               disabled={submitting || bookings.length === 0}
               className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
             >
-              {submitting ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+              {submitting ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Plus size={14} />
+              )}
               Generate
             </button>
           </div>
@@ -359,10 +478,12 @@ export default function Billing() {
   const [endDate, setEndDate] = useState("");
 
   // Modals state
-  const [activePaymentInvoice, setActivePaymentInvoice] = useState<any | null>(null);
+  const [activePaymentInvoice, setActivePaymentInvoice] = useState<any | null>(
+    null,
+  );
   const [showGenerateModal, setShowGenerateModal] = useState(false);
-   const { data: session } = useSession();
-    const basePath = session?.user?.role === "STAFF" ? "/staff" : "/admin";
+  const { data: session } = useSession();
+  const basePath = session?.user?.role === "STAFF" ? "/staff" : "/admin";
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
@@ -425,9 +546,12 @@ export default function Billing() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Billing & Invoices</h1>
+          <h1 className="text-2xl font-bold text-foreground">
+            Billing & Invoices
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Generate and track guest invoices, record payments, and manage hotel balances.
+            Generate and track guest invoices, record payments, and manage hotel
+            balances.
           </p>
         </div>
         <button
@@ -441,19 +565,19 @@ export default function Billing() {
       {/* Stats Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-              label="Total Revenue Collected"
-              value={stats.revenue}
-              icon={TrendingUp}
-              color="bg-emerald-500"
-              prefix="PKR "
-            />
-            <StatCard
-              label="Outstanding Balances"
-              value={stats.outstanding}
-              icon={AlertTriangle}
-              color="bg-amber-500"
-              prefix="PKR "
-            />
+          label="Total Revenue Collected"
+          value={stats.revenue}
+          icon={TrendingUp}
+          color="bg-emerald-500"
+          prefix="PKR "
+        />
+        <StatCard
+          label="Outstanding Balances"
+          value={stats.outstanding}
+          icon={AlertTriangle}
+          color="bg-amber-500"
+          prefix="PKR "
+        />
         <StatCard
           label="Fully Paid Invoices"
           value={stats.paidCount}
@@ -470,10 +594,15 @@ export default function Billing() {
 
       {/* Search and Filters Layout */}
       <div className="bg-background border border-border rounded-2xl p-4.5 space-y-3 shadow-sm">
-        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Search & Filters</p>
+        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          Search & Filters
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -505,7 +634,10 @@ export default function Billing() {
 
           <div className="flex items-center gap-1.5 md:col-span-2">
             <div className="flex-1 relative">
-              <Calendar size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              <Calendar
+                size={13}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+              />
               <input
                 type="date"
                 value={startDate}
@@ -515,7 +647,10 @@ export default function Billing() {
             </div>
             <span className="text-xs text-muted-foreground">to</span>
             <div className="flex-1 relative">
-              <Calendar size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              <Calendar
+                size={13}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+              />
               <input
                 type="date"
                 value={endDate}
@@ -539,7 +674,10 @@ export default function Billing() {
       <div className="bg-background border border-border rounded-2xl overflow-hidden shadow-sm">
         {loading ? (
           <div className="py-20 flex flex-col items-center gap-3">
-            <Loader2 size={24} className="animate-spin text-muted-foreground/40" />
+            <Loader2
+              size={24}
+              className="animate-spin text-muted-foreground/40"
+            />
             <p className="text-sm text-muted-foreground">Loading invoices…</p>
           </div>
         ) : error ? (
@@ -574,19 +712,27 @@ export default function Billing() {
                 {invoices.length === 0 ? (
                   <tr>
                     <td colSpan={10} className="py-16 text-center">
-                      <CreditCard size={32} className="mx-auto mb-2.5 text-muted-foreground/20" />
-                      <p className="text-sm text-muted-foreground font-medium">No invoices found</p>
+                      <CreditCard
+                        size={32}
+                        className="mx-auto mb-2.5 text-muted-foreground/20"
+                      />
+                      <p className="text-sm text-muted-foreground font-medium">
+                        No invoices found
+                      </p>
                     </td>
                   </tr>
                 ) : (
                   invoices.map((inv) => (
-                    <tr key={inv.invoice_id} className="hover:bg-muted/20 transition-colors">
+                    <tr
+                      key={inv.invoice_id}
+                      className="hover:bg-muted/20 transition-colors"
+                    >
                       <td className="px-4 py-4 font-mono font-semibold text-xs text-foreground">
                         {inv.invoice_number}
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-7.5 h-7.5 rounded-full bg-gradient-to-br from-primary to-accent/70 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent/70 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
                             {inv.guest?.name
                               ?.split(" ")
                               .map((n: string) => n[0])
@@ -623,7 +769,9 @@ export default function Billing() {
                       <td className="px-4 py-4 text-xs text-muted-foreground">
                         <span>+{inv.tax_percent}% Tax</span>
                         {inv.discount_percent > 0 && (
-                          <span className="block text-rose-500">-{inv.discount_percent}% Disc</span>
+                          <span className="block text-rose-500">
+                            -{inv.discount_percent}% Disc
+                          </span>
                         )}
                       </td>
                       <td className="px-4 py-4 text-xs font-bold text-foreground">
@@ -633,7 +781,9 @@ export default function Billing() {
                         <span
                           className={clsx(
                             "text-xs font-semibold",
-                            inv.balance_due > 0 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"
+                            inv.balance_due > 0
+                              ? "text-amber-600 dark:text-amber-400"
+                              : "text-emerald-600 dark:text-emerald-400",
                           )}
                         >
                           PKR {inv.balance_due.toFixed(2)}

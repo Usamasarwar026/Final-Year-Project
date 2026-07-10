@@ -3,12 +3,6 @@
 // src/lib/generator/moduleDependencies.ts
 
 import { ModuleId } from "./moduleFiles";
-
-/**
- * MODULE DEPENDENCY GRAPH
- * Key = module jo select kiya
- * Value = modules jo AUTO-SELECT ho jayenge (user cannot remove)
- */
 export const MODULE_DEPENDENCIES: Partial<Record<ModuleId, ModuleId[]>> = {
   // Booking requires Rooms and Customer
   booking: ["rooms", "customer"],

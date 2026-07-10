@@ -5,6 +5,7 @@ import AuthProvider from "./authProvider";
 import { TooltipProvider } from "../components/tooltip/Tooltip";
 
 import { useState } from "react";
+import { UserProvider } from "@/context/UserContext";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
@@ -13,7 +14,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <ThemeProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <UserProvider>{children}</UserProvider>
+          </AuthProvider>
         </ThemeProvider>
       </TooltipProvider>
     </QueryClientProvider>

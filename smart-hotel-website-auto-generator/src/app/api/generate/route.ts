@@ -55,6 +55,28 @@ export async function POST(req: NextRequest) {
 
   const userId = (session.user as any).id as string;
 
+  // Duplicate project-name check (per user)
+  const existingProject = await prisma.project.findFirst({
+    where: {
+      userId,
+      name: {
+        equals: websiteName.trim(),
+        mode: "insensitive",
+      },
+    },
+    select: { id: true, name: true },
+  });
+
+  if (existingProject) {
+    return NextResponse.json(
+      {
+        error: `You already have a project named "${existingProject.name}". Please choose a different name.`,
+        field: "name",
+      },
+      { status: 409 },
+    );
+  }
+
   // Save project record as GENERATING
   const project = await prisma.project.create({
     data: {
@@ -105,9 +127,11 @@ export async function POST(req: NextRequest) {
       data: { status: "FAILED" },
     });
 
-    return NextResponse.json(
-      { error: "Generation failed. Please try again." },
-      { status: 500 },
-    );
+    const message =
+      err instanceof Error && err.message
+        ? `Generation failed: ${err.message}`
+        : "Generation failed. Please try again.";
+
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

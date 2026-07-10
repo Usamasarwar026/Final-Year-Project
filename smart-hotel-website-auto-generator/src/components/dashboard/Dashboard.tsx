@@ -1,15 +1,9 @@
-// app/dashboard/page.tsx (Updated)
-
 "use client";
 
-import { useState } from "react";
-import { signOut, useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
-  Hotel,
-  LogOut,
-  User,
   Download,
   Loader2,
   Lock,
@@ -25,7 +19,6 @@ import {
   BarChart3,
   Info,
   ChevronRight,
-  ChevronLeft,
   CheckCircle2,
   Circle,
   Check,
@@ -34,6 +27,7 @@ import {
   Layers,
   Crown,
   AlertCircle,
+  ArrowLeft,
 } from "lucide-react";
 import clsx from "clsx";
 import api from "@/lib/axios";
@@ -41,12 +35,10 @@ import type { ModuleId } from "@/lib/generator/moduleFiles";
 import {
   resolveDependencies,
   getDependencyDescription,
-  canToggleOff,
   getLockedModules,
   getDependentModules,
-  getDirectDependencies,
 } from "@/lib/generator/moduleDependencies";
-import Link from "next/link";
+import Navbar from "../navbar/Navbar";
 
 // ─── Types ────────────────────────────────────────────────────
 type TierId = "basic" | "intermediate" | "advanced";
@@ -372,12 +364,14 @@ function StepModules({
   availableModules,
   selected,
   onToggle,
+  onToggleAll,
   onBack,
   onNext,
 }: {
   availableModules: ModuleId[];
   selected: ModuleId[];
   onToggle: (id: ModuleId, isAdding: boolean) => void;
+  onToggleAll: (selectAll: boolean) => void;
   onBack: () => void;
   onNext: () => void;
 }) {
@@ -389,6 +383,10 @@ function StepModules({
     id,
     isRequired: REQUIRED_MODULES.has(id),
   }));
+
+  const allSelected = allDisplayModules.every(
+    ({ id, isRequired }) => isRequired || selected.includes(id),
+  );
 
   const handleToggle = (moduleId: ModuleId, isRequired: boolean) => {
     if (isRequired) {
@@ -415,8 +413,15 @@ function StepModules({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.22 }}
-      className="max-w-2xl mx-auto"
+      className="max-w-2xl mx-auto relative"
     >
+      <button
+        onClick={onBack}
+        aria-label="Go back"
+        className="absolute -top-1 left-0 flex items-center justify-center w-10 h-8 rounded-lg border border-border text-foreground hover:bg-secondary transition-colors"
+      >
+        <ArrowLeft size={16} />
+      </button>
       <div className="text-center mb-5">
         <h2 className="text-xl font-bold text-foreground">Select Modules</h2>
         <p className="text-sm text-muted-foreground mt-1">
@@ -440,6 +445,18 @@ function StepModules({
           </li>
         </ul>
       </div>
+      <button
+        type="button"
+        onClick={() => onToggleAll(!allSelected)}
+        className="flex items-center gap-2 mb-3 px-1 text-xs font-medium text-primary hover:opacity-80 transition-opacity"
+      >
+        {allSelected ? (
+          <CheckCircle2 size={14} className="text-primary" />
+        ) : (
+          <Circle size={14} className="text-muted-foreground/40" />
+        )}
+        {allSelected ? "Deselect All" : "Select All Modules"}
+      </button>
 
       <div className="grid sm:grid-cols-2 gap-2.5 mb-4">
         {allDisplayModules.map(({ id, isRequired }) => {
@@ -579,12 +596,6 @@ function StepModules({
 
       <div className="flex gap-3">
         <button
-          onClick={onBack}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-secondary transition-colors"
-        >
-          <ChevronLeft size={15} /> Back
-        </button>
-        <button
           onClick={onNext}
           className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-brand text-white text-sm font-semibold hover:opacity-90 transition-opacity"
         >
@@ -595,101 +606,15 @@ function StepModules({
   );
 }
 
-// ─── STEP 3: Project Name ─────────────────────────────────────
-// function StepName({
-//   initialName,
-//   onBack,
-//   onNext,
-// }: {
-//   initialName: string;
-//   onBack: () => void;
-//   onNext: (name: string) => void;
-// }) {
-//   const [name, setName] = useState(initialName);
-//   const [error, setError] = useState("");
-
-//   const slug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-
-//   const handleNext = () => {
-//     const t = name.trim();
-//     if (!t) { setError("Please enter a name"); return; }
-//     if (t.length < 3) { setError("At least 3 characters"); return; }
-//     setError("");
-//     onNext(t);
-//   };
-
-//   return (
-//     <motion.div
-//       key="step3"
-//       initial={{ opacity: 0, y: 20 }}
-//       animate={{ opacity: 1, y: 0 }}
-//       exit={{ opacity: 0, y: -20 }}
-//       transition={{ duration: 0.22 }}
-//       className="max-w-md mx-auto"
-//     >
-//       <div className="text-center mb-6">
-//         <h2 className="text-xl font-bold text-foreground">Name Your Project</h2>
-//         <p className="text-sm text-muted-foreground mt-1">
-//           This becomes your folder name, app title, and package name.
-//         </p>
-//       </div>
-
-//       <div className="space-y-1.5 mb-5">
-//         <label className="text-xs font-semibold text-foreground uppercase tracking-wide">
-//           Hotel / Website Name
-//         </label>
-//         <input
-//           autoFocus
-//           value={name}
-//           onChange={(e) => { setName(e.target.value); setError(""); }}
-//           onKeyDown={(e) => e.key === "Enter" && handleNext()}
-//           placeholder="e.g. Grand Palace Hotel"
-//           className={clsx(
-//             "w-full px-4 py-2.5 rounded-lg border-2 bg-card text-foreground text-base outline-none transition-colors placeholder:text-muted-foreground/40",
-//             error ? "border-destructive" : "border-border focus:border-primary/60",
-//           )}
-//         />
-//         {error && <p className="text-xs text-destructive">{error}</p>}
-//         {slug && !error && (
-//           <p className="text-[10px] text-muted-foreground">
-//             Folder: <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-foreground">{slug}/</code>
-//           </p>
-//         )}
-//       </div>
-
-//       <div className="p-3 rounded-lg bg-gradient-brand/5 border border-primary/20 mb-5 space-y-1.5">
-//         <p className="text-[10px] font-semibold text-primary uppercase tracking-wide">This name will appear in</p>
-//         {[
-//           "ZIP folder name & project directory",
-//           "package.json → name field",
-//           "Browser tab title & meta tags",
-//         ].map((item) => (
-//           <div key={item} className="flex items-center gap-2 text-xs text-foreground/70">
-//             <Check size={10} className="text-primary shrink-0" />
-//             {item}
-//           </div>
-//         ))}
-//       </div>
-
-//       <div className="flex gap-3">
-//         <button onClick={onBack} className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-secondary transition-colors">
-//           <ChevronLeft size={15} /> Back
-//         </button>
-//         <button onClick={handleNext} disabled={!name.trim()} className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-brand text-white text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity">
-//           Continue <ChevronRight size={15} />
-//         </button>
-//       </div>
-//     </motion.div>
-//   );
-// }
-
 // ─── STEP 3: Project Name + Admin Details ─────────────────────
-// ─── STEP 3: Project Name + Admin Details ─────────────────────
+
 function StepName({
   initialName,
   initialAdminName,
   initialAdminEmail,
   initialAdminPassword,
+  serverNameError,
+  onClearServerNameError,
   onBack,
   onNext,
 }: {
@@ -697,6 +622,8 @@ function StepName({
   initialAdminName: string;
   initialAdminEmail: string;
   initialAdminPassword: string;
+  serverNameError?: string;
+  onClearServerNameError?: () => void;
   onBack: () => void;
   onNext: (data: {
     name: string;
@@ -709,7 +636,14 @@ function StepName({
   const [adminName, setAdminName] = useState(initialAdminName);
   const [adminEmail, setAdminEmail] = useState(initialAdminEmail);
   const [adminPassword, setAdminPassword] = useState(initialAdminPassword);
-  const [error, setError] = useState("");
+
+  // 🆕 Per-field errors instead of one generic string
+  const [errors, setErrors] = useState<{
+    name?: string;
+    adminName?: string;
+    adminEmail?: string;
+    adminPassword?: string;
+  }>({});
 
   const slug = name
     .trim()
@@ -723,38 +657,41 @@ function StepName({
     const ae = adminEmail.trim();
     const ap = adminPassword.trim();
 
+    const newErrors: typeof errors = {};
+
     if (!t) {
-      setError("Please enter a project name");
-      return;
+      newErrors.name = "Please enter a project name";
+    } else if (t.length < 3) {
+      newErrors.name = "Project name must be at least 3 characters";
     }
-    if (t.length < 3) {
-      setError("At least 3 characters");
-      return;
-    }
+
     if (!an) {
-      setError("Please enter admin name");
-      return;
+      newErrors.adminName = "Please enter admin name";
     }
+
     if (!ae) {
-      setError("Please enter admin email");
-      return;
+      newErrors.adminEmail = "Please enter admin email";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ae)) {
+      newErrors.adminEmail = "Invalid email format";
     }
+
     if (!ap) {
-      setError("Please enter admin password");
-      return;
+      newErrors.adminPassword = "Please enter admin password";
+    } else if (ap.length < 6) {
+      newErrors.adminPassword = "Password must be at least 6 characters";
     }
-    if (ap.length < 6) {
-      setError("Password must be at least 6 characters");
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ae)) {
-      setError("Invalid email format");
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
-    setError("");
+    setErrors({});
     onNext({ name: t, adminName: an, adminEmail: ae, adminPassword: ap });
   };
+
+  // Server se aaya duplicate-name error priority pe dikhega jab tak user name change na kare
+  const nameErrorToShow = serverNameError || errors.name;
 
   return (
     <motion.div
@@ -763,8 +700,15 @@ function StepName({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.22 }}
-      className="max-w-md mx-auto"
+      className="max-w-md mx-auto relative"
     >
+      <button
+        onClick={onBack}
+        aria-label="Go back"
+        className="absolute -top-1 left-0 flex items-center justify-center w-10 h-8 rounded-lg border border-border text-foreground hover:bg-secondary transition-colors"
+      >
+        <ArrowLeft size={16} />
+      </button>
       <div className="text-center mb-6">
         <h2 className="text-xl font-bold text-foreground">
           Project & Admin Setup
@@ -774,7 +718,7 @@ function StepName({
         </p>
       </div>
 
-      <div className="space-y-1.5 mb-5">
+      <div className="space-y-3 mb-5">
         {/* Project Name */}
         <div>
           <label className="text-xs font-semibold text-foreground uppercase tracking-wide">
@@ -785,17 +729,32 @@ function StepName({
             value={name}
             onChange={(e) => {
               setName(e.target.value);
-              setError("");
+              setErrors((prev) => ({ ...prev, name: undefined }));
+              onClearServerNameError?.();
             }}
             onKeyDown={(e) => e.key === "Enter" && handleNext()}
             placeholder="e.g. Grand Palace Hotel"
             className={clsx(
               "w-full px-4 py-2.5 rounded-lg border-2 bg-card text-foreground text-base outline-none transition-colors placeholder:text-muted-foreground/40",
-              error
+              nameErrorToShow
                 ? "border-destructive"
                 : "border-border focus:border-primary/60",
             )}
           />
+          {nameErrorToShow && (
+            <p className="flex items-center gap-1 text-xs text-destructive mt-1">
+              <AlertCircle size={12} />
+              {nameErrorToShow}
+            </p>
+          )}
+          {slug && !nameErrorToShow && (
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Folder:{" "}
+              <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-foreground">
+                {slug}/
+              </code>
+            </p>
+          )}
         </div>
 
         {/* Admin Name */}
@@ -807,17 +766,23 @@ function StepName({
             value={adminName}
             onChange={(e) => {
               setAdminName(e.target.value);
-              setError("");
+              setErrors((prev) => ({ ...prev, adminName: undefined }));
             }}
             onKeyDown={(e) => e.key === "Enter" && handleNext()}
             placeholder="e.g. John Doe"
             className={clsx(
               "w-full px-4 py-2.5 rounded-lg border-2 bg-card text-foreground text-base outline-none transition-colors placeholder:text-muted-foreground/40",
-              error
+              errors.adminName
                 ? "border-destructive"
                 : "border-border focus:border-primary/60",
             )}
           />
+          {errors.adminName && (
+            <p className="flex items-center gap-1 text-xs text-destructive mt-1">
+              <AlertCircle size={12} />
+              {errors.adminName}
+            </p>
+          )}
         </div>
 
         {/* Admin Email */}
@@ -830,17 +795,23 @@ function StepName({
             value={adminEmail}
             onChange={(e) => {
               setAdminEmail(e.target.value);
-              setError("");
+              setErrors((prev) => ({ ...prev, adminEmail: undefined }));
             }}
             onKeyDown={(e) => e.key === "Enter" && handleNext()}
             placeholder="admin@hotel.com"
             className={clsx(
               "w-full px-4 py-2.5 rounded-lg border-2 bg-card text-foreground text-base outline-none transition-colors placeholder:text-muted-foreground/40",
-              error
+              errors.adminEmail
                 ? "border-destructive"
                 : "border-border focus:border-primary/60",
             )}
           />
+          {errors.adminEmail && (
+            <p className="flex items-center gap-1 text-xs text-destructive mt-1">
+              <AlertCircle size={12} />
+              {errors.adminEmail}
+            </p>
+          )}
         </div>
 
         {/* Admin Password */}
@@ -853,32 +824,27 @@ function StepName({
             value={adminPassword}
             onChange={(e) => {
               setAdminPassword(e.target.value);
-              setError("");
+              setErrors((prev) => ({ ...prev, adminPassword: undefined }));
             }}
             onKeyDown={(e) => e.key === "Enter" && handleNext()}
             placeholder="Minimum 6 characters"
             className={clsx(
               "w-full px-4 py-2.5 rounded-lg border-2 bg-card text-foreground text-base outline-none transition-colors placeholder:text-muted-foreground/40",
-              error
+              errors.adminPassword
                 ? "border-destructive"
                 : "border-border focus:border-primary/60",
             )}
           />
+          {errors.adminPassword && (
+            <p className="flex items-center gap-1 text-xs text-destructive mt-1">
+              <AlertCircle size={12} />
+              {errors.adminPassword}
+            </p>
+          )}
         </div>
-
-        {error && <p className="text-xs text-destructive">{error}</p>}
-
-        {slug && !error && (
-          <p className="text-[10px] text-muted-foreground">
-            Folder:{" "}
-            <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-foreground">
-              {slug}/
-            </code>
-          </p>
-        )}
       </div>
 
-      {/* Info Box - Pehle wali styling */}
+      {/* Info Box */}
       <div className="p-3 rounded-lg bg-gradient-brand/5 border border-primary/20 mb-5 space-y-1.5">
         <p className="text-[10px] font-semibold text-primary uppercase tracking-wide">
           This name & credentials will be used for
@@ -901,20 +867,8 @@ function StepName({
 
       <div className="flex gap-3">
         <button
-          onClick={onBack}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-secondary transition-colors"
-        >
-          <ChevronLeft size={15} /> Back
-        </button>
-        <button
           onClick={handleNext}
-          disabled={
-            !name.trim() ||
-            !adminName.trim() ||
-            !adminEmail.trim() ||
-            !adminPassword.trim()
-          }
-          className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-brand text-white text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
+          className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-brand text-white text-sm font-semibold hover:opacity-90 transition-opacity"
         >
           Continue <ChevronRight size={15} />
         </button>
@@ -922,7 +876,6 @@ function StepName({
     </motion.div>
   );
 }
-
 // ─── STEP 4: Review + Generate ────────────────────────────────
 function StepGenerate({
   websiteName,
@@ -959,8 +912,16 @@ function StepGenerate({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.22 }}
-      className="max-w-lg mx-auto"
+      className="max-w-lg mx-auto relative"
     >
+      <button
+        onClick={onBack}
+        disabled={generating}
+        aria-label="Go back"
+        className="absolute -top-1 left-0 flex items-center justify-center w-10 h-8 rounded-lg border border-border text-foreground hover:bg-secondary transition-colors"
+      >
+        <ArrowLeft size={16} />
+      </button>
       <div className="text-center mb-5">
         <h2 className="text-xl font-bold text-foreground">Review & Generate</h2>
         <p className="text-sm text-muted-foreground mt-1">
@@ -1038,13 +999,6 @@ function StepGenerate({
 
       <div className="flex gap-3">
         <button
-          onClick={onBack}
-          disabled={generating}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-secondary disabled:opacity-50 transition-colors"
-        >
-          <ChevronLeft size={15} /> Back
-        </button>
-        <button
           onClick={onGenerate}
           disabled={generating}
           className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-gradient-brand text-white text-sm font-bold hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
@@ -1066,17 +1020,16 @@ function StepGenerate({
 
 // ─── Main Dashboard ───────────────────────────────────────────
 export default function Dashboard() {
-  const { data: session } = useSession();
-  const user = session?.user;
-
   const [step, setStep] = useState<Step>(1);
   const [tier, setTier] = useState<TierId | null>(null);
   const [selectedModules, setSelectedModules] = useState<ModuleId[]>([]);
+  const [explicitModules, setExplicitModules] = useState<ModuleId[]>([]);
   const [name, setName] = useState("");
   const [generating, setGenerating] = useState(false);
   const [adminName, setAdminName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
+  const [nameError, setNameError] = useState("");
 
   const handleTierSelect = (t: TierId) => {
     setTier(t);
@@ -1085,16 +1038,33 @@ export default function Dashboard() {
     // Authentication is always selected by default (as it's required)
     // But we don't add it to selectedModules array? Actually we do, but it will be required
     setSelectedModules(availableModules.filter((m) => m === "authentication"));
+    setExplicitModules([]);
     setStep(2);
+  };
+  const handleToggleAll = (selectAll: boolean) => {
+    if (!tier) return;
+    const availableModules = TIER_AVAILABLE_MODULES[tier];
+
+    if (selectAll) {
+      const explicit = availableModules.filter((m) => m !== "authentication");
+      setExplicitModules(explicit);
+      setSelectedModules(resolveDependencies(availableModules));
+      toast.success(" All modules selected");
+    } else {
+      setExplicitModules([]);
+      setSelectedModules(
+        availableModules.filter((m) => m === "authentication"),
+      );
+      toast.info(" All modules deselected (Authentication kept)");
+    }
   };
 
   const handleToggle = (moduleId: ModuleId, isAdding: boolean) => {
     if (isAdding) {
-      // Adding module
-      const newSelection = [...selectedModules, moduleId];
-      const resolved = resolveDependencies(newSelection);
+      // Adding module — mark as explicit user selection
+      const newExplicit = [...explicitModules, moduleId];
+      const resolved = resolveDependencies([...newExplicit, "authentication"]);
 
-      // Check what was auto-added (excluding authentication)
       const autoAdded = resolved.filter(
         (m) =>
           !selectedModules.includes(m) &&
@@ -1107,41 +1077,30 @@ export default function Dashboard() {
         );
       }
 
+      setExplicitModules(newExplicit);
       setSelectedModules(resolved);
     } else {
-      // Removing module
-      const newSelection = selectedModules.filter((m) => m !== moduleId);
+      // Removing module — sirf explicit list se nikalo, phir closure recompute karo
+      const newExplicit = explicitModules.filter((m) => m !== moduleId);
+      const requiredClosure = new Set(
+        resolveDependencies([...newExplicit, "authentication"]),
+      );
 
-      // Find orphaned dependencies (modules that are no longer needed)
-      const orphaned: ModuleId[] = [];
-      for (const dep of selectedModules) {
-        if (dep === moduleId || dep === "authentication") continue;
+      // Sirf woh modules orphan honge jinki zaroorat kisi bhi
+      // remaining EXPLICIT selection ko nahi hai
+      const orphaned = selectedModules.filter(
+        (m) =>
+          m !== moduleId && m !== "authentication" && !requiredClosure.has(m),
+      );
 
-        // Check if this module is a dependency of any remaining module
-        let isStillNeeded = false;
-        for (const remaining of newSelection) {
-          const deps = getDirectDependencies(remaining);
-          if (deps.includes(dep)) {
-            isStillNeeded = true;
-            break;
-          }
-        }
-
-        if (!isStillNeeded && newSelection.includes(dep)) {
-          orphaned.push(dep);
-        }
-      }
-
-      // Remove orphaned modules
-      let finalSelection = newSelection;
       if (orphaned.length > 0) {
-        finalSelection = newSelection.filter((m) => !orphaned.includes(m));
         toast.info(
           ` Removed dependencies: ${orphaned.map((m) => MODULE_META[m]?.label).join(", ")}`,
         );
       }
 
-      setSelectedModules(finalSelection);
+      setExplicitModules(newExplicit);
+      setSelectedModules(Array.from(requiredClosure));
     }
   };
 
@@ -1191,59 +1150,62 @@ export default function Dashboard() {
       setStep(1);
       setTier(null);
       setSelectedModules([]);
+      setExplicitModules([]);
       setName("");
+      setNameError("");
     } catch (err: any) {
-      toast.error(err?.response?.data?.error ?? "Generation failed");
+      //  Blob response error ko JSON mein parse karo (kyunki responseType: "blob" hai)
+      let message = "Generation failed. Please try again.";
+      let field: string | undefined;
+
+      const rawData = err?.response?.data;
+      if (rawData instanceof Blob) {
+        try {
+          const text = await rawData.text();
+          const parsed = JSON.parse(text);
+          message = parsed?.error ?? message;
+          field = parsed?.field;
+        } catch {
+          // ignore parse failure, use default message
+        }
+      } else if (rawData?.error) {
+        message = rawData.error;
+        field = rawData.field;
+      } else if (err?.message) {
+        message = err.message;
+      }
+
+      if (field === "name") {
+        setNameError(message);
+        setStep(3);
+      }
+
+      toast.error(message);
     } finally {
       setGenerating(false);
     }
   };
 
-  // Dashboard component ke andar
   const handleLogoClick = () => {
     setStep(1);
     setTier(null);
     setSelectedModules([]);
+    setExplicitModules([]);
     setName("");
     setAdminName("");
     setAdminEmail("");
     setAdminPassword("");
+    setNameError("");
   };
+
+  useEffect(() => {
+    const handler = () => handleLogoClick();
+    window.addEventListener("reset-dashboard-wizard", handler);
+    return () => window.removeEventListener("reset-dashboard-wizard", handler);
+  }, []);
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-4 py-3">
-          <button
-            onClick={handleLogoClick}
-            className="flex items-center gap-2.5 hover:opacity-80 transition-opacity cursor-pointer"
-          >
-            <div className="w-8 h-8 rounded-lg bg-gradient-brand flex items-center justify-center">
-              <Hotel className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-semibold text-foreground">HotelGen</span>
-          </button>
-
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-brand/10 flex items-center justify-center border border-primary/20">
-                <User className="w-4 h-4 text-primary" />
-              </div>
-              <span className="text-sm text-muted-foreground hidden sm:block">
-                {user?.name ?? user?.email?.split("@")[0] ?? "User"}
-              </span>
-            </div>
-            <button
-              onClick={() => signOut({ callbackUrl: "/" })}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm
-                         border border-border text-foreground
-                         hover:bg-secondary transition-colors"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Sign Out</span>
-            </button>
-          </div>
-        </div>
-      </header>
+      <Navbar />
 
       <main className="max-w-4xl mx-auto px-4 py-6">
         <ProgressBar step={step} />
@@ -1256,18 +1218,12 @@ export default function Dashboard() {
               availableModules={getAvailableModules()}
               selected={selectedModules}
               onToggle={handleToggle}
+              onToggleAll={handleToggleAll}
               onBack={() => setStep(1)}
               onNext={() => setStep(3)}
             />
           )}
-          {/* {step === 3 && (
-            <StepName
-              key="s3"
-              initialName={name}
-              onBack={() => setStep(2)}
-              onNext={(n) => { setName(n); setStep(4); }}
-            />
-          )} */}
+
           {step === 3 && (
             <StepName
               key="s3"
@@ -1275,6 +1231,8 @@ export default function Dashboard() {
               initialAdminName={adminName}
               initialAdminEmail={adminEmail}
               initialAdminPassword={adminPassword}
+              serverNameError={nameError}
+              onClearServerNameError={() => setNameError("")}
               onBack={() => setStep(2)}
               onNext={(data) => {
                 setName(data.name);
@@ -1289,9 +1247,8 @@ export default function Dashboard() {
             <StepGenerate
               key="s4"
               websiteName={name}
-              adminName={adminName} // ← Add this
-              adminEmail={adminEmail} // ← Add this
-              // adminPassword={adminPassword} // ← Add this
+              adminName={adminName}
+              adminEmail={adminEmail}
               selectedModules={selectedModules}
               selectedTier={tier}
               onBack={() => setStep(3)}

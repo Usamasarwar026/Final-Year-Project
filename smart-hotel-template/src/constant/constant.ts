@@ -6,7 +6,7 @@
 
 export const FOOTER_DATA = {
   brand: {
-    name: "US Grand",
+    name: WebsiteName,
     tagline: "Luxury stays, fine dining, and unforgettable hospitality.",
   },
   
@@ -23,9 +23,15 @@ export const FOOTER_DATA = {
 };
 
 
-
-
-
+export const HOTEL_INFO = {
+  name: FOOTER_DATA.brand.name,          // "US Grand" - reuse existing brand name
+  tagline: FOOTER_DATA.brand.tagline,
+  address: "Faisalabad, Pakistan",        // apna actual address daal dena
+  phone: FOOTER_DATA.contact.phone,       // reuse existing contact
+  email: FOOTER_DATA.contact.email,
+  taxNo: "NTN-9876543-2",                 // apna actual tax number daal dena
+  
+};
 
 export const IMAGES = {
   heroImage: "/assets/hero-hotel.jpg",
