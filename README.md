@@ -2,6 +2,10 @@
 
 This Project Build a Hotel related websites 
 
+## Live Demo
+
+ **[Visit Live Demo](https://smarthotelgen.vercel.app)**
+
 # Folders
 ## basic-hotel-template
  This folder contain a templates for basic tier 
@@ -133,6 +137,7 @@ npx prisma migrate dev
 ## Authors
 
 Muhammad Usama Sarwar
+
 Muhammad Awais Ramzan
 
 ## ⭐ Support
